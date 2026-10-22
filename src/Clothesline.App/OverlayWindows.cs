@@ -86,8 +86,11 @@ internal sealed class CardWindow : OverlayWindow
     public event Action? DragEnded;
     public Action<DemoItem>? RecycleRequested { get; set; }
     public Action<DemoItem, bool>? ExportRequested { get; set; }
+    public Action<DemoItem, bool>? WorkspaceRequested { get; set; }
+    public Action<DemoItem, ArchiveScope>? BatchArchiveRequested { get; set; }
     private Point? down;
     private readonly DispatcherTimer clickTimer;
+    private readonly DispatcherTimer holdTimer;
     private readonly TextBlock caption;
     private readonly Border surface;
     private string feedback = "";
@@ -96,6 +99,7 @@ internal sealed class CardWindow : OverlayWindow
     {
         Item = item; Width = DesktopGeometry.CardWidth; Height = DesktopGeometry.CardHeight;
         clickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(Native.GetDoubleClickTime()) };
+        holdTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
         var root = new Grid { Margin = new Thickness(5, 0, 5, 5) };
         surface = new Border { Background = DemoAssets.Brush("#F9FAF7"), BorderBrush = DemoAssets.Brush("#D6DED6"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 19, 0, 0), Padding = new Thickness(8) };
         var inside = new Grid();
@@ -116,25 +120,36 @@ internal sealed class CardWindow : OverlayWindow
         AutomationProperties.SetName(remove, "取下" + item.Title);
         root.Children.Add(remove); Content = root;
         clickTimer.Tick += (_, _) => { clickTimer.Stop(); Copy(); };
+        holdTimer.Tick += (_, _) =>
+        {
+            holdTimer.Stop(); if (down is null || Busy || Mouse.LeftButton != MouseButtonState.Pressed) return;
+            down = null; clickTimer.Stop(); surface.ReleaseMouseCapture();
+            try { WorkspaceRequested?.Invoke(Item, true); } catch (Exception ex) { Report(ex.Message); }
+        };
         surface.MouseLeftButtonDown += Down;
         surface.MouseMove += Move;
         surface.MouseLeftButtonUp += Up;
-        surface.LostMouseCapture += (_, _) => down = null;
+        surface.LostMouseCapture += (_, _) => { down = null; holdTimer.Stop(); };
         surface.MouseEnter += (_, _) => { if (!Busy) caption.Text = "单击复制 · 双击打开 · 拖出"; };
         surface.MouseLeave += (_, _) => { if (!Busy) caption.Text = item.Title; };
         var menu = new ContextMenu();
         Add(menu, "复制图片", Copy);
+        Add(menu, "预览与缩放", () => WorkspaceRequested?.Invoke(item, false));
+        Add(menu, "编辑图片…", () => WorkspaceRequested?.Invoke(item, true));
         Add(menu, "打开图片", () => ShellTransfer.Open(item.Path));
         Add(menu, "在资源管理器中定位", () => ShellTransfer.Reveal(item.Path));
         Add(menu, "另存为", () => ExportRequested?.Invoke(item, false));
         Add(menu, "保存副本到桌面", () => ExportRequested?.Invoke(item, true));
         menu.Items.Add(new Separator());
         Add(menu, "取下（保留文件）", () => TakeDown?.Invoke(this));
+        Add(menu, "取下左侧全部（跨页）", () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Left));
+        Add(menu, "取下右侧全部（跨页）", () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Right));
+        Add(menu, "全部取下到历史", () => BatchArchiveRequested?.Invoke(item, ArchiveScope.All));
         Add(menu, "将文件移入回收站", () => { if (RecycleRequested is not null) RecycleRequested(item); else Report(ShellTransfer.Recycle(item.Path)); DragEnded?.Invoke(); });
-        menu.Opened += (_, _) => { Busy = true; clickTimer.Stop(); };
+        menu.Opened += (_, _) => { Busy = true; clickTimer.Stop(); holdTimer.Stop(); };
         menu.Closed += (_, _) => Busy = false;
         surface.ContextMenu = menu;
-        Closed += (_, _) => clickTimer.Stop();
+        Closed += (_, _) => { clickTimer.Stop(); holdTimer.Stop(); };
     }
     private void Add(ContextMenu menu, string title, Action action)
     {
@@ -144,21 +159,21 @@ internal sealed class CardWindow : OverlayWindow
     }
     private void Down(object sender, MouseButtonEventArgs e)
     {
-        clickTimer.Stop();
+        clickTimer.Stop(); holdTimer.Stop();
         if (e.ClickCount == 2)
         {
             down = null;
             try { ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
             e.Handled = true; return;
         }
-        down = e.GetPosition(surface); surface.CaptureMouse(); e.Handled = true;
+        down = e.GetPosition(surface); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
     }
     private void Move(object sender, MouseEventArgs e)
     {
         if (down is not Point start || e.LeftButton != MouseButtonState.Pressed || Busy) return;
         var p = e.GetPosition(surface);
         if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
-        down = null; surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
+        down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
         try { Report(ShellTransfer.Drag(this, Item)); }
         catch (Exception ex) { Report("拖拽未完成：" + ex.Message); }
         finally { Busy = false; DragEnded?.Invoke(); }
@@ -166,7 +181,7 @@ internal sealed class CardWindow : OverlayWindow
     private void Up(object sender, MouseButtonEventArgs e)
     {
         if (down is null) return;
-        down = null; surface.ReleaseMouseCapture(); clickTimer.Start(); e.Handled = true;
+        down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Start(); e.Handled = true;
     }
     private void Copy()
     {

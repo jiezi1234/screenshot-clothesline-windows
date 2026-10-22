@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
+using Clothesline.Core;
 using Clothesline.Storage;
 
 namespace Clothesline.App;
@@ -27,6 +29,8 @@ internal sealed class LibraryRuntime : IDisposable
     private bool revealPending;
     private bool disposed;
     private int fileOperation;
+    private readonly HashSet<ImageWorkspace> workspaces = new();
+    private readonly Dictionary<string, int> leases = new(StringComparer.OrdinalIgnoreCase);
     public event Action<string>? Status;
     public event Action? Changed;
     public int Capacity => Settings.Capacity == 0 ? shelf.DisplayCapacity : Settings.Capacity;
@@ -45,6 +49,8 @@ internal sealed class LibraryRuntime : IDisposable
         shelf.Archived += item => { if (item.EntryId is not null) { Store.Archive(item.EntryId, Now); ScheduleRefresh(false); } };
         shelf.RecycleRequested += item => { if (item.EntryId is not null) Recycle(item.EntryId); };
         shelf.ExportRequested += (item, desktop) => Export(item.Path, desktop);
+        shelf.WorkspaceRequested += (item, edit) => { if (item.EntryId is not null) OpenWorkspace(item.EntryId, edit); };
+        shelf.BatchArchiveRequested += (item, scope) => ArchiveBatch(item.EntryId, scope);
         shelf.FilesChanged += () => ScheduleRefresh(false);
     }
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -100,6 +106,60 @@ internal sealed class LibraryRuntime : IDisposable
         shelf.SetItems(items, reveal); Changed?.Invoke();
     }
     public void Archive(string id) { Store.Archive(id, Now); ScheduleRefresh(false); }
+    public void ArchiveBatch(string? anchor = null, ArchiveScope scope = ArchiveScope.All)
+    {
+        var ordered = Store.Entries(EntryState.Shelf).Select(e => e.Id).ToArray();
+        var ids = anchor is null && scope == ArchiveScope.All ? ordered : BatchSelection.Select(ordered, anchor ?? "", scope);
+        var count = Store.ArchiveMany(ids, Now);
+        Report($"已取下 {count} 张图片到本地历史，原文件保留。"); ScheduleRefresh(false);
+    }
+    internal IDisposable AcquireLease(string path)
+    {
+        path = Path.GetFullPath(path); leases.TryGetValue(path, out var count); leases[path] = count + 1;
+        return new FileLease(() => { if (leases[path] == 1) leases.Remove(path); else leases[path]--; });
+    }
+    private sealed class FileLease(Action release) : IDisposable
+    {
+        private Action? action = release;
+        public void Dispose() { var callback = action; action = null; callback?.Invoke(); }
+    }
+    private bool InUse(string path) => leases.ContainsKey(Path.GetFullPath(path));
+    public void OpenWorkspace(string id, bool edit)
+    {
+        var entry = Store.Find(id); if (entry is null) return;
+        var gallery = Store.Entries(entry.State).Where(e => !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title)).ToArray();
+        var index = Array.FindIndex(gallery, e => e.Id == id);
+        if (index < 0) { Report("原文件已失效，无法打开。请在历史中检查路径。"); return; }
+        var window = new ImageWorkspace(gallery, index, edit, SaveEditedCopy, AcquireLease);
+        workspaces.Add(window); window.Closed += (_, _) => workspaces.Remove(window); window.Show(); window.Activate();
+    }
+    public bool TryCloseWorkspaces()
+    {
+        foreach (var window in workspaces.ToArray()) { window.Close(); if (workspaces.Contains(window)) return false; }
+        return true;
+    }
+    private async Task<SavedImage?> SaveEditedCopy(BitmapSource bitmap, string source, Window owner)
+    {
+        if (fileOperation > 0) throw new InvalidOperationException("另一项文件操作进行中，请稍后再保存。");
+        fileOperation++;
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = Path.GetFileNameWithoutExtension(source) + "-edited.png", Filter = "PNG 图片|*.png", DefaultExt = ".png", AddExtension = true, OverwritePrompt = false };
+            if (dialog.ShowDialog(owner) != true) return null;
+            var destination = Path.GetFullPath(dialog.FileName);
+            if (destination.StartsWith(Store.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("请选择应用数据目录以外的位置保存副本。");
+            var path = await Task.Run(() => ImageFiles.ExportPng(ImageFiles.Png(bitmap), destination));
+            try
+            {
+                await Collector.ImportExternal(path, cancellation: closing.Token, preserveCopy: true);
+                var entry = Store.Entries().FirstOrDefault(e => string.Equals(e.Path, path, StringComparison.OrdinalIgnoreCase));
+                if (entry is not null && entry.State != EntryState.Shelf) Store.Restore(entry.Id, Capacity, Now);
+                ScheduleRefresh(true); return new(path, entry is not null);
+            }
+            catch (Exception ex) { Report("副本已保存，但未能挂上：" + ex.Message); return new(path, false); }
+        }
+        finally { fileOperation--; }
+    }
     public void Restore(string id)
     {
         Report(Store.Restore(id, Capacity, Now) ? "已重新挂上；历史计时已取消。" : "原文件已失效，无法重新挂上。"); ScheduleRefresh(true);
@@ -112,6 +172,7 @@ internal sealed class LibraryRuntime : IDisposable
         try
         {
         var entry = Store.Find(id); if (entry is null) return;
+        if (InUse(entry.Path)) { Report("这张图片正在工作台中使用，请关闭对应窗口后再回收。"); return; }
         if (MessageBox.Show("将这个文件移入系统回收站？\n" + entry.Path, "删除文件", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         Report(Store.Recycle(id, SafeRecycle.File) ? "文件已移入回收站。" : "未能回收，文件与记录已保留。请在历史中查看原因。"); ScheduleRefresh(false);
         }
@@ -123,7 +184,7 @@ internal sealed class LibraryRuntime : IDisposable
         fileOperation++;
         try
         {
-        var count = Store.Cleanup(Settings.RetentionDays, Now, SafeRecycle.File);
+        var count = Store.Cleanup(Settings.RetentionDays, Now, SafeRecycle.File, e => InUse(e.Path));
         if (count > 0) { Report($"已清理 {count} 条到期历史；外部原文件保留。"); ScheduleRefresh(false); }
         }
         finally { fileOperation--; }

@@ -101,7 +101,7 @@ public sealed class CollectionEngine : IDisposable
         }
         catch (OperationCanceledException) { }
     }
-    public async Task<bool> ImportExternal(string path, bool automatic = false, CancellationToken cancellation = default)
+    public async Task<bool> ImportExternal(string path, bool automatic = false, CancellationToken cancellation = default, bool preserveCopy = false)
     {
         path = Path.GetFullPath(path);
         if (!Supported(path)) return false;
@@ -119,7 +119,7 @@ public sealed class CollectionEngine : IDisposable
             if (automatic) { lock (watcherGate) if (!folders.Any(f => string.Equals(Path.GetDirectoryName(path), f, StringComparison.OrdinalIgnoreCase))) return false; }
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var source = "Folder:" + Path.GetDirectoryName(path);
-            if (!store.IsDuplicate(path, hash, source, now)) { store.Add(path, Ownership.External, source, hash, now, capacity()); Changed?.Invoke(); }
+            if (!store.IsDuplicate(path, hash, source, now, !preserveCopy)) { store.Add(path, Ownership.External, source, hash, now, capacity()); Changed?.Invoke(); }
             store.Observe(path, before); return true;
         }
         finally { importLock.Release(); }

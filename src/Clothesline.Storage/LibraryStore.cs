@@ -96,12 +96,12 @@ public sealed class LibraryStore : IDisposable
         }
     }
     public LibraryEntry? Find(string id) => Entries().FirstOrDefault(e => e.Id == id);
-    public bool IsDuplicate(string path, string hash, string source, long now)
+    public bool IsDuplicate(string path, string hash, string source, long now, bool includeOtherSources = true)
     {
         lock (gate)
         {
             // Same-path watcher repeats are not new captures. Cross-source dedup has a short window.
-            return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM Items WHERE Missing=0 AND Hash=$hash AND (Path=$path COLLATE NOCASE OR (Source<>$source AND AddedAt >= $since))", "$hash", hash, "$path", path, "$source", source, "$since", now - 5000)) > 0;
+            return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM Items WHERE Missing=0 AND Hash=$hash AND (Path=$path COLLATE NOCASE OR ($crossSource=1 AND Source<>$source AND AddedAt >= $since))", "$hash", hash, "$path", path, "$source", source, "$since", now - 5000, "$crossSource", includeOtherSources)) > 0;
         }
     }
     public LibraryEntry Add(string path, Ownership ownership, string source, string hash, long now, int capacity, EntryState state = EntryState.Shelf, string? id = null)
@@ -129,6 +129,15 @@ public sealed class LibraryStore : IDisposable
     }
     public void Archive(string id, long now)
     { lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$time WHERE Id=$id AND State=0", "$id", id, "$time", now); }
+    public int ArchiveMany(IEnumerable<string> ids, long now)
+    {
+        lock (gate)
+        {
+            using var transaction = db.BeginTransaction(); var changed = 0;
+            foreach (var id in ids.Distinct()) changed += Execute("UPDATE Items SET State=1,ArchivedAt=$time WHERE Id=$id AND State=0", "$id", id, "$time", now);
+            transaction.Commit(); return changed;
+        }
+    }
     public bool Restore(string id, int capacity, long now)
     {
         lock (gate)
@@ -171,7 +180,7 @@ public sealed class LibraryStore : IDisposable
             }
         }
     }
-    public int Cleanup(int days, long now, Func<string, bool> recycle)
+    public int Cleanup(int days, long now, Func<string, bool> recycle, Func<LibraryEntry, bool>? protectedEntry = null)
     {
         if (days <= 0) return 0;
         lock (gate)
@@ -179,6 +188,7 @@ public sealed class LibraryStore : IDisposable
             var count = 0;
             foreach (var entry in Entries(EntryState.History).Where(e => e.ArchivedAt <= now - TimeSpan.FromDays(days).TotalMilliseconds && e.Error.Length == 0))
             {
+                if (protectedEntry?.Invoke(entry) == true) continue;
                 if (entry.Ownership == Ownership.External || !File.Exists(entry.Path)) { ForgetExternalOrMissing(entry.Id); count++; }
                 else if (Recycle(entry.Id, recycle)) count++;
             }

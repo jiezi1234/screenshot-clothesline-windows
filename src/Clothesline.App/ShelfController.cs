@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows.Threading;
+using System.Windows;
 using Clothesline.Core;
 using Microsoft.Win32;
 
@@ -13,6 +15,9 @@ internal sealed class ShelfController : IDisposable
 {
     private readonly RopeWindow rope = new();
     private readonly List<CardWindow> cards = new();
+    private readonly HashSet<CardWindow> retiring = new();
+    private readonly Func<bool> systemMotion;
+    private bool reduceMotion, disposed;
     private readonly RevealGate gate = new();
     private readonly Stopwatch clock = Stopwatch.StartNew();
     private readonly DispatcherTimer timer;
@@ -32,18 +37,32 @@ internal sealed class ShelfController : IDisposable
     public event Action<DemoItem, bool>? WorkspaceRequested;
     public event Action<DemoItem, ArchiveScope>? BatchArchiveRequested;
     public event Action? FilesChanged;
-    public bool ReduceMotion { get; set; }
+    public bool ReduceMotion { get => reduceMotion; set { reduceMotion = value; RefreshMotion(); } }
+    internal bool MotionAllowed => !ReduceMotion && systemMotion();
+    internal int RetiringCount => retiring.Count;
     public bool SuppressFullscreen { get; set; } = true;
     public bool Visible => presented;
     public int Count => cards.Count;
     public double LastShowMilliseconds { get; private set; }
     public event Action<string>? Status;
 
-    public ShelfController()
+    public ShelfController(Func<bool>? systemMotion = null)
     {
+        this.systemMotion = systemMotion ?? (() => SystemParameters.ClientAreaAnimation);
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         timer.Tick += (_, _) => Tick();
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
+        SystemParameters.StaticPropertyChanged += SystemMotionChanged;
+    }
+    internal void RefreshMotion()
+    {
+        if (disposed || MotionAllowed) return;
+        rope.StopMotion(); foreach (var card in cards) card.StopMotion(); CloseRetiring();
+    }
+    private void SystemMotionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation) && !disposed)
+            timer.Dispatcher.BeginInvoke((Action)(() => { if (!disposed) RefreshMotion(); }));
     }
     public void Start(bool samples = true) { sampleMode = samples; Prepare(Native.MonitorAt(Native.Cursor)); if (samples) ResetSamples(); timer.Start(); }
     public void RefreshLanguage() => rope.RefreshLanguage();
@@ -58,7 +77,8 @@ internal sealed class ShelfController : IDisposable
         if (cards.Select(c => c.Item).SequenceEqual(desired)) { if (reveal && !presented) Toggle(); return; }
         var wasVisible = presented;
         var previous = cards.ToDictionary(c => c.Item.EntryId ?? c.Item.Path);
-        foreach (var card in cards) if (!desired.Contains(card.Item)) card.Close();
+        foreach (var card in cards)
+            if (!desired.Contains(card.Item)) Retire(card, !desired.Any(item => (item.EntryId ?? item.Path) == (card.Item.EntryId ?? card.Item.Path)));
         cards.Clear(); if (reveal) page = 0;
         foreach (var item in desired)
         {
@@ -104,12 +124,19 @@ internal sealed class ShelfController : IDisposable
     public void Hide() { gate.Hide(); Dismiss(); }
     private void Remove(CardWindow card)
     {
-        cards.Remove(card); card.Close();
         if (!sampleMode) Archived?.Invoke(card.Item);
+        cards.Remove(card); Retire(card, true);
         Status?.Invoke(File.Exists(card.Item.Path) ? T("已从晾衣绳取下；文件仍在本地。") : T("文件已移走，已取下对应卡片。"));
         if (cards.Count == 0 && presented) gate.Show(clock.ElapsedMilliseconds);
         if (presented) Present();
     }
+    private void Retire(CardWindow card, bool animate)
+    {
+        if (retiring.Count >= Math.Max(1, DisplayCapacity)) retiring.First().Close();
+        retiring.Add(card); card.Closed += (_, _) => retiring.Remove(card);
+        card.Retire(animate && presented && MotionAllowed);
+    }
+    private void CloseRetiring() { foreach (var card in retiring.ToArray()) card.Close(); retiring.Clear(); }
     private void Prune()
     {
         if (Busy) return;
@@ -142,7 +169,7 @@ internal sealed class ShelfController : IDisposable
         var monitor = activeMonitor ?? Native.MonitorAt(Native.Cursor);
         Prepare(monitor);
         rope.ShowEmptyHint = cards.Count == 0;
-        rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)((cards.Count == 0 ? 100 : 70) * scale)), !presented && !ReduceMotion);
+        rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)((cards.Count == 0 ? 100 : 70) * scale)), MotionAllowed);
         if (cards.Count == 0)
         {
             page = 0;
@@ -156,7 +183,7 @@ internal sealed class ShelfController : IDisposable
             {
                 page = Math.Min(page, (cards.Count - 1) / rects.Count);
                 var slot = i - page * rects.Count;
-                if (slot >= 0 && slot < rects.Count) { Native.MoveAndGetScale(cards[i], monitor); cards[i].Present(rects[slot], !presented && !ReduceMotion); }
+                if (slot >= 0 && slot < rects.Count) { if (!cards[i].IsVisible) Native.MoveAndGetScale(cards[i], monitor); cards[i].Present(rects[slot], MotionAllowed); }
                 else cards[i].Dismiss();
             }
             shelfArea = new PixelRect(rects[0].X - (int)(16 * scale), monitor.WorkArea.Y,
@@ -164,11 +191,12 @@ internal sealed class ShelfController : IDisposable
         }
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
-    private void Dismiss() { rope.Dismiss(); foreach (var card in cards) card.Dismiss(); presented = false; }
-    private void DisplaysChanged(object? sender, EventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { Hide(); activeMonitor = null; Status?.Invoke(T("显示器布局已变化，已重置晾衣绳位置。")); }));
+    private void Dismiss() { rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
+    private void DisplaysChanged(object? sender, EventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { if (disposed) return; Hide(); activeMonitor = null; Status?.Invoke(T("显示器布局已变化，已重置晾衣绳位置。")); }));
     public void Dispose()
     {
-        timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged;
+        disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
+        CloseRetiring();
         foreach (var card in cards) card.Close(); rope.Close();
     }
 }

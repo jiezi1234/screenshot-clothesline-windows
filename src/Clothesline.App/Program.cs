@@ -21,6 +21,7 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--editor-test") return EditorDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--preferences-test") return PreferencesDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--appearance-test") return AppearanceDiagnostics.Run(app, args[1]);
+        if (args.Length == 2 && args[0] == "--motion-test") return MotionDiagnostics.Run(app, args[1]);
         using var instance = new Mutex(true, "Local\\ScreenshotClothesline.Prototype", out var first);
         using var wake = new EventWaitHandle(false, EventResetMode.AutoReset, "Local\\ScreenshotClothesline.Prototype.Wake");
         if (!first) { if (!args.Contains("--startup")) wake.Set(); return 0; }

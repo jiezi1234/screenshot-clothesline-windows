@@ -77,6 +77,12 @@ internal static class Native
         SetWindowPos(hwnd, 0, monitor.WorkArea.X, monitor.WorkArea.Y, 1, 1, 0x14); // fit wholly on target before querying DPI
         return Math.Max(96, GetDpiForWindow(hwnd)) / 96.0;
     }
+    public static bool MakeInputTransparent(Window window)
+    {
+        var hwnd = new WindowInteropHelper(window).EnsureHandle();
+        SetWindowLongPtrW(hwnd, -20, (nint)(GetWindowLongPtrW(hwnd, -20).ToInt64() | 0x20));
+        return (GetWindowLongPtrW(hwnd, -20).ToInt64() & 0x20) != 0;
+    }
     public static void Place(Window window, PixelRect rect)
     {
         var hwnd = new WindowInteropHelper(window).EnsureHandle();

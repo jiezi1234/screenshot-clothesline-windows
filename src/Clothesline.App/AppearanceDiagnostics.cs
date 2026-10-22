@@ -72,6 +72,7 @@ internal static class AppearanceDiagnostics
                     var box = remove.TransformToAncestor(view).TransformBounds(new Rect(0, 0, remove.ActualWidth, remove.ActualHeight));
                     Check("scaled-remove-button-inside-card-" + percent, box.Left >= 0 && box.Top >= 0 && box.Right <= view.ActualWidth + 1 && box.Bottom <= view.ActualHeight + 1 && box.Width > 18);
                     Check("card-keeps-base-layout-and-noactivate-" + percent, layout.ActualWidth == 212 && layout.ActualHeight == 190 && (Native.GetWindowLongPtrW(new WindowInteropHelper(card).Handle, -20).ToInt64() & 0x08000000) != 0);
+                    Check("card-captions-stay-inside-view-" + percent, Descendants(layout).OfType<TextBlock>().All(t => t.TransformToAncestor(view).TransformBounds(new Rect(0, 0, t.ActualWidth, t.ActualHeight)).Bottom <= view.ActualHeight + .25));
                     Render(view, Path.Combine(directory, "card-" + percent + ".png"));
                 }
                 card.Close(); card = null;

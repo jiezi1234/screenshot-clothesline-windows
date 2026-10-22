@@ -1,4 +1,5 @@
 {
+  "关闭卡片入场、摆动、取下及绳线淡入；Windows 关闭动画时也会自动停用。鼠标进入卡片时立即停稳。": "Disable card entry, swing, removal, and rope fades. Also respects Windows animation settings. Cards settle immediately when the pointer enters.",
   "   ·   未保存": "   ·   Unsaved",
   " · 单击复制 · 双击打开 · 长按编辑 · 拖出 · 滚轮翻页": " · Click to copy · Double-click to open · Hold to edit · Drag to export · Scroll for pages",
   " · 图片工作台": " · Image workspace",

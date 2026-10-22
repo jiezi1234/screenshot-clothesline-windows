@@ -14,6 +14,7 @@ namespace Clothesline.App;
 
 internal class OverlayWindow : Window
 {
+    private int opacityGeneration;
     public OverlayWindow(string title, bool passThrough)
     {
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);
@@ -22,14 +23,22 @@ internal class OverlayWindow : Window
         ShowInTaskbar = false; ShowActivated = false; Topmost = true;
         SourceInitialized += (_, _) => Native.ConfigureOverlay(this, passThrough);
     }
-    public void Present(PixelRect rect, bool animate)
+    public virtual void Present(PixelRect rect, bool animate)
     {
-        BeginAnimation(OpacityProperty, null); Opacity = 1;
+        var entering = !IsVisible;
+        StopMotion();
         if (!IsVisible) Show();
         Native.Place(this, rect);
-        if (animate) BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)) { FillBehavior = FillBehavior.Stop });
+        if (animate && entering)
+        {
+            var current = opacityGeneration;
+            var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)) { FillBehavior = FillBehavior.Stop };
+            fade.Completed += (_, _) => { if (current == opacityGeneration) BeginAnimation(OpacityProperty, null); };
+            BeginAnimation(OpacityProperty, fade);
+        }
     }
-    public void Dismiss() { BeginAnimation(OpacityProperty, null); Hide(); }
+    public virtual void StopMotion() { opacityGeneration++; BeginAnimation(OpacityProperty, null); Opacity = 1; }
+    public virtual void Dismiss() { StopMotion(); Hide(); }
 }
 
 internal sealed class RopeWindow : OverlayWindow
@@ -95,6 +104,10 @@ internal sealed class CardWindow : OverlayWindow
     private readonly DispatcherTimer holdTimer;
     private readonly TextBlock caption;
     private readonly Border surface;
+    private readonly CardMotion motion;
+    private bool closed;
+    public bool Retiring { get; private set; }
+    internal bool MotionRunning => motion.Running || HasAnimatedProperties;
     private string feedback = "";
 
     public CardWindow(DemoItem item) : base("Clothesline · " + item.Title, false)
@@ -102,10 +115,11 @@ internal sealed class CardWindow : OverlayWindow
         Item = item; Width = DesktopGeometry.CardWidth; Height = DesktopGeometry.CardHeight;
         clickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(Native.GetDoubleClickTime()) };
         holdTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
-        var root = new Grid { Margin = new Thickness(5, 0, 5, 5) };
+        var root = new Grid { Margin = new Thickness(5, 1, 5, 5) };
+        motion = new CardMotion(root);
         surface = new Border { Background = DemoAssets.Brush("#F9FAF7"), BorderBrush = DemoAssets.Brush("#D6DED6"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 19, 0, 0), Padding = new Thickness(8) };
         var inside = new Grid();
-        inside.RowDefinitions.Add(new RowDefinition { Height = new GridLength(113) });
+        inside.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var image = new Image { Source = item.Image, Stretch = Stretch.UniformToFill, ClipToBounds = true };
@@ -134,6 +148,7 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseMove += Move;
         surface.MouseLeftButtonUp += Up;
         surface.LostMouseCapture += (_, _) => { down = null; holdTimer.Stop(); };
+        MouseEnter += (_, _) => { if (!Retiring) StopMotion(); };
         surface.MouseEnter += (_, _) => { if (!Busy) caption.Text = T("单击复制 · 双击打开 · 拖出"); };
         surface.MouseLeave += (_, _) => { if (!Busy) caption.Text = item.Title; };
         var menu = new ContextMenu();
@@ -150,10 +165,39 @@ internal sealed class CardWindow : OverlayWindow
         Add(menu, T("取下右侧全部（跨页）"), () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Right));
         Add(menu, T("全部取下到历史"), () => BatchArchiveRequested?.Invoke(item, ArchiveScope.All));
         Add(menu, T("将文件移入回收站"), () => { if (RecycleRequested is not null) RecycleRequested(item); else Report(ShellTransfer.Recycle(item.Path)); DragEnded?.Invoke(); });
-        menu.Opened += (_, _) => { Busy = true; clickTimer.Stop(); holdTimer.Stop(); };
+        menu.Opened += (_, _) => { StopMotion(); Busy = true; clickTimer.Stop(); holdTimer.Stop(); };
         menu.Closed += (_, _) => Busy = false;
         surface.ContextMenu = menu;
-        Closed += (_, _) => { clickTimer.Stop(); holdTimer.Stop(); };
+        Closed += (_, _) => { closed = true; StopMotion(); clickTimer.Stop(); holdTimer.Stop(); };
+    }
+    public override void Present(PixelRect rect, bool animate)
+    {
+        if (Retiring || closed) return;
+        var entering = !IsVisible;
+        base.Present(rect, animate && !InteractionActive);
+        if (entering && animate && !InteractionActive && !IsMouseOver) motion.Enter();
+    }
+    public override void StopMotion() { base.StopMotion(); motion.Stop(); }
+    public override void Dismiss()
+    {
+        if (closed) return;
+        if (Retiring) { Close(); return; }
+        CancelInteraction(); base.Dismiss();
+    }
+    private void CancelInteraction()
+    {
+        clickTimer.Stop(); holdTimer.Stop(); down = null; surface.ReleaseMouseCapture();
+        if (surface.ContextMenu is not null) surface.ContextMenu.IsOpen = false;
+    }
+    public void Retire(bool animate)
+    {
+        if (Retiring || closed) return;
+        Retiring = true; CancelInteraction(); StopMotion();
+        if (!animate || !IsVisible || !Native.MakeInputTransparent(this)) { Close(); return; }
+        IsHitTestVisible = false; motion.Leave();
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(140)) { FillBehavior = FillBehavior.HoldEnd };
+        fade.Completed += (_, _) => { if (!closed) Close(); };
+        BeginAnimation(OpacityProperty, fade);
     }
     private void Add(ContextMenu menu, string title, Action action)
     {
@@ -163,6 +207,7 @@ internal sealed class CardWindow : OverlayWindow
     }
     private void Down(object sender, MouseButtonEventArgs e)
     {
+        StopMotion();
         clickTimer.Stop(); holdTimer.Stop();
         if (e.ClickCount == 2)
         {

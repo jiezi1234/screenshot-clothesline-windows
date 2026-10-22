@@ -2,12 +2,12 @@ param([string]$Dotnet = 'dotnet')
 $ErrorActionPreference = 'Stop'
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
-    & $Dotnet publish src/Clothesline.App --configuration Release --runtime win-x64 --self-contained true -p:PublishTrimmed=false --output dist/Clothesline-Prototype-win-x64
+    & $Dotnet publish src/Clothesline.App --configuration Release --runtime win-x64 --self-contained true -p:PublishTrimmed=false --output dist/Clothesline-0.1.0-win-x64
     if ($LASTEXITCODE -ne 0) { throw "Publish failed: $LASTEXITCODE" }
-    $bundle = 'dist/Clothesline-Prototype-win-x64'
+    $bundle = 'dist/Clothesline-0.1.0-win-x64'
     $assets = Get-Content src/Clothesline.App/obj/project.assets.json -Raw | ConvertFrom-Json
     $packages = @($assets.packageFolders.PSObject.Properties.Name)[0]
-    $configuration = Get-Content "$bundle/Clothesline.Prototype.runtimeconfig.json" -Raw | ConvertFrom-Json
+    $configuration = Get-Content "$bundle/Clothesline.runtimeconfig.json" -Raw | ConvertFrom-Json
     $licenses = Join-Path $bundle 'licenses'
     New-Item -ItemType Directory -Path $licenses -Force | Out-Null
     foreach ($framework in $configuration.runtimeOptions.includedFrameworks) {
@@ -17,8 +17,17 @@ try {
         if ($notices.Count -eq 0) { throw "Missing runtime license in $package" }
         foreach ($notice in $notices) { Copy-Item -LiteralPath $notice.FullName -Destination (Join-Path $licenses "$id-$($framework.version)-$($notice.Name)") }
     }
+    Copy-Item licenses/* -Destination $licenses -Force
+    foreach ($dependency in $assets.libraries.PSObject.Properties) {
+        if ($dependency.Value.type -ne 'package') { continue }
+        $id, $version = $dependency.Name.Split('/')
+        $spec = Join-Path $packages "$($id.ToLowerInvariant())/$version/$($id.ToLowerInvariant()).nuspec"
+        Copy-Item -LiteralPath $spec -Destination (Join-Path $licenses "$id-$version.nuspec")
+    }
     Copy-Item README.md, THIRD_PARTY_NOTICES.md, CONTRIBUTING.md -Destination $bundle
     Copy-Item docs -Destination $bundle -Recurse -Force
-    Compress-Archive -Path dist/Clothesline-Prototype-win-x64 -DestinationPath dist/Clothesline-Prototype-win-x64.zip -Force
-    Get-FileHash dist/Clothesline-Prototype-win-x64.zip -Algorithm SHA256 | Format-List
+    Compress-Archive -Path $bundle -DestinationPath "$bundle.zip" -Force
+    $hash = Get-FileHash "$bundle.zip" -Algorithm SHA256
+    "$($hash.Hash)  Clothesline-0.1.0-win-x64.zip" | Set-Content dist/SHA256SUMS-0.1.0.txt
+    $hash | Format-List
 } finally { Pop-Location }

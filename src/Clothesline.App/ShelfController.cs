@@ -21,6 +21,14 @@ internal sealed class ShelfController : IDisposable
     private double scale = 1;
     private long nextPrune;
     private bool presented;
+    private int page;
+    private bool sampleMode = true;
+    public int DisplayCapacity { get; private set; } = 3;
+    public bool Busy => cards.Any(c => c.InteractionActive);
+    public event Action<DemoItem>? Archived;
+    public event Action<DemoItem>? RecycleRequested;
+    public event Action<DemoItem, bool>? ExportRequested;
+    public event Action? FilesChanged;
     public bool ReduceMotion { get; set; }
     public bool SuppressFullscreen { get; set; } = true;
     public bool Visible => presented;
@@ -34,7 +42,35 @@ internal sealed class ShelfController : IDisposable
         timer.Tick += (_, _) => Tick();
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
     }
-    public void Start() { ResetSamples(); timer.Start(); }
+    public void Start(bool samples = true) { sampleMode = samples; Prepare(Native.MonitorAt(Native.Cursor)); if (samples) ResetSamples(); timer.Start(); }
+    public void SetItems(System.Collections.Generic.IEnumerable<DemoItem> items, bool reveal)
+    {
+        var desired = items.ToArray();
+        if (cards.Select(c => c.Item).SequenceEqual(desired)) { if (reveal && !presented) Toggle(); return; }
+        var wasVisible = presented;
+        var previous = cards.ToDictionary(c => c.Item.EntryId ?? c.Item.Path);
+        foreach (var card in cards) if (!desired.Contains(card.Item)) card.Close();
+        cards.Clear(); if (reveal) page = 0;
+        foreach (var item in desired)
+        {
+            if (previous.TryGetValue(item.EntryId ?? item.Path, out var existing) && existing.Item == item) cards.Add(existing);
+            else AddCard(item);
+        }
+        if (cards.Count == 0 && wasVisible) gate.Show(clock.ElapsedMilliseconds);
+        if (wasVisible) Present();
+        else if (reveal) Toggle();
+    }
+    private void AddCard(DemoItem item)
+    {
+        var card = new CardWindow(item);
+        card.Status += text => Status?.Invoke(text);
+        card.TakeDown += Remove;
+        card.RecycleRequested = sampleMode ? null : entry => RecycleRequested?.Invoke(entry);
+        card.ExportRequested = (entry, desktop) => ExportRequested?.Invoke(entry, desktop);
+        card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)(() => { Prune(); FilesChanged?.Invoke(); }));
+        card.PreviewMouseWheel += (_, e) => { if (!Busy) { var count = Math.Max(1, (cards.Count + DisplayCapacity - 1) / DisplayCapacity); page = (page + (e.Delta < 0 ? 1 : count - 1)) % count; Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
+        cards.Add(card);
+    }
     public void ResetSamples()
     {
         Hide();
@@ -42,19 +78,14 @@ internal sealed class ShelfController : IDisposable
         cards.Clear();
         foreach (var item in DemoAssets.Create())
         {
-            var card = new CardWindow(item);
-            card.Status += text => Status?.Invoke(text);
-            card.TakeDown += Remove;
-            card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)Prune);
-            cards.Add(card);
+            AddCard(item);
         }
         Status?.Invoke("已生成 3 张原创示例。取下会保留文件；恢复示例会生成新文件。");
     }
     public void Toggle()
     {
-        if (cards.Any(c => c.Busy)) return;
+        if (Busy) return;
         if (presented) { Hide(); return; }
-        if (cards.Count == 0) { Status?.Invoke("卡片已全部取下，请在控制面板恢复示例。"); return; }
         var monitor = Native.MonitorAt(Native.Cursor);
         if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke("当前显示器为全屏窗口，已暂缓显示。"); return; }
         Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present();
@@ -63,31 +94,32 @@ internal sealed class ShelfController : IDisposable
     private void Remove(CardWindow card)
     {
         cards.Remove(card); card.Close();
+        if (!sampleMode) Archived?.Invoke(card.Item);
         Status?.Invoke(File.Exists(card.Item.Path) ? "已从晾衣绳取下；示例文件仍在本地。" : "文件已移走，已取下对应卡片。");
-        if (cards.Count == 0) Hide();
-        else if (presented) Present();
+        if (cards.Count == 0 && presented) gate.Show(clock.ElapsedMilliseconds);
+        if (presented) Present();
     }
     private void Prune()
     {
-        if (cards.Any(c => c.Busy)) return;
+        if (Busy) return;
         foreach (var card in cards.Where(c => !File.Exists(c.Item.Path)).ToArray()) Remove(card);
     }
     private void Prepare(MonitorInfo monitor)
     {
         activeMonitor = monitor;
         scale = Native.MoveAndGetScale(rope, monitor);
+        DisplayCapacity = DesktopGeometry.Cards(monitor.WorkArea, scale, 100).Count;
     }
     private void Tick()
     {
         var now = clock.ElapsedMilliseconds;
         if (now >= nextPrune) { nextPrune = now + 2000; Prune(); }
-        if (cards.Count == 0) return;
         var cursor = Native.Cursor;
         var monitor = Native.MonitorAt(cursor);
         // Poll cursor only: hidden overlays have no hit-test surface at the top edge.
         if (!presented && activeMonitor?.Handle != monitor.Handle) Prepare(monitor);
         var target = activeMonitor ?? monitor;
-        var busy = cards.Any(c => c.Busy) || Native.GetAsyncKeyState(1) < 0;
+        var busy = Busy || Native.GetAsyncKeyState(1) < 0;
         gate.Tick(now, DesktopGeometry.Trigger(target.Bounds, scale).Contains(cursor),
             presented && shelfArea.Contains(cursor), busy, SuppressFullscreen && Native.IsFullscreen(target));
         if (gate.Visible && !presented) Present();
@@ -98,15 +130,27 @@ internal sealed class ShelfController : IDisposable
         var watch = Stopwatch.StartNew();
         var monitor = activeMonitor ?? Native.MonitorAt(Native.Cursor);
         Prepare(monitor);
-        var rects = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count);
-        rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)(70 * scale)), !presented && !ReduceMotion);
-        for (var i = 0; i < cards.Count; i++)
+        rope.ShowEmptyHint = cards.Count == 0;
+        rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)((cards.Count == 0 ? 100 : 70) * scale)), !presented && !ReduceMotion);
+        if (cards.Count == 0)
         {
-            if (i < rects.Count) { Native.MoveAndGetScale(cards[i], monitor); cards[i].Present(rects[i], !presented && !ReduceMotion); }
-            else cards[i].Dismiss();
+            page = 0;
+            var width = Math.Min(monitor.WorkArea.Width, (int)(360 * scale));
+            shelfArea = new PixelRect(monitor.WorkArea.X + (monitor.WorkArea.Width - width) / 2, monitor.WorkArea.Y, width, (int)(100 * scale));
         }
-        shelfArea = new PixelRect(rects[0].X - (int)(16 * scale), monitor.WorkArea.Y,
-            rects[^1].Right - rects[0].X + (int)(32 * scale), rects[0].Bottom - monitor.WorkArea.Y + (int)(14 * scale));
+        else
+        {
+            var rects = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count);
+            for (var i = 0; i < cards.Count; i++)
+            {
+                page = Math.Min(page, (cards.Count - 1) / rects.Count);
+                var slot = i - page * rects.Count;
+                if (slot >= 0 && slot < rects.Count) { Native.MoveAndGetScale(cards[i], monitor); cards[i].Present(rects[slot], !presented && !ReduceMotion); }
+                else cards[i].Dismiss();
+            }
+            shelfArea = new PixelRect(rects[0].X - (int)(16 * scale), monitor.WorkArea.Y,
+                rects[^1].Right - rects[0].X + (int)(32 * scale), rects[0].Bottom - monitor.WorkArea.Y + (int)(14 * scale));
+        }
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
     private void Dismiss() { rope.Dismiss(); foreach (var card in cards) card.Dismiss(); presented = false; }

@@ -66,14 +66,14 @@ public sealed class RevealGate
     }
 }
 
-public enum TransferDisposition { Keep, RemoveMissing, RecycleRequested, VerifyMove }
+public enum TransferDisposition { Keep, RemoveMissing, VerifyMove }
 public static class TransferPolicy
 {
-    public static TransferDisposition Decide(bool completed, bool exists, bool recycleTarget, uint effect)
+    public const uint AllowedEffects = 1; // DROPEFFECT_COPY; saving a copy never offers source movement.
+    public static TransferDisposition Decide(bool completed, bool exists, uint effect)
     {
         if (!completed) return TransferDisposition.Keep;
         if (!exists) return TransferDisposition.RemoveMissing;
-        if (recycleTarget) return TransferDisposition.RecycleRequested;
         return (effect & 2) != 0 ? TransferDisposition.VerifyMove : TransferDisposition.Keep;
     }
 }

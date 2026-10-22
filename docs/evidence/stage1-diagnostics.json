@@ -1,0 +1,105 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "native-recycle-generated-fixture",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "100-valid-pngs-collected",
+      "passed": true,
+      "details": 100
+    },
+    {
+      "name": "capacity25-history75",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "source100-files-preserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "restore-real-image",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "shelf-thumbnail-count",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "drag-offers-copy-without-move-or-link",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "drag-shell-data-contains-readable-original",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "drag-copy-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "cancelled-drag-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "unexpected-move-result-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "failed-drag-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "thumbnail-bounded-original-unchanged",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "export-never-overwrites",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "clipboard-canonical-png-roundtrip",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "managed-file-readable-original-dimensions",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "clipboard-first-file-duplicate-merges",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-recycle-managed-expiry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-sink-rejects-permanent-delete",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "clipboard-privacy-default-off",
+      "passed": true,
+      "details": null
+    }
+  ]
+}

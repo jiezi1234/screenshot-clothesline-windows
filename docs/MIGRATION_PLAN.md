@@ -1,6 +1,6 @@
 # 迁移计划
 
-更新日期：2026-10-22。阶段 0 原型已经建立；已验证与待验收范围见 [阶段 0 验证报告](STAGE0_VALIDATION.md)。尚未进入阶段 1。
+更新日期：2026-10-22。阶段 0 的 [PR #1](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/1) 已合并；按维护者要求进入阶段 1，已建立截图与历史开发版。阶段 0 的人工兼容性验收仍保留为待办，不因进入下一阶段而视为通过。详见 [阶段 0](STAGE0_VALIDATION.md) 和 [阶段 1 验证报告](STAGE1_VALIDATION.md)。
 
 ## 参考边界
 
@@ -16,7 +16,7 @@
 - 原文件与缩略图存于磁盘；异步解码、缩略图缓存和按需加载控制内存。
 - 使用用户级存储与每用户安装，不以管理员身份作为正常运行前提。
 
-以上为待原型验证的方案，并非已经验证的性能承诺。
+以上技术栈已在原型中采用，完整性能与兼容性承诺以各阶段验证报告为准。
 
 ## 模块边界
 
@@ -40,7 +40,7 @@
 - [x] 顶部中央悬停状态机和全局快捷键注册；人工触发体验待验收。
 - [x] 独立进程背景窗口的命中检查通过；隐藏后窗口不可见。日常应用人工点击待验收。
 - [ ] Per-Monitor V2，混合缩放、负坐标、显示器拔插。
-- [ ] 从卡片拖出测试文件，验证复制、移动、取消及回收站。
+- [ ] 从卡片拖出测试文件，验证同盘/跨盘保存副本、取消和目标拒收；显式回收入口单独验证。
 - [x] 普通最大化与全屏抑制原型；几何规则测试通过，实际全屏应用待验收。
 - [x] 记录空闲 CPU、显示调用耗时与内存采样；端到端显示延迟待验收。
 
@@ -50,15 +50,16 @@
 
 ## 阶段 1：截图基础闭环
 
-- [ ] 截图目录定位与最多三个额外目录监听。
-- [ ] 可选剪贴板监听、自身写入标记、格式筛选和失败重试。
-- [ ] 事件合并、跨来源短时去重；缓冲溢出后重新扫描。
-- [ ] 缩略图、复制原图、默认应用打开、定位、另存为。
-- [ ] 文件归属与统一文件操作服务。
-- [ ] 容量淘汰到历史；历史恢复、导出、期限与清理。
-- [ ] 数据库迁移、原子写入、重启与异常恢复。
+- [x] 截图目录定位与最多三个额外目录监听；首次基线不导入旧文件。
+- [x] 可选剪贴板监听、自身写入标记、格式筛选和失败重试；真实系统剪贴板交互待验收。
+- [x] 事件合并、跨来源 5 秒像素去重；监听错误和定时补扫。
+- [x] 缩略图、复制原图、默认应用打开、定位、另存为；跨应用操作待验收。
+- [x] 文件归属与统一文件操作服务；回收失败保留，禁止永久删除回退。
+- [x] 容量淘汰到历史；历史恢复、基础预览、导出、期限与清理。
+- [x] SQLite v1 建库迁移、原子写入、重启与中断状态恢复。
+- [ ] 真实剪贴板、拖放目标矩阵、混合 DPI 及完整人工闭环验收。
 
-验收：截图 → 挂上 → 复制/拖出 → 取下 → 历史找回全流程通过。
+验收：截图 → 挂上 → 复制/拖出 → 取下 → 历史找回全流程通过。当前自动化验证覆盖收集、持久化、原生回收和桌面窗口；尚不等于上述人工流程全部通过。
 
 ## 阶段 2：完整图片交互
 
@@ -96,7 +97,7 @@
 | 风险 | 验证或处理 |
 |---|---|
 | 浮层挡输入 | 浏览器、资源管理器和普通编辑器跨进程实测 |
-| 复制与移动混淆 | 验证同盘/跨盘、目标拒收、取消和 Shell 优化移动 |
+| 拖拽保存移走原图 | 交付前仅允许 COPY；验证同盘/跨盘、Shift 请求、目标拒收与取消后原图和卡片保留 |
 | 收集漏项/重复 | 文件写入稳定检测、重试、补扫、跨来源事件测试 |
 | 多屏偏移 | 显式区分物理像素与逻辑坐标，测试负坐标和混合 DPI |
 | 历史误删 | 按归属处理，回收失败保留，不自动永久删除 |
@@ -113,4 +114,7 @@
 - [Shell 数据传递与拖拽](https://learn.microsoft.com/en-us/windows/win32/shell/datascenarios)
 - [多屏 DPI](https://learn.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows)
 - [文件监听缓冲区](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher.internalbuffersize)
+- [Microsoft.Data.Sqlite](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/)
+- [IFileOperation 操作标志](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperation-setoperationflags)
+- [删除前的进度回调](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperationprogresssink-predeleteitem)
 - [Windows 媒体编辑](https://learn.microsoft.com/en-us/uwp/api/windows.media.editing.mediacomposition)

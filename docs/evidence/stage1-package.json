@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-22",
+  "version": "0.1.0",
+  "osBuild": 22631,
+  "architecture": "x64",
+  "dotnetRootUnset": true,
+  "runtimeVersion": "10.0.13",
+  "passed": true,
+  "checks": {
+    "normalStartup": true,
+    "bundledRuntimeLoaded": true,
+    "processResponding": true,
+    "duplicateInstanceExitZero": true,
+    "singleProcess": true,
+    "localDatabaseCreated": true
+  },
+  "note": "Normal self-contained launch and duplicate-instance process check on the development host, not a clean VM or UI interaction test.",
+  "coreClrFileVersion": "10,0,1326,50504 @Commit: 4099f83977f4d29604a9aeb971fb0a7bc1d5f699"
+}

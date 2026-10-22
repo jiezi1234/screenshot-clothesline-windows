@@ -12,13 +12,16 @@ using System.Windows.Media.Imaging;
 
 namespace Clothesline.App;
 
-internal sealed record WorkspaceImage(string Id, string Path, string Title);
-internal sealed record SavedImage(string Path, bool Hung);
+internal sealed record WorkspaceImage(string Id, string Path, string Title, string Hash = "");
+internal sealed record OriginalReference(string Id, string Path, string Hash);
+internal sealed record EditSaveRequest(BitmapSource Image, BitmapSource SessionOriginal, string SourcePath, OriginalReference? Original);
+internal sealed record SavedImage(string Path, bool Hung, OriginalReference? Original = null, string Warning = "");
 
 internal sealed class ImageWorkspace : Window
 {
     private readonly WorkspaceImage[] gallery;
-    private readonly Func<BitmapSource, string, Window, Task<SavedImage?>> save;
+    private readonly Func<EditSaveRequest, Window, Task<SavedImage?>> save;
+    private readonly Func<WorkspaceImage, string, OriginalReference?> resolveOriginal;
     private readonly Func<string, IDisposable> acquireLease;
     private readonly ScrollViewer viewport = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Background = DemoAssets.Brush("#DDE3D9") };
     private readonly ImageSurface canvas = new();
@@ -27,9 +30,11 @@ internal sealed class ImageWorkspace : Window
     private readonly TextBlock zoomLabel = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 55 };
     private readonly TextBox annotation = new() { Width = 200, MaxLength = 300, Text = "在此输入文字", VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 4) };
     private readonly Dictionary<EditorTool, ToggleButton> tools = new();
-    private readonly Button undoButton, redoButton, resetButton, saveButton, previousButton, nextButton;
+    private readonly Button undoButton, redoButton, resetButton, restoreButton, saveButton, previousButton, nextButton;
     private readonly WrapPanel editBar = new();
     private IDisposable? lease;
+    private IDisposable? originalLease;
+    private OriginalReference? originalReference;
     private int index, loadVersion;
     private bool loading, saving, closed, fitMode = true;
     private double scale = 1;
@@ -42,9 +47,11 @@ internal sealed class ImageWorkspace : Window
     internal double CanvasScale => canvas.LayoutTransform.Value.M11;
 
     public ImageWorkspace(WorkspaceImage[] gallery, int start, bool edit,
-        Func<BitmapSource, string, Window, Task<SavedImage?>> save, Func<string, IDisposable> acquireLease)
+        Func<EditSaveRequest, Window, Task<SavedImage?>> save, Func<string, IDisposable> acquireLease,
+        Func<WorkspaceImage, string, OriginalReference?>? resolveOriginal = null)
     {
         this.gallery = gallery; index = start; this.save = save; this.acquireLease = acquireLease;
+        this.resolveOriginal = resolveOriginal ?? ((_, _) => null);
         Title = "图片工作台 · Screenshot Clothesline"; Width = 1100; Height = 800; MinWidth = 820; MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = DemoAssets.Brush("#F4F5EE");
         Foreground = DemoAssets.Brush("#294535"); FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI");
@@ -58,6 +65,7 @@ internal sealed class ImageWorkspace : Window
         navigation.Children.Add(Button("−", () => Zoom(scale / 1.25))); navigation.Children.Add(Button("+", () => Zoom(scale * 1.25))); navigation.Children.Add(zoomLabel);
         navigation.Children.Add(undoButton = Button("撤销", () => document?.Undo())); navigation.Children.Add(redoButton = Button("重做", () => document?.Redo()));
         navigation.Children.Add(resetButton = Button("重置本次修改", () => document?.Reset()));
+        navigation.Children.Add(restoreButton = Button("恢复最初原图", () => _ = RestoreOriginal()));
         navigation.Children.Add(saveButton = Button("另存副本并挂上…", () => _ = Save()));
         header.Children.Add(editBar);
         foreach (var (tool, label) in new[] { (EditorTool.Pan, "浏览"), (EditorTool.Pen, "画笔"), (EditorTool.Arrow, "箭头"), (EditorTool.Rectangle, "矩形"), (EditorTool.Text, "文字"), (EditorTool.Mosaic, "马赛克"), (EditorTool.Crop, "裁剪") })
@@ -91,7 +99,7 @@ internal sealed class ImageWorkspace : Window
         viewport.SizeChanged += (_, _) => { if (fitMode) Fit(); };
         PreviewKeyDown += KeyPressed;
         Closing += ClosingWorkspace;
-        Closed += (_, _) => { closed = true; loadVersion++; lease?.Dispose(); if (document is not null) document.Changed -= DocumentChanged; };
+        Closed += (_, _) => { closed = true; loadVersion++; lease?.Dispose(); originalLease?.Dispose(); if (document is not null) document.Changed -= DocumentChanged; };
         Loaded += async (_, _) => await Load(index);
         SelectTool(edit ? EditorTool.Pen : EditorTool.Pan); UpdateActions();
     }
@@ -124,12 +132,14 @@ internal sealed class ImageWorkspace : Window
         try
         {
             candidate = acquireLease(gallery[next].Path);
-            var bitmap = await Task.Run(() => ImageFiles.Read(gallery[next].Path));
+            var loaded = await Task.Run(() => { var image = ImageFiles.Read(gallery[next].Path); return (Image: image, Hash: ImageFiles.Hash(image)); });
             if (closed || version != loadVersion) return;
+            var reference = resolveOriginal(gallery[next], loaded.Hash);
             if (document is not null) document.Changed -= DocumentChanged;
             lease?.Dispose(); lease = candidate; candidate = null; index = next;
-            document = new ImageDocument(bitmap); document.Changed += DocumentChanged; canvas.Document = document; DocumentChanged(); Fit();
-            status.Text = "原图保留。修改只在本窗口中生效，另存后生成新的 PNG 副本。";
+            SetOriginal(reference);
+            document = new ImageDocument(loaded.Image); document.Changed += DocumentChanged; canvas.Document = document; DocumentChanged(); Fit();
+            status.Text = reference is null ? "另存时保留本次打开图片的原版快照。旧版副本无法追溯更早的原图。" : "已关联最初原图，可恢复后另存；当前文件不会被覆盖。";
         }
         catch (Exception ex) { if (!closed) status.Text = "无法读取图片：" + ex.Message; }
         finally { candidate?.Dispose(); if (!closed && version == loadVersion) { loading = false; UpdateActions(); } }
@@ -147,6 +157,7 @@ internal sealed class ImageWorkspace : Window
         var enabled = document is not null && !loading && !saving;
         canvas.IsEnabled = enabled; editBar.IsEnabled = enabled; saveButton.IsEnabled = enabled;
         resetButton.IsEnabled = enabled;
+        restoreButton.IsEnabled = enabled && originalReference is not null;
         undoButton.IsEnabled = enabled && document!.CanUndo; redoButton.IsEnabled = enabled && document!.CanRedo;
         previousButton.IsEnabled = !loading && !saving && index > 0; nextButton.IsEnabled = !loading && !saving && index < gallery.Length - 1;
     }
@@ -174,14 +185,42 @@ internal sealed class ImageWorkspace : Window
         base.OnDpiChanged(oldDpi, newDpi); if (document is null) return;
         canvas.Cancel(); if (fitMode) Fit(); else SetScale(scale);
     }
+    private void SetOriginal(OriginalReference? reference)
+    {
+        var nextLease = reference is null ? null : acquireLease(reference.Path);
+        originalLease?.Dispose(); originalLease = nextLease; originalReference = reference;
+    }
+    internal async Task RestoreOriginal()
+    {
+        if (document is null || originalReference is null || saving || loading) return;
+        canvas.Cancel(); loading = true; UpdateActions(); status.Text = "正在读取最初原图…";
+        try
+        {
+            var reference = originalReference;
+            var bitmap = await Task.Run(() =>
+            {
+                var image = ImageFiles.Read(reference.Path);
+                if (ImageFiles.Hash(image) != reference.Hash) throw new InvalidOperationException("原版快照内容已改变，无法可靠恢复。");
+                return image;
+            });
+            if (closed) return;
+            document.RestoreOriginal(bitmap); Fit(); status.Text = "已恢复最初原图，可撤销；另存后生成新副本。";
+        }
+        catch (Exception ex) { if (!closed) status.Text = "恢复未完成，当前图片保留：" + ex.Message; }
+        finally { loading = false; if (!closed) UpdateActions(); }
+    }
     private async Task Save()
     {
         if (document is null || saving || loading) return;
         canvas.Cancel(); saving = true; UpdateActions();
         try
         {
-            var result = await save(document.Render(), gallery[index].Path, this);
-            if (result is not null) { document.MarkSaved(); status.Text = (result.Hung ? "副本已保存并挂上：" : "副本已保存，未能挂上；可手动导入：") + result.Path; }
+            var result = await save(new(document.Render(), document.Original, gallery[index].Path, originalReference), this);
+            if (result is not null)
+            {
+                SetOriginal(result.Original); document.MarkSaved();
+                status.Text = (result.Hung ? "副本已保存并挂上：" : "副本已保存，未能挂上；可手动导入：") + result.Path + (result.Warning.Length > 0 ? "\n" + result.Warning : "");
+            }
         }
         catch (Exception ex) { status.Text = "保存未完成，修改仍保留在窗口中：" + ex.Message; }
         finally { saving = false; UpdateActions(); }

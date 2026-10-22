@@ -43,4 +43,12 @@ Check(BatchSelection.Select(ordered, "middle", ArchiveScope.Right).SequenceEqual
 Check(BatchSelection.Select(ordered, "middle", ArchiveScope.All).SequenceEqual(ordered), "all archive includes anchor and every page");
 Check(BatchSelection.Select(ordered, "missing", ArchiveScope.All).Length == 0 && BatchSelection.Select([], "missing", ArchiveScope.Left).Length == 0, "stale anchor and empty shelf archive nothing");
 Check(BatchSelection.Select(ordered, "newest", ArchiveScope.Left).Length == 0 && BatchSelection.Select(ordered, "other-page", ArchiveScope.Right).Length == 0, "batch boundaries do not wrap");
+Check(ShortcutGesture.Parse(" alt + ctrl + t ").Display == "Ctrl+Alt+T" && ShortcutGesture.Parse("Ctrl+Alt+T").Modifiers == 3, "shortcut normalizes case order and whitespace");
+Check(ShortcutGesture.Parse("").Key == 0, "empty shortcut disables registration");
+Check(ShortcutGesture.Parse("Ctrl+Shift+F24").Key == 135 && ShortcutGesture.Parse("Alt+0").Key == 48, "function and digit virtual keys map correctly");
+foreach (var invalid in new[] { "T", "Shift+T", "Ctrl+Ctrl+T", "Win+T", "Ctrl+F12", "Ctrl+F25", "Ctrl+Alt+", "Ctrl++T" })
+{
+    var rejected = false; try { ShortcutGesture.Parse(invalid); } catch (ArgumentException) { rejected = true; }
+    Check(rejected, "unsafe or invalid shortcut rejected: " + invalid);
+}
 Console.WriteLine($"{checks} checks passed.");

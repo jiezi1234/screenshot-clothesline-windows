@@ -19,6 +19,7 @@ internal sealed class LibraryRuntime : IDisposable
     public LibraryStore Store { get; }
     public LibrarySettings Settings { get; private set; }
     public CollectionEngine Collector { get; }
+    public DesktopPreferences? Desktop { get; set; }
     private readonly ShelfController shelf;
     private readonly ClipboardCollector clipboard;
     private readonly DispatcherTimer refresh;
@@ -54,20 +55,23 @@ internal sealed class LibraryRuntime : IDisposable
         shelf.FilesChanged += () => ScheduleRefresh(false);
     }
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    public void Start() { shelf.Start(false); ApplySettings(Settings); RefreshShelf(false); maintenance.Start(); }
-    public void ApplySettings(LibrarySettings settings)
+    public void Start() { shelf.Start(false); ApplySettings(Settings, false); RefreshShelf(false); maintenance.Start(); }
+    public void ApplySettings(LibrarySettings settings, bool updateDesktop = true)
     {
         if (fileOperation > 0) throw new InvalidOperationException("文件操作进行中，请稍后再保存设置。");
+        settings = settings with { Shortcut = ShortcutGesture.Parse(settings.Shortcut).Display };
+        LibraryStore.ValidateSettings(settings);
         var all = new[] { settings.ScreenshotFolder }.Concat(settings.ExtraFolders).Where(p => !string.IsNullOrWhiteSpace(p)).Select(Path.GetFullPath);
         foreach (var folder in all)
             if (folder.Equals(Store.Root, StringComparison.OrdinalIgnoreCase) || folder.StartsWith(Store.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("不能将应用数据目录用作截图来源。");
-        Store.SaveSettings(settings); Settings = settings;
+        if (updateDesktop && Desktop is not null) Desktop.Apply(settings, Store.SaveSettings); else Store.SaveSettings(settings);
+        Settings = settings;
         shelf.ReduceMotion = settings.ReduceMotion; shelf.SuppressFullscreen = settings.SuppressFullscreen;
         Collector.Configure(settings); clipboard.Enable(settings.ClipboardEnabled && !settings.Paused);
         Store.EnforceCapacity(Capacity, Now); ScheduleRefresh(false);
         Report(settings.Paused ? "收集已暂停；恢复后会补扫新增文件。" : "设置已保存，开始监听新增图片；首次选择目录不会导入旧文件。");
     }
-    public void TogglePause() => ApplySettings(Settings with { Paused = !Settings.Paused });
+    public void TogglePause() => ApplySettings(Settings with { Paused = !Settings.Paused }, false);
     public async Task ImportFiles(string[] paths)
     {
         var count = 0;
@@ -127,10 +131,10 @@ internal sealed class LibraryRuntime : IDisposable
     public void OpenWorkspace(string id, bool edit)
     {
         var entry = Store.Find(id); if (entry is null) return;
-        var gallery = Store.Entries(entry.State).Where(e => !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title)).ToArray();
+        var gallery = Store.Entries(entry.State).Where(e => !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
         var index = Array.FindIndex(gallery, e => e.Id == id);
         if (index < 0) { Report("原文件已失效，无法打开。请在历史中检查路径。"); return; }
-        var window = new ImageWorkspace(gallery, index, edit, SaveEditedCopy, AcquireLease);
+        var window = new ImageWorkspace(gallery, index, edit, SaveEditedCopy, AcquireLease, ResolveOriginal);
         workspaces.Add(window); window.Closed += (_, _) => workspaces.Remove(window); window.Show(); window.Activate();
     }
     public bool TryCloseWorkspaces()
@@ -138,27 +142,54 @@ internal sealed class LibraryRuntime : IDisposable
         foreach (var window in workspaces.ToArray()) { window.Close(); if (workspaces.Contains(window)) return false; }
         return true;
     }
-    private async Task<SavedImage?> SaveEditedCopy(BitmapSource bitmap, string source, Window owner)
+    internal OriginalReference? ResolveOriginal(WorkspaceImage image, string loadedHash)
+    {
+        if (loadedHash != image.Hash) return null; // External replacement starts a new lineage instead of recovering an unrelated image.
+        var root = Store.OriginalFor(image.Id);
+        return root is null ? null : new(root.Id, root.Path, root.Hash);
+    }
+    private async Task<SavedImage?> SaveEditedCopy(EditSaveRequest request, Window owner)
     {
         if (fileOperation > 0) throw new InvalidOperationException("另一项文件操作进行中，请稍后再保存。");
         fileOperation++;
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = Path.GetFileNameWithoutExtension(source) + "-edited.png", Filter = "PNG 图片|*.png", DefaultExt = ".png", AddExtension = true, OverwritePrompt = false };
+            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = Path.GetFileNameWithoutExtension(request.SourcePath) + "-edited.png", Filter = "PNG 图片|*.png", DefaultExt = ".png", AddExtension = true, OverwritePrompt = false };
             if (dialog.ShowDialog(owner) != true) return null;
-            var destination = Path.GetFullPath(dialog.FileName);
-            if (destination.StartsWith(Store.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("请选择应用数据目录以外的位置保存副本。");
-            var path = await Task.Run(() => ImageFiles.ExportPng(ImageFiles.Png(bitmap), destination));
-            try
-            {
-                await Collector.ImportExternal(path, cancellation: closing.Token, preserveCopy: true);
-                var entry = Store.Entries().FirstOrDefault(e => string.Equals(e.Path, path, StringComparison.OrdinalIgnoreCase));
-                if (entry is not null && entry.State != EntryState.Shelf) Store.Restore(entry.Id, Capacity, Now);
-                ScheduleRefresh(true); return new(path, entry is not null);
-            }
-            catch (Exception ex) { Report("副本已保存，但未能挂上：" + ex.Message); return new(path, false); }
+            return await PersistEditedCopy(request, dialog.FileName);
         }
         finally { fileOperation--; }
+    }
+    // The dialog caller holds fileOperation throughout this operation; diagnostics use an isolated, inactive runtime.
+    internal async Task<SavedImage> PersistEditedCopy(EditSaveRequest request, string destination)
+    {
+        destination = Path.GetFullPath(destination);
+        if (destination.StartsWith(Store.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("请选择应用数据目录以外的位置保存副本。");
+        var output = await Task.Run(() => ImageFiles.Png(request.Image));
+        var original = request.Original;
+        if (original is null)
+        {
+            var snapshot = await Task.Run(() => (Png: ImageFiles.Png(request.SessionOriginal), Hash: ImageFiles.Hash(request.SessionOriginal)));
+            var root = await Collector.PreserveOriginal(snapshot.Png, snapshot.Hash, Settings.MaxManagedBytes, closing.Token);
+            original = new(root.Id, root.Path, root.Hash);
+        }
+        else
+        {
+            var root = Store.Find(original.Id);
+            if (root?.Source != LibraryStore.OriginalSource || root.Path != original.Path || root.Hash != original.Hash || await Task.Run(() => ImageFiles.Hash(original.Path)) != original.Hash)
+                throw new InvalidOperationException("关联原版已失效或改变，请先检查历史中的原版快照。");
+        }
+        var path = await Task.Run(() => ImageFiles.ExportPng(output, destination));
+        try
+        {
+            await Collector.ImportExternal(path, cancellation: closing.Token, preserveCopy: true);
+            var entry = Store.Entries().FirstOrDefault(e => string.Equals(e.Path, path, StringComparison.OrdinalIgnoreCase));
+            if (entry is null) return new(path, false, original, "原版快照保留在本地历史中，副本尚未建立关联。");
+            Store.BindOriginal(entry.Id, original.Id);
+            var hung = entry.State == EntryState.Shelf || Store.Restore(entry.Id, Capacity, Now);
+            ScheduleRefresh(true); return new(path, hung, original);
+        }
+        catch (Exception ex) { Report("副本已保存，但挂上或原版关联未完成：" + ex.Message); return new(path, false, original, "原版快照保留在历史中；挂上或关联失败：" + ex.Message); }
     }
     public void Restore(string id)
     {
@@ -172,6 +203,7 @@ internal sealed class LibraryRuntime : IDisposable
         try
         {
         var entry = Store.Find(id); if (entry is null) return;
+        if (Store.HasOriginalDependents(id)) { Report("仍有编辑副本依赖这份原版，请先移除相关副本记录。"); return; }
         if (InUse(entry.Path)) { Report("这张图片正在工作台中使用，请关闭对应窗口后再回收。"); return; }
         if (MessageBox.Show("将这个文件移入系统回收站？\n" + entry.Path, "删除文件", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         Report(Store.Recycle(id, SafeRecycle.File) ? "文件已移入回收站。" : "未能回收，文件与记录已保留。请在历史中查看原因。"); ScheduleRefresh(false);

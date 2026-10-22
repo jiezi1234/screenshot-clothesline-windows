@@ -1,6 +1,6 @@
 # 迁移计划
 
-更新日期：2026-10-22。阶段 0 的 [PR #1](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/1) 和阶段 1 的 [PR #2](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/2) 已合并；按维护者要求进入阶段 2，首批实现图片工作台、标注与批量取下。前序阶段的人工兼容性验收仍保留为待办，不因合并或进入下一阶段而视为通过。详见 [阶段 0](STAGE0_VALIDATION.md)、[阶段 1](STAGE1_VALIDATION.md) 和 [阶段 2 验证报告](STAGE2_VALIDATION.md)。
+更新日期：2026-10-22。[PR #1](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/1)、[PR #2](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/2) 和阶段 2 首批 [PR #3](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/3) 已合并；继续阶段 2 第二批，补充跨会话原图恢复、自定义快捷键和登录启动。前序阶段的人工兼容性验收仍保留为待办，不因合并或进入下一阶段而视为通过。详见 [阶段 0](STAGE0_VALIDATION.md)、[阶段 1](STAGE1_VALIDATION.md)、[阶段 2 首批](STAGE2_VALIDATION.md) 和 [阶段 2 第二批验证报告](STAGE2_ORIGINALS_PREFERENCES.md)。
 
 ## 参考边界
 
@@ -65,9 +65,10 @@
 
 - [x] 内置预览、缩放、平移和主动键盘操作；真实手势待验收。
 - [x] 画笔、箭头、矩形、文字、马赛克、裁剪；会话内撤销/重做、重置本次修改、外部 PNG 副本保存。
-- [ ] 持久化编辑版本与原版关联，重新打开副本后可恢复到最初原版。
+- [x] 编辑副本与最初原图快照持久关联，重启后可恢复最初原图像素；不持久化逐步撤销栈。
 - [x] 左右侧与全部取下到历史（跨页、保留原文件）；人工操作待验收。
-- [ ] 大小、音效、快捷键、登录启动和来源设置。
+- [x] 自定义/关闭快捷键、冲突回滚；默认关闭的登录启动；来源设置沿用阶段 1。
+- [ ] 大小和音效设置。
 - [ ] 简体中文与英文、无障碍标签、减少动画。
 - [ ] 全屏控制、动效、入场和移除视觉完善。
 

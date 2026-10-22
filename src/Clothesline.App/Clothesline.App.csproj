@@ -8,7 +8,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Clothesline</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <!-- WPF owns startup and PMv2 via manifest; WinForms is used only for NotifyIcon. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>

@@ -110,4 +110,53 @@ using (var store = new LibraryStore(Path.Combine(root, "editor-library")))
     await engine.ImportExternal(copy, preserveCopy: true); await engine.ImportExternal(copy, preserveCopy: true);
     Check(store.Entries().Count(e => e.Hash == hash) == 2 && store.Entries().Count(e => e.Path == copy) == 1, "explicit edited copy survives cross-source dedup but repeats do not create extra cards");
 }
+var versions = Path.Combine(root, "original-versions"); string originalId, firstCopyId, secondCopyId, originalPath;
+using (var store = new LibraryStore(versions))
+using (var engine = new CollectionEngine(store, _ => "fixture", () => 25))
+{
+    var original = await engine.PreserveOriginal([1, 2, 3], "root-hash", 1024 * 1024); originalId = original.Id; originalPath = original.Path;
+    Check(original.State == EntryState.History && original.Source == LibraryStore.OriginalSource && File.Exists(originalPath) && store.Entries(EntryState.Shelf).Count == 0, "original snapshot commits atomically to history without occupying shelf");
+    var first = store.Add(Make("derived-one.png"), Ownership.External, "Folder", "one", now + day, 25); firstCopyId = first.Id;
+    var second = store.Add(Make("derived-two.png"), Ownership.External, "Folder", "two", now + day, 25); secondCopyId = second.Id;
+    store.BindOriginal(first.Id, original.Id); store.BindOriginal(second.Id, original.Id); store.BindOriginal(first.Id, original.Id);
+    Check(store.OriginalFor(first.Id)!.Id == store.OriginalFor(second.Id)!.Id && store.HasOriginalDependents(original.Id), "multiple generations share one original snapshot");
+    var recycleCalls = 0;
+    Check(!store.Recycle(original.Id, _ => { recycleCalls++; return true; }) && recycleCalls == 0, "referenced original refuses explicit recycle before filesystem side effect");
+    store.Cleanup(7, now + 20 * day, _ => { recycleCalls++; return false; });
+    Check(File.Exists(originalPath) && recycleCalls == 0, "referenced original does not expire with time");
+    var full = false; try { await engine.PreserveOriginal([4, 5], "quota", 3); } catch (IOException) { full = true; }
+    Check(full && store.Entries().Count(e => e.Source == LibraryStore.OriginalSource) == 1, "original snapshots share managed quota and rejection adds no orphan record");
+    Check(!await engine.ImportClipboard([8, 9], "clip-budget", 4), "clipboard quota includes retained originals");
+    store.SaveSettings(new LibrarySettings { Shortcut = "Ctrl+Shift+F8", RunAtLogin = true });
+}
+using (var store = new LibraryStore(versions))
+{
+    Check(store.OriginalFor(firstCopyId)!.Id == originalId && store.OriginalFor(secondCopyId)!.Id == originalId, "original lineage survives restart");
+    Check(store.LoadSettings().Shortcut == "Ctrl+Shift+F8" && store.LoadSettings().RunAtLogin, "desktop preferences survive restart");
+    store.ForgetExternalOrMissing(firstCopyId, now + 25 * day);
+    Check(store.HasOriginalDependents(originalId), "removing one sibling retains original for remaining sibling");
+    store.Archive(secondCopyId, now - 8 * day);
+    store.CompleteOriginal(originalId, now - 20 * day);
+    var calls = 0; store.Cleanup(7, now, _ => { calls++; return false; });
+    Check(store.Find(secondCopyId) is null && store.Find(originalId)!.ArchivedAt == now && calls == 0, "last dependent expiry restarts original retention and prevents same-pass deletion");
+    store.Cleanup(7, now + 8 * day, _ => { calls++; return false; });
+    Check(calls == 1 && store.Find(originalId)!.Error.Length > 0 && File.Exists(originalPath), "original recycle failure preserves file and record");
+    Check(store.Recycle(originalId, p => { File.Move(p, p + ".test-recycled"); return true; }) && store.Find(originalId) is null, "unreferenced original can be explicitly recycled");
+}
+var migration = Path.Combine(root, "v1-migration"); string migrationId;
+using (var store = new LibraryStore(migration)) { migrationId = store.Add(Make("v1-image.png"), Ownership.External, "v1", "v1", now, 25).Id; }
+using (var db = new SqliteConnection($"Data Source={Path.Combine(migration, "library.db")};Pooling=False"))
+{
+    db.Open(); using var command = db.CreateCommand();
+    command.CommandText = "DROP TABLE EditOrigins; PRAGMA user_version=1; INSERT INTO Settings VALUES(1,'{\"Capacity\":25}')"; command.ExecuteNonQuery();
+}
+using (var store = new LibraryStore(migration))
+{
+    Check(store.Find(migrationId) is not null && store.LoadSettings().Capacity == 25 && store.LoadSettings().Shortcut == "Ctrl+Alt+T" && !store.LoadSettings().RunAtLogin, "v1 migration preserves entries and supplies conservative preference defaults");
+    Check(Directory.GetFiles(migration, "library-v1-backup-*.db").Length == 1, "v1 migration produces database backup before schema change");
+    using var db = new SqliteConnection($"Data Source={Directory.GetFiles(migration, "library-v1-backup-*.db").Single()};Mode=ReadOnly;Pooling=False"); db.Open();
+    using var version = db.CreateCommand(); version.CommandText = "PRAGMA user_version";
+    Check(Convert.ToInt32(version.ExecuteScalar()) == 1, "migration backup remains readable as v1");
+}
+using (var store = new LibraryStore(migration)) Check(Directory.GetFiles(migration, "library-v1-backup-*.db").Length == 1, "v2 reopening does not repeat migration or create extra backups");
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

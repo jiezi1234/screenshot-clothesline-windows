@@ -11,7 +11,7 @@ namespace Clothesline.App;
 internal enum EditorTool { Pan, Pen, Arrow, Rectangle, Text, Mosaic, Crop }
 internal sealed record MosaicTile(Rect Area, Color Color);
 internal sealed record ImageMark(EditorTool Tool, Point[] Points, Color Color, double Size, string Text, MosaicTile[] Tiles);
-internal sealed record ImageEditState(Int32Rect Crop, ImageMark[] Marks);
+internal sealed record ImageEditState(Int32Rect Crop, ImageMark[] Marks, BitmapSource BaseImage);
 
 /// Edits use original-image pixel coordinates. Undo states share immutable marks, not full bitmaps.
 internal sealed class ImageDocument
@@ -30,7 +30,7 @@ internal sealed class ImageDocument
     {
         if ((long)original.PixelWidth * original.PixelHeight > ImageFiles.MaxPixels) throw new ArgumentException("图片超过像素限制。");
         Original = original.IsFrozen ? original : original.Clone(); Original.Freeze();
-        initial = new(new Int32Rect(0, 0, Original.PixelWidth, Original.PixelHeight), []);
+        initial = new(new Int32Rect(0, 0, Original.PixelWidth, Original.PixelHeight), [], Original);
         State = saved = initial;
     }
     private void Commit(ImageEditState state)
@@ -41,6 +41,12 @@ internal sealed class ImageDocument
     public void Undo() { if (!CanUndo) return; redo.Add(State); State = undo[^1]; undo.RemoveAt(undo.Count - 1); Changed?.Invoke(); }
     public void Redo() { if (!CanRedo) return; undo.Add(State); State = redo[^1]; redo.RemoveAt(redo.Count - 1); Changed?.Invoke(); }
     public void Reset() { if (!ReferenceEquals(State, initial)) Commit(initial); }
+    public void RestoreOriginal(BitmapSource original)
+    {
+        if ((long)original.PixelWidth * original.PixelHeight > ImageFiles.MaxPixels) throw new ArgumentException("原版超过像素限制。");
+        var bitmap = original.IsFrozen ? original : original.Clone(); bitmap.Freeze();
+        Commit(new(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), [], bitmap));
+    }
     public void MarkSaved() { saved = State; Changed?.Invoke(); }
     public Point Clamp(Point p) => new(Math.Clamp(p.X, State.Crop.X, State.Crop.X + State.Crop.Width), Math.Clamp(p.Y, State.Crop.Y, State.Crop.Y + State.Crop.Height));
     public ImageMark CreateMark(EditorTool tool, IEnumerable<Point> points, Color color, double size, string text = "")
@@ -73,7 +79,7 @@ internal sealed class ImageDocument
         selection.Intersect(new Rect(State.Crop.X, State.Crop.Y, State.Crop.Width, State.Crop.Height));
         if (selection.IsEmpty || selection.Width < 1 || selection.Height < 1) return [];
         var area = new Int32Rect((int)Math.Floor(selection.Left), (int)Math.Floor(selection.Top), (int)Math.Ceiling(selection.Right) - (int)Math.Floor(selection.Left), (int)Math.Ceiling(selection.Bottom) - (int)Math.Floor(selection.Top));
-        var bitmap = new FormatConvertedBitmap(Original, PixelFormats.Bgra32, null, 0);
+        var bitmap = new FormatConvertedBitmap(State.BaseImage, PixelFormats.Bgra32, null, 0);
         var stride = checked(area.Width * 4); var pixels = new byte[checked(stride * area.Height)];
         bitmap.CopyPixels(area, pixels, stride, 0);
         // Bound the number of tiles so large selections do not create huge undo states.
@@ -102,7 +108,7 @@ internal sealed class ImageDocument
         var crop = State.Crop;
         dc.PushClip(new RectangleGeometry(new Rect(0, 0, crop.Width, crop.Height)));
         dc.PushTransform(new TranslateTransform(-crop.X, -crop.Y));
-        dc.DrawImage(Original, new Rect(0, 0, Original.PixelWidth, Original.PixelHeight));
+        dc.DrawImage(State.BaseImage, new Rect(0, 0, State.BaseImage.PixelWidth, State.BaseImage.PixelHeight));
         foreach (var mark in State.Marks) DrawMark(dc, mark);
         if (pending is not null) DrawMark(dc, pending);
         dc.Pop(); dc.Pop();

@@ -1,0 +1,37 @@
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+dist/
+publish/
+TestResults/
+coverage/
+
+# IDE and machine-local state
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Runtime data and local captures
+AppData/
+Screenshots/
+Recordings/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.log
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key

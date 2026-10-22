@@ -21,5 +21,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Editor checks failed. See artifacts/stage2-validation/editor-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --preferences-test artifacts/preferences-validation
         if ($LASTEXITCODE -ne 0) { throw "Preferences checks failed. See artifacts/preferences-validation/preferences-diagnostics.json" }
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --appearance-test artifacts/appearance-validation
+        if ($LASTEXITCODE -ne 0) { throw "Appearance checks failed. See artifacts/appearance-validation/appearance-diagnostics.json" }
     }
 } finally { $env:DOTNET_ROOT = $previousRoot; Pop-Location }

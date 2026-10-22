@@ -19,6 +19,7 @@ internal sealed class ShelfController : IDisposable
     private MonitorInfo? activeMonitor;
     private PixelRect shelfArea;
     private double scale = 1;
+    private double cardScale = 1;
     private long nextPrune;
     private bool presented;
     private int page;
@@ -45,6 +46,12 @@ internal sealed class ShelfController : IDisposable
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
     }
     public void Start(bool samples = true) { sampleMode = samples; Prepare(Native.MonitorAt(Native.Cursor)); if (samples) ResetSamples(); timer.Start(); }
+    public void RefreshLanguage() => rope.RefreshLanguage();
+    public void SetCardSize(int percent)
+    {
+        cardScale = percent / 100.0; Prepare(activeMonitor ?? Native.MonitorAt(Native.Cursor));
+        if (presented) Present();
+    }
     public void SetItems(System.Collections.Generic.IEnumerable<DemoItem> items, bool reveal)
     {
         var desired = items.ToArray();
@@ -84,14 +91,14 @@ internal sealed class ShelfController : IDisposable
         {
             AddCard(item);
         }
-        Status?.Invoke("已生成 3 张原创示例。取下会保留文件；恢复示例会生成新文件。");
+        Status?.Invoke(T("已生成 3 张原创示例。取下会保留文件；恢复示例会生成新文件。"));
     }
     public void Toggle()
     {
         if (Busy) return;
         if (presented) { Hide(); return; }
         var monitor = Native.MonitorAt(Native.Cursor);
-        if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke("当前显示器为全屏窗口，已暂缓显示。"); return; }
+        if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke(T("当前显示器为全屏窗口，已暂缓显示。")); return; }
         Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present();
     }
     public void Hide() { gate.Hide(); Dismiss(); }
@@ -99,7 +106,7 @@ internal sealed class ShelfController : IDisposable
     {
         cards.Remove(card); card.Close();
         if (!sampleMode) Archived?.Invoke(card.Item);
-        Status?.Invoke(File.Exists(card.Item.Path) ? "已从晾衣绳取下；示例文件仍在本地。" : "文件已移走，已取下对应卡片。");
+        Status?.Invoke(File.Exists(card.Item.Path) ? T("已从晾衣绳取下；文件仍在本地。") : T("文件已移走，已取下对应卡片。"));
         if (cards.Count == 0 && presented) gate.Show(clock.ElapsedMilliseconds);
         if (presented) Present();
     }
@@ -112,7 +119,7 @@ internal sealed class ShelfController : IDisposable
     {
         activeMonitor = monitor;
         scale = Native.MoveAndGetScale(rope, monitor);
-        DisplayCapacity = DesktopGeometry.Cards(monitor.WorkArea, scale, 100).Count;
+        DisplayCapacity = DesktopGeometry.Cards(monitor.WorkArea, scale, 100, cardScale).Count;
     }
     private void Tick()
     {
@@ -144,7 +151,7 @@ internal sealed class ShelfController : IDisposable
         }
         else
         {
-            var rects = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count);
+            var rects = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count, cardScale);
             for (var i = 0; i < cards.Count; i++)
             {
                 page = Math.Min(page, (cards.Count - 1) / rects.Count);
@@ -158,7 +165,7 @@ internal sealed class ShelfController : IDisposable
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
     private void Dismiss() { rope.Dismiss(); foreach (var card in cards) card.Dismiss(); presented = false; }
-    private void DisplaysChanged(object? sender, EventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { Hide(); activeMonitor = null; Status?.Invoke("显示器布局已变化，已重置晾衣绳位置。"); }));
+    private void DisplaysChanged(object? sender, EventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { Hide(); activeMonitor = null; Status?.Invoke(T("显示器布局已变化，已重置晾衣绳位置。")); }));
     public void Dispose()
     {
         timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged;

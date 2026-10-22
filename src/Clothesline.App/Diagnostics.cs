@@ -46,6 +46,12 @@ internal static class Diagnostics
                 using var info = JsonDocument.Parse(File.ReadAllText(handshake));
                 var backdropHandle = (nint)info.RootElement.GetProperty("Handle").GetInt64();
                 File.Delete(handshake);
+                object HitDetails(Native.Point point)
+                {
+                    var hit = Native.WindowFromPoint(point); Native.GetWindowThreadProcessId(hit, out var processId);
+                    Native.GetWindowRect(backdropHandle, out var backdropRect);
+                    return new { x = point.X, y = point.Y, actualHandle = hit.ToInt64(), actualProcessId = processId, expectedHandle = backdropHandle.ToInt64(), backdropBounds = backdropRect.Pixels };
+                }
                 var monitor = Native.MonitorAt(Native.Cursor);
                 rope = new RopeWindow(); var scale = Native.MoveAndGetScale(rope, monitor);
                 var items = DemoAssets.Create(Path.Combine(directory, "samples"));
@@ -65,11 +71,11 @@ internal static class Diagnostics
                 var ropePixels = new RenderTargetBitmap(monitor.WorkArea.Width, (int)(70 * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
                 ropePixels.Render((Visual)rope.Content);
                 var pixel = new byte[4]; ropePixels.CopyPixels(new Int32Rect(lineX - monitor.WorkArea.X, lineY, 1, 1), pixel, 4, 0);
-                Check("painted-rope-passes-to-another-process", pixel[3] > 0 && Native.WindowFromPoint(new Native.Point { X = lineX, Y = monitor.WorkArea.Y + lineY }) == backdropHandle, new { paintedPixelAlpha = pixel[3] });
+                Check("painted-rope-passes-to-another-process", pixel[3] > 0 && Native.WindowFromPoint(new Native.Point { X = lineX, Y = monitor.WorkArea.Y + lineY }) == backdropHandle, new { paintedPixelAlpha = pixel[3], hit = HitDetails(new Native.Point { X = lineX, Y = monitor.WorkArea.Y + lineY }) });
                 if (rects.Count >= 2)
                 {
                     var gap = new Native.Point { X = (rects[0].Right + rects[1].X) / 2, Y = rects[0].Y + (int)(50 * scale) };
-                    Check("gap-passes-to-another-process", Native.WindowFromPoint(gap) == backdropHandle);
+                    Check("gap-passes-to-another-process", Native.WindowFromPoint(gap) == backdropHandle, HitDetails(gap));
                 }
                 var firstHandle = new WindowInteropHelper(cards[0]).Handle;
                 Check("card-is-interactive-hit-target", Native.WindowFromPoint(new Native.Point { X = rects[0].X + rects[0].Width / 2, Y = rects[0].Y + (int)(60 * scale) }) == firstHandle);
@@ -92,7 +98,7 @@ internal static class Diagnostics
                 }
                 rope.Dismiss(); foreach (var card in cards) card.Dismiss();
                 Check("hidden-windows-are-hidden", !Native.IsWindowVisible(new WindowInteropHelper(rope).Handle) && cards.All(c => !Native.IsWindowVisible(new WindowInteropHelper(c).Handle)));
-                Check("hidden-cards-pass-to-backdrop", Native.WindowFromPoint(new Native.Point { X = rects[0].X + 30, Y = rects[0].Y + 60 }) == backdropHandle);
+                Check("hidden-cards-pass-to-backdrop", Native.WindowFromPoint(new Native.Point { X = rects[0].X + 30, Y = rects[0].Y + 60 }) == backdropHandle, HitDetails(new Native.Point { X = rects[0].X + 30, Y = rects[0].Y + 60 }));
                 using (var hotkey = new HotKey(() => { }))
                 {
                     using var conflict = new HotKey(() => { });
@@ -108,7 +114,7 @@ internal static class Diagnostics
                 Check("empty-toggle-keeps-dashboard-hidden", !dashboard.IsVisible);
                 Check("empty-toggle-keeps-library-empty", controller.Count == 0);
                 Check("empty-show-keeps-foreground", Native.GetForegroundWindow() == emptyForeground);
-                Check("empty-hint-passes-to-another-process", Native.WindowFromPoint(new Native.Point { X = monitor.WorkArea.X + monitor.WorkArea.Width / 2, Y = monitor.WorkArea.Y + (int)(64 * scale) }) == backdropHandle);
+                Check("empty-hint-passes-to-another-process", Native.WindowFromPoint(new Native.Point { X = monitor.WorkArea.X + monitor.WorkArea.Width / 2, Y = monitor.WorkArea.Y + (int)(64 * scale) }) == backdropHandle, HitDetails(new Native.Point { X = monitor.WorkArea.X + monitor.WorkArea.Width / 2, Y = monitor.WorkArea.Y + (int)(64 * scale) }));
                 Render((FrameworkElement)emptyRope.Content, Path.Combine(directory, "empty-shelf.png"));
                 controller.Toggle();
                 Check("empty-toggle-hides-rope", !controller.Visible && !emptyRope.IsVisible);

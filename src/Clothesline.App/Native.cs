@@ -50,7 +50,7 @@ internal static class Native
     private static MonitorInfo Monitor(nint handle)
     {
         var data = new MonitorData { Size = Marshal.SizeOf<MonitorData>() };
-        if (!GetMonitorInfoW(handle, ref data)) throw new InvalidOperationException("无法读取显示器信息。");
+        if (!GetMonitorInfoW(handle, ref data)) throw new InvalidOperationException(T("无法读取显示器信息。"));
         return new(handle, data.Bounds.Pixels, data.Work.Pixels);
     }
     public static IReadOnlyList<MonitorInfo> Monitors()
@@ -119,7 +119,7 @@ internal sealed class HotKey : IDisposable
         if (parsed.Display == Gesture) return new(() => { }, () => { });
         var candidateId = activeId == 1 ? 2 : 1;
         if (parsed.Key != 0 && !Native.RegisterHotKey(source.Handle, candidateId, parsed.Modifiers | 0x4000, parsed.Key))
-            throw new InvalidOperationException("快捷键被占用或被系统保留，原设置已保留。请选择其他组合。");
+            throw new InvalidOperationException(T("快捷键被占用或被系统保留，原设置已保留。请选择其他组合。"));
         return new(() =>
         {
             if (Registered) Native.UnregisterHotKey(source.Handle, activeId);

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -28,7 +29,7 @@ internal sealed class ImageWorkspace : Window
     private readonly TextBlock heading = new() { FontSize = 20, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, MinHeight = 36, Margin = new Thickness(0, 10, 0, 0) };
     private readonly TextBlock zoomLabel = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 55 };
-    private readonly TextBox annotation = new() { Width = 200, MaxLength = 300, Text = "在此输入文字", VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 4) };
+    private readonly TextBox annotation = new() { Width = 200, MaxLength = 300, Text = T("在此输入文字"), VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 4) };
     private readonly Dictionary<EditorTool, ToggleButton> tools = new();
     private readonly Button undoButton, redoButton, resetButton, restoreButton, saveButton, previousButton, nextButton;
     private readonly WrapPanel editBar = new();
@@ -51,38 +52,41 @@ internal sealed class ImageWorkspace : Window
         Func<WorkspaceImage, string, OriginalReference?>? resolveOriginal = null)
     {
         this.gallery = gallery; index = start; this.save = save; this.acquireLease = acquireLease;
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);
         this.resolveOriginal = resolveOriginal ?? ((_, _) => null);
-        Title = "图片工作台 · Screenshot Clothesline"; Width = 1100; Height = 800; MinWidth = 820; MinHeight = 620;
+        Title = T("图片工作台 · Screenshot Clothesline"); Width = 1100; Height = 800; MinWidth = 820; MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = DemoAssets.Brush("#F4F5EE");
         Foreground = DemoAssets.Brush("#294535"); FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI");
         var root = new DockPanel { Margin = new Thickness(20, 16, 20, 16) }; Content = root;
         var header = new StackPanel(); DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         header.Children.Add(heading);
         var navigation = new WrapPanel { Margin = new Thickness(0, 12, 0, 6) }; header.Children.Add(navigation);
-        navigation.Children.Add(previousButton = Button("← 上一张", () => _ = Navigate(-1)));
-        navigation.Children.Add(nextButton = Button("下一张 →", () => _ = Navigate(1)));
-        navigation.Children.Add(Button("适应窗口", Fit)); navigation.Children.Add(Button("100%", () => Zoom(1)));
-        navigation.Children.Add(Button("−", () => Zoom(scale / 1.25))); navigation.Children.Add(Button("+", () => Zoom(scale * 1.25))); navigation.Children.Add(zoomLabel);
-        navigation.Children.Add(undoButton = Button("撤销", () => document?.Undo())); navigation.Children.Add(redoButton = Button("重做", () => document?.Redo()));
-        navigation.Children.Add(resetButton = Button("重置本次修改", () => document?.Reset()));
-        navigation.Children.Add(restoreButton = Button("恢复最初原图", () => _ = RestoreOriginal()));
-        navigation.Children.Add(saveButton = Button("另存副本并挂上…", () => _ = Save()));
+        navigation.Children.Add(previousButton = Button(T("← 上一张"), () => _ = Navigate(-1)));
+        navigation.Children.Add(nextButton = Button(T("下一张 →"), () => _ = Navigate(1)));
+        navigation.Children.Add(Button(T("适应窗口"), Fit)); navigation.Children.Add(Button("100%", () => Zoom(1)));
+        var zoomOut = Button("−", () => Zoom(scale / 1.25)); AutomationProperties.SetName(zoomOut, T("缩小")); zoomOut.ToolTip = T("缩小"); navigation.Children.Add(zoomOut);
+        var zoomIn = Button("+", () => Zoom(scale * 1.25)); AutomationProperties.SetName(zoomIn, T("放大")); zoomIn.ToolTip = T("放大"); navigation.Children.Add(zoomIn); navigation.Children.Add(zoomLabel);
+        navigation.Children.Add(undoButton = Button(T("撤销"), () => document?.Undo())); navigation.Children.Add(redoButton = Button(T("重做"), () => document?.Redo()));
+        navigation.Children.Add(resetButton = Button(T("重置本次修改"), () => document?.Reset()));
+        navigation.Children.Add(restoreButton = Button(T("恢复最初原图"), () => _ = RestoreOriginal()));
+        navigation.Children.Add(saveButton = Button(T("另存副本并挂上…"), () => _ = Save()));
         header.Children.Add(editBar);
-        foreach (var (tool, label) in new[] { (EditorTool.Pan, "浏览"), (EditorTool.Pen, "画笔"), (EditorTool.Arrow, "箭头"), (EditorTool.Rectangle, "矩形"), (EditorTool.Text, "文字"), (EditorTool.Mosaic, "马赛克"), (EditorTool.Crop, "裁剪") })
+        foreach (var (tool, label) in new[] { (EditorTool.Pan, T("浏览")), (EditorTool.Pen, T("画笔")), (EditorTool.Arrow, T("箭头")), (EditorTool.Rectangle, T("矩形")), (EditorTool.Text, T("文字")), (EditorTool.Mosaic, T("马赛克")), (EditorTool.Crop, T("裁剪")) })
         {
             var button = new ToggleButton { Content = label, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 0, 5, 5) };
             button.Click += (_, _) => SelectTool(tool); tools[tool] = button; editBar.Children.Add(button);
         }
         var options = new WrapPanel { Margin = new Thickness(0, 4, 0, 6) }; header.Children.Add(options);
-        foreach (var color in new[] { Colors.Crimson, Colors.Orange, Colors.ForestGreen, Colors.DodgerBlue, Colors.Black, Colors.White })
+        foreach (var (color, name) in new[] { (Colors.Crimson, T("红色")), (Colors.Orange, T("橙色")), (Colors.ForestGreen, T("绿色")), (Colors.DodgerBlue, T("蓝色")), (Colors.Black, T("黑色")), (Colors.White, T("白色")) })
         {
-            var choice = Button("●", () => { canvas.Ink = color; }); choice.Foreground = new SolidColorBrush(color); choice.Width = 30; choice.Padding = new Thickness(2); choice.ToolTip = color.ToString(); options.Children.Add(choice);
+            var choice = Button("●", () => { canvas.Ink = color; }); choice.Foreground = new SolidColorBrush(color); choice.Width = 30; choice.Padding = new Thickness(2); choice.ToolTip = name; AutomationProperties.SetName(choice, name); options.Children.Add(choice);
         }
-        options.Children.Add(new TextBlock { Text = "粗细", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 4) });
+        options.Children.Add(new TextBlock { Text = T("粗细"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 4) });
         var size = new Slider { Minimum = 1, Maximum = 24, Value = 4, Width = 110, VerticalAlignment = VerticalAlignment.Center };
+        AutomationProperties.SetName(size, T("画笔粗细")); AutomationProperties.SetName(annotation, T("标注文字"));
         size.ValueChanged += (_, _) => canvas.StrokeSize = size.Value; options.Children.Add(size); options.Children.Add(annotation);
         annotation.TextChanged += (_, _) => canvas.Annotation = annotation.Text; canvas.Annotation = annotation.Text;
-        header.Children.Add(new TextBlock { Text = "Ctrl + 滚轮缩放 · 空格拖动 · ← → 切图 · Ctrl + Z / Y 撤销重做 · Ctrl + S 另存 · Esc 关闭", FontSize = 11, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap });
+        header.Children.Add(new TextBlock { Text = T("Ctrl + 滚轮缩放 · 空格拖动 · ← → 切图 · Ctrl + Z / Y 撤销重做 · Ctrl + S 另存 · Esc 关闭"), FontSize = 11, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap });
         DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
         canvas.HorizontalAlignment = HorizontalAlignment.Center; canvas.VerticalAlignment = VerticalAlignment.Center; viewport.Content = canvas; root.Children.Add(viewport);
         canvas.Completed += () => { if (canvas.Tool == EditorTool.Crop) Fit(); };
@@ -113,10 +117,10 @@ internal sealed class ImageWorkspace : Window
         canvas.Cancel(); canvas.Tool = tool; foreach (var item in tools) item.Value.IsChecked = item.Key == tool;
         canvas.Cursor = tool == EditorTool.Pan ? Cursors.Hand : Cursors.Cross; annotation.IsEnabled = tool == EditorTool.Text;
     }
-    private bool DiscardAllowed() => document?.IsDirty != true || MessageBox.Show(this, "放弃本次尚未保存的修改？", "未保存修改", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
+    private bool DiscardAllowed() => document?.IsDirty != true || MessageBox.Show(this, T("放弃本次尚未保存的修改？"), T("未保存修改"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
     private void ClosingWorkspace(object? sender, CancelEventArgs e)
     {
-        if (saving) { status.Text = "正在保存副本，请完成后再关闭。"; e.Cancel = true; return; }
+        if (saving) { status.Text = T("正在保存副本，请完成后再关闭。"); e.Cancel = true; return; }
         canvas.Cancel(); if (!DiscardAllowed()) e.Cancel = true;
     }
     private async Task Navigate(int direction)
@@ -127,7 +131,7 @@ internal sealed class ImageWorkspace : Window
     }
     private async Task Load(int next)
     {
-        var version = ++loadVersion; loading = true; UpdateActions(); status.Text = "正在读取图片…";
+        var version = ++loadVersion; loading = true; UpdateActions(); status.Text = T("正在读取图片…");
         IDisposable? candidate = null;
         try
         {
@@ -139,17 +143,17 @@ internal sealed class ImageWorkspace : Window
             lease?.Dispose(); lease = candidate; candidate = null; index = next;
             SetOriginal(reference);
             document = new ImageDocument(loaded.Image); document.Changed += DocumentChanged; canvas.Document = document; DocumentChanged(); Fit();
-            status.Text = reference is null ? "另存时保留本次打开图片的原版快照。旧版副本无法追溯更早的原图。" : "已关联最初原图，可恢复后另存；当前文件不会被覆盖。";
+            status.Text = reference is null ? T("另存时保留本次打开图片的原版快照。旧版副本无法追溯更早的原图。") : T("已关联最初原图，可恢复后另存；当前文件不会被覆盖。");
         }
-        catch (Exception ex) { if (!closed) status.Text = "无法读取图片：" + ex.Message; }
+        catch (Exception ex) { if (!closed) status.Text = T("无法读取图片：") + ex.Message; }
         finally { candidate?.Dispose(); if (!closed && version == loadVersion) { loading = false; UpdateActions(); } }
     }
     private void DocumentChanged()
     {
         if (document is null) return;
         var crop = document.State.Crop; canvas.Width = crop.Width; canvas.Height = crop.Height; canvas.InvalidateVisual();
-        heading.Text = $"{gallery[index].Title}   ·   {index + 1} / {gallery.Length}   ·   {crop.Width} × {crop.Height}" + (document.IsDirty ? "   ·   未保存" : "");
-        Title = (document.IsDirty ? "* " : "") + gallery[index].Title + " · 图片工作台";
+        heading.Text = $"{gallery[index].Title}   ·   {index + 1} / {gallery.Length}   ·   {crop.Width} × {crop.Height}" + (document.IsDirty ? T("   ·   未保存") : "");
+        Title = (document.IsDirty ? "* " : "") + gallery[index].Title + T(" · 图片工作台");
         UpdateActions(); if (fitMode) Fit();
     }
     private void UpdateActions()
@@ -193,20 +197,20 @@ internal sealed class ImageWorkspace : Window
     internal async Task RestoreOriginal()
     {
         if (document is null || originalReference is null || saving || loading) return;
-        canvas.Cancel(); loading = true; UpdateActions(); status.Text = "正在读取最初原图…";
+        canvas.Cancel(); loading = true; UpdateActions(); status.Text = T("正在读取最初原图…");
         try
         {
             var reference = originalReference;
             var bitmap = await Task.Run(() =>
             {
                 var image = ImageFiles.Read(reference.Path);
-                if (ImageFiles.Hash(image) != reference.Hash) throw new InvalidOperationException("原版快照内容已改变，无法可靠恢复。");
+                if (ImageFiles.Hash(image) != reference.Hash) throw new InvalidOperationException(T("原版快照内容已改变，无法可靠恢复。"));
                 return image;
             });
             if (closed) return;
-            document.RestoreOriginal(bitmap); Fit(); status.Text = "已恢复最初原图，可撤销；另存后生成新副本。";
+            document.RestoreOriginal(bitmap); Fit(); status.Text = T("已恢复最初原图，可撤销；另存后生成新副本。");
         }
-        catch (Exception ex) { if (!closed) status.Text = "恢复未完成，当前图片保留：" + ex.Message; }
+        catch (Exception ex) { if (!closed) status.Text = T("恢复未完成，当前图片保留：") + ex.Message; }
         finally { loading = false; if (!closed) UpdateActions(); }
     }
     private async Task Save()
@@ -219,10 +223,10 @@ internal sealed class ImageWorkspace : Window
             if (result is not null)
             {
                 SetOriginal(result.Original); document.MarkSaved();
-                status.Text = (result.Hung ? "副本已保存并挂上：" : "副本已保存，未能挂上；可手动导入：") + result.Path + (result.Warning.Length > 0 ? "\n" + result.Warning : "");
+                status.Text = (result.Hung ? T("副本已保存并挂上：") : T("副本已保存，未能挂上；可手动导入：")) + result.Path + (result.Warning.Length > 0 ? "\n" + result.Warning : "");
             }
         }
-        catch (Exception ex) { status.Text = "保存未完成，修改仍保留在窗口中：" + ex.Message; }
+        catch (Exception ex) { status.Text = T("保存未完成，修改仍保留在窗口中：") + ex.Message; }
         finally { saving = false; UpdateActions(); }
     }
     private void KeyPressed(object sender, KeyEventArgs e)

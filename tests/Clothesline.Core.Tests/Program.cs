@@ -51,4 +51,35 @@ foreach (var invalid in new[] { "T", "Shift+T", "Ctrl+Ctrl+T", "Win+T", "Ctrl+F1
     var rejected = false; try { ShortcutGesture.Parse(invalid); } catch (ArgumentException) { rejected = true; }
     Check(rejected, "unsafe or invalid shortcut rejected: " + invalid);
 }
+foreach (var dpi in new[] { 1.0, 1.25, 1.5, 1.75, 2.0 })
+foreach (var size in new[] { .8, 1.0, 1.2 })
+{
+    var area = new PixelRect(-1920, -223, 1920, 1080);
+    var cards = DesktopGeometry.Cards(area, dpi, 100, size);
+    Check(cards.All(r => r.X >= area.X && r.Right <= area.Right && r.Bottom <= area.Bottom) && cards.Zip(cards.Skip(1)).All(p => p.First.Right < p.Second.X), $"card size {size} at DPI {dpi} fits with gaps");
+    Check(cards[0].Width == (int)Math.Round(DesktopGeometry.CardWidth * dpi * size) && cards[0].Height == (int)Math.Round(DesktopGeometry.CardHeight * dpi * size), $"card size {size} scales both dimensions at DPI {dpi}");
+}
+foreach (var area in new[] { new PixelRect(-20, -10, 120, 100), new PixelRect(0, 0, 1, 1) })
+{
+    var cards = DesktopGeometry.Cards(area, 2, 100, 1.2);
+    Check(cards.All(r => r.X >= area.X && r.Right <= area.Right && r.Y >= area.Y && r.Bottom <= area.Bottom && r.Width > 0 && r.Height > 0), "tiny work area contains complete card");
+}
+var normalArea = new PixelRect(0, 0, 1920, 1080);
+Check(DesktopGeometry.Cards(normalArea, 1.5, 100, .8).Count > DesktopGeometry.Cards(normalArea, 1.5, 100, 1.2).Count, "larger cards lower automatic row capacity");
+Check(DesktopGeometry.Cards(normalArea, 1.5, 0, 1.2).Count == 0, "empty shelf has no card slots");
+var sound = new CaptureSoundGate();
+Check(!sound.ShouldPlay(0, false, false, false), "sound disabled by default does not consume throttle");
+Check(sound.ShouldPlay(0, true, false, false), "first eligible capture sounds immediately");
+Check(!sound.ShouldPlay(1999, true, false, false) && sound.ShouldPlay(2000, true, false, false), "capture sound limited to one per two seconds");
+Check(!sound.ShouldPlay(4000, true, true, false) && !sound.ShouldPlay(4000, true, false, true) && sound.ShouldPlay(4000, true, false, false), "paused and fullscreen captures stay silent without delaying next eligible sound");
+UiText.Language = "en";
+Check(UiText.T("暂时没有图片") == "No images yet" && UiText.T("已取下 {0} 张图片到本地历史，原文件保留。", 3).Contains("3 images"), "English empty state and formatted status");
+Check(UiText.English.All(p => !string.IsNullOrWhiteSpace(p.Value) && !System.Text.RegularExpressions.Regex.IsMatch(p.Value, @"\p{IsCJKUnifiedIdeographs}")), "all English resources have translated text");
+Check(UiText.English.All(p => System.Text.CompositeFormat.Parse(p.Key).MinimumArgumentCount == System.Text.CompositeFormat.Parse(p.Value).MinimumArgumentCount), "translation format arguments match Chinese keys");
+var textCalls = new System.Text.RegularExpressions.Regex("\\bT\\(\"((?:[^\"\\\\]|\\\\.)*)\"");
+var sourceKeys = Directory.EnumerateFiles("src", "*.cs", SearchOption.AllDirectories).Where(p => !p.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) && !p.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+    .SelectMany(p => textCalls.Matches(File.ReadAllText(p)).Select(m => System.Text.Json.JsonSerializer.Deserialize<string>("\"" + m.Groups[1].Value + "\"")!)).Distinct().ToArray();
+Check(sourceKeys.All(UiText.English.ContainsKey), "all application translation keys exist in English resource");
+UiText.Language = "zh-CN";
+Check(UiText.T("暂时没有图片") == "暂时没有图片", "Chinese empty state preserves requested wording");
 Console.WriteLine($"{checks} checks passed.");

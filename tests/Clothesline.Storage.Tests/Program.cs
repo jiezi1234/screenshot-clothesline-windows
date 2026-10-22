@@ -69,15 +69,18 @@ var watched = Path.Combine(root, "watched"); Directory.CreateDirectory(watched);
 using (var store = new LibraryStore(Path.Combine(root, "watch-library")))
 using (var engine = new CollectionEngine(store, path => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))), () => 3))
 {
+    var captureEvents = 0; engine.CaptureAdded += () => Interlocked.Increment(ref captureEvents);
     var settings = new LibrarySettings { ScreenshotFolder = watched };
     engine.Configure(settings); await Task.Delay(400);
     Check(store.Entries().Count == 0, "initial directory scan does not import old files");
+    Check(captureEvents == 0, "source baseline produces no capture sound event");
     for (var i = 0; i < 100; i++) File.WriteAllText(Path.Combine(watched, $"new-{i}.png"), "capture-" + i);
     var deadline = DateTime.UtcNow.AddSeconds(45);
     while (store.Entries().Count < 100 && DateTime.UtcNow < deadline) await Task.Delay(200);
     Check(store.Entries().Count == 100, "watcher ingests 100 burst file events");
     engine.RequestRescan(); await Task.Delay(500);
     Check(store.Entries().Count == 100, "rescan and repeated events do not duplicate");
+    Check(captureEvents == 100, "only committed automatic captures produce events; duplicate rescan is silent");
     engine.Configure(settings with { Paused = true }); File.WriteAllText(Path.Combine(watched, "paused.png"), "paused"); await Task.Delay(400);
     Check(store.Entries().Count == 100, "pause stops collection");
     engine.Configure(settings); deadline = DateTime.UtcNow.AddSeconds(5);
@@ -88,6 +91,10 @@ using (var engine = new CollectionEngine(store, path => Convert.ToHexString(SHA2
     Check(await engine.ImportClipboard([1, 2, 3], "clipboard-unique", 1024 * 1024), "managed import atomically commits file and record");
     Check(store.Entries().Any(e => e.Source == "Clipboard" && File.Exists(e.Path)) && !Directory.GetFiles(store.ManagedFolder, "*.part").Any(), "managed image has no unfinished part after success");
     Check(!await engine.ImportClipboard([1, 2, 3], "over-budget", 1), "storage ceiling refuses new managed content");
+    Check(captureEvents == 102, "duplicate and failed clipboard writes do not produce sound events");
+    await engine.PreserveOriginal([5, 6, 7], "snapshot-event-test", 1024 * 1024);
+    await engine.ImportExternal(Make("manual-import.png", "manual-event-test"));
+    Check(captureEvents == 102, "original snapshot and manual import are silent");
 }
 using (var store = new LibraryStore(Path.Combine(root, "editor-library")))
 {
@@ -161,4 +168,17 @@ using (var store = new LibraryStore(migration))
     Check(Convert.ToInt32(version.ExecuteScalar()) == 1, "migration backup remains readable as v1");
 }
 using (var store = new LibraryStore(migration)) Check(Directory.GetFiles(migration, "library-v1-backup-*.db").Length == 1, "v2 reopening does not repeat migration or create extra backups");
+using (var store = new LibraryStore(migration))
+{
+    var settings = store.LoadSettings();
+    Check(settings.CardSizePercent == 100 && !settings.CaptureSound && settings.Language == "zh-CN", "old JSON settings retain standard size and silent Chinese defaults");
+    store.SaveSettings(settings with { CardSizePercent = 120, CaptureSound = true, Language = "en" });
+    foreach (var invalid in new[] { settings with { CardSizePercent = 0 }, settings with { CardSizePercent = 90 }, settings with { Language = "unknown" } })
+    {
+        var rejected = false; try { store.SaveSettings(invalid); } catch (ArgumentException) { rejected = true; }
+        Check(rejected && store.LoadSettings().CardSizePercent == 120, "invalid appearance preference leaves persisted settings intact");
+    }
+}
+using (var store = new LibraryStore(migration))
+    Check(store.LoadSettings().CardSizePercent == 120 && store.LoadSettings().CaptureSound && store.LoadSettings().Language == "en", "size sound and language survive restart");
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

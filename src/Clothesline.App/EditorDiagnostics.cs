@@ -64,7 +64,7 @@ internal static class EditorDiagnostics
                 var extension = ImageFiles.ExportPng(ImageFiles.Png(document.Render()), Path.Combine(directory, "named.jpg"));
                 Check("edited-output-is-png-with-matching-extension", Path.GetExtension(extension) == ".png" && ImageFiles.Hash(extension) == ImageFiles.Hash(document.Render()) && !Directory.GetFiles(directory, ".clothesline-*.tmp").Any());
                 var leases = 0;
-                workspace = new ImageWorkspace([new("fixture", source, "工作台示例.png")], 0, true, (_, _, _) => Task.FromResult<SavedImage?>(null), _ => { leases++; return new Release(() => leases--); });
+                workspace = new ImageWorkspace([new("fixture", source, "工作台示例.png")], 0, true, (_, _) => Task.FromResult<SavedImage?>(null), _ => { leases++; return new Release(() => leases--); });
                 workspace.Show();
                 var deadline = DateTime.UtcNow.AddSeconds(10);
                 while ((workspace.Loading || workspace.Document is null) && DateTime.UtcNow < deadline) await Task.Delay(40);
@@ -85,6 +85,48 @@ internal static class EditorDiagnostics
                 runtime.ApplySettings(new Storage.LibrarySettings { RetentionDays = 7 }); runtime.Cleanup();
                 Check("multiple-workspace-leases-protect-until-last-close", runtime.Store.Find(archived.Id) is not null);
                 second.Dispose(); runtime.Cleanup(); Check("last-lease-release-restores-cleanup", runtime.Store.Find(archived.Id) is null && File.Exists(source));
+                var lineageDirectory = Path.Combine(directory, "lineage-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(lineageDirectory);
+                var lineageLibrary = Path.Combine(lineageDirectory, "library"); var externalOriginal = Path.Combine(lineageDirectory, "external.png"); DemoAssets.Save(original, externalOriginal);
+                SavedImage saved, descendant; string descendantId;
+                using (var lineageShelf = new ShelfController())
+                using (var lineage = new LibraryRuntime(lineageShelf, lineageLibrary))
+                {
+                    saved = await lineage.PersistEditedCopy(new(document.Render(), original, externalOriginal, null), Path.Combine(lineageDirectory, "edited.png"));
+                    Check("save-persists-independent-original-snapshot-and-linked-copy", saved.Hung && saved.Original is not null && ImageFiles.Hash(saved.Original.Path) == hash && ImageFiles.Hash(externalOriginal) == hash);
+                    var child = new ImageDocument(ImageFiles.Read(saved.Path)); child.Crop(new Rect(30, 30, 100, 80));
+                    descendant = await lineage.PersistEditedCopy(new(child.Render(), child.Original, saved.Path, saved.Original), Path.Combine(lineageDirectory, "edited-twice.png"));
+                    descendantId = lineage.Store.Entries().Single(e => e.Path == descendant.Path).Id;
+                    Check("editing-a-copy-retains-earliest-original-without-extra-snapshot", descendant.Original?.Id == saved.Original?.Id && lineage.Store.Entries().Count(e => e.Source == Storage.LibraryStore.OriginalSource) == 1);
+                }
+                File.Move(externalOriginal, externalOriginal + ".moved");
+                using (var lineageShelf = new ShelfController())
+                using (var lineage = new LibraryRuntime(lineageShelf, lineageLibrary))
+                {
+                    var entry = lineage.Store.Find(descendantId)!; var item = new WorkspaceImage(entry.Id, entry.Path, entry.Title, entry.Hash);
+                    var reference = lineage.ResolveOriginal(item, ImageFiles.Hash(entry.Path));
+                    Check("lineage-reopens-after-original-source-moved", reference?.Id == saved.Original!.Id && ImageFiles.Hash(reference.Path) == hash);
+                    Check("external-content-replacement-does-not-inherit-stale-lineage", lineage.ResolveOriginal(item, "different-pixels") is null);
+                    workspace = new ImageWorkspace([item], 0, true, (_, _) => Task.FromResult<SavedImage?>(null), lineage.AcquireLease, lineage.ResolveOriginal);
+                    workspace.Show(); deadline = DateTime.UtcNow.AddSeconds(10);
+                    while ((workspace.Loading || workspace.Document is null) && DateTime.UtcNow < deadline) await Task.Delay(40);
+                    var descendantHash = ImageFiles.Hash(workspace.Document!.Render());
+                    await workspace.RestoreOriginal();
+                    Check("workspace-restores-earliest-pixels-and-dimensions-after-restart", workspace.Document.IsDirty && ImageFiles.Hash(workspace.Document.Render()) == hash && workspace.Document.State.Crop.Width == width);
+                    Render((FrameworkElement)workspace.Content, Path.Combine(directory, "restored-original.png"));
+                    workspace.Document.Undo(); Check("original-restoration-is-undoable", ImageFiles.Hash(workspace.Document.Render()) == descendantHash);
+                    workspace.Document.Redo(); Check("original-restoration-is-redoable", ImageFiles.Hash(workspace.Document.Render()) == hash);
+                    workspace.Document.Reset(); Check("session-reset-remains-distinct-from-earliest-original", ImageFiles.Hash(workspace.Document.Render()) == descendantHash);
+                    var snapshotPath = reference!.Path; File.Move(snapshotPath, snapshotPath + ".moved");
+                    await workspace.RestoreOriginal(); Check("missing-snapshot-leaves-current-edits-intact", ImageFiles.Hash(workspace.Document.Render()) == descendantHash);
+                    DemoAssets.Save(document.Render(), snapshotPath);
+                    await workspace.RestoreOriginal(); Check("changed-snapshot-rejected-without-changing-current-document", ImageFiles.Hash(workspace.Document.Render()) == descendantHash);
+                    File.Move(snapshotPath, snapshotPath + ".changed"); File.Move(snapshotPath + ".moved", snapshotPath);
+                    workspace.Document.MarkSaved(); workspace.Close(); workspace = null;
+                    var impossible = Path.Combine(lineageDirectory, "file-as-directory"); File.WriteAllText(impossible, "fixture");
+                    var failed = false;
+                    try { await lineage.PersistEditedCopy(new(document.Render(), original, externalOriginal, reference), Path.Combine(impossible, "edited.png")); } catch (IOException) { failed = true; }
+                    Check("export-failure-preserves-original-snapshot-and-existing-copies", failed && ImageFiles.Hash(snapshotPath) == hash && File.Exists(saved.Path) && File.Exists(descendant.Path));
+                }
             }
             catch (Exception ex) { passed = false; checks.Add(new { name = "editor-diagnostics-completed", passed = false, error = ex.ToString() }); }
             finally

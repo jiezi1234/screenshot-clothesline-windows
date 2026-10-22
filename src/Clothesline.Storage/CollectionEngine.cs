@@ -130,7 +130,7 @@ public sealed class CollectionEngine : IDisposable
         try
         {
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (store.Entries().Any(e => e.Hash == hash && now - e.AddedAt < 5000 && !e.Missing)) return false;
+            if (store.Entries().Any(e => e.Source != LibraryStore.OriginalSource && e.Hash == hash && now - e.AddedAt < 5000 && !e.Missing)) return false;
             var used = Directory.EnumerateFiles(store.ManagedFolder).Sum(p => new FileInfo(p).Length);
             if (used + png.Length > limit) { Status?.Invoke("自管图片已达到存储上限，暂停新增剪贴板图片；可导出或清理历史后重试。"); return false; }
             var id = Guid.NewGuid().ToString("N"); var path = Path.Combine(store.ManagedFolder, $"clip-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{id}.png");
@@ -142,6 +142,25 @@ public sealed class CollectionEngine : IDisposable
                 store.CompleteManaged(id, capacity(), now); Changed?.Invoke(); return true;
             }
             catch (Exception ex) { store.FailManaged(id, "保存未完成：" + ex.Message); Changed?.Invoke(); throw; }
+        }
+        finally { importLock.Release(); }
+    }
+    public async Task<LibraryEntry> PreserveOriginal(byte[] png, string hash, long limit, CancellationToken cancellation = default)
+    {
+        await importLock.WaitAsync(cancellation).ConfigureAwait(false);
+        try
+        {
+            var used = Directory.EnumerateFiles(store.ManagedFolder).Sum(p => new FileInfo(p).Length);
+            if (used + png.Length > limit) throw new IOException("自管图片空间不足，无法保留可恢复原版。请增加上限或清理历史后再保存。");
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); var id = Guid.NewGuid().ToString("N");
+            var path = Path.Combine(store.ManagedFolder, "original-" + id + ".png");
+            store.Add(path, Ownership.Managed, LibraryStore.OriginalSource, hash, now, capacity(), EntryState.Pending, id);
+            try
+            {
+                using (var file = new FileStream(path + ".part", FileMode.CreateNew, FileAccess.Write, FileShare.None)) { await file.WriteAsync(png, cancellation).ConfigureAwait(false); file.Flush(true); }
+                File.Move(path + ".part", path); store.CompleteOriginal(id, now); Changed?.Invoke(); return store.Find(id)!;
+            }
+            catch (Exception ex) { store.FailManaged(id, "原版保存未完成：" + ex.Message); Changed?.Invoke(); throw; }
         }
         finally { importLock.Release(); }
     }

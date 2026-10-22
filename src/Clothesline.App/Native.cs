@@ -102,13 +102,42 @@ internal static class Native
 internal sealed class HotKey : IDisposable
 {
     private readonly HwndSource source;
-    public bool Registered { get; }
-    public HotKey(Action toggle)
+    private int activeId = 1;
+    public bool Registered { get; private set; }
+    public string Gesture { get; private set; }
+    public HotKey(Action toggle, string gesture = "Ctrl+Alt+T")
     {
         source = new HwndSource(new HwndSourceParameters("Clothesline.Messages") { ParentWindow = -3, Width = 0, Height = 0 });
         source.AddHook((nint h, int message, nint w, nint l, ref bool handled) =>
-        { if (message == 0x312 && w == 1) { handled = true; toggle(); } return 0; });
-        Registered = Native.RegisterHotKey(source.Handle, 1, 0x4003, 0x54); // Ctrl+Alt+T, NOREPEAT
+        { if (message == 0x312 && Registered && w == activeId) { handled = true; toggle(); } return 0; });
+        var parsed = Clothesline.Core.ShortcutGesture.Parse(gesture); Gesture = parsed.Display;
+        Registered = parsed.Key != 0 && Native.RegisterHotKey(source.Handle, activeId, parsed.Modifiers | 0x4000, parsed.Key);
     }
-    public void Dispose() { if (Registered) Native.UnregisterHotKey(source.Handle, 1); source.Dispose(); }
+    public PreparedShortcut Prepare(string gesture)
+    {
+        var parsed = Clothesline.Core.ShortcutGesture.Parse(gesture);
+        if (parsed.Display == Gesture) return new(() => { }, () => { });
+        var candidateId = activeId == 1 ? 2 : 1;
+        if (parsed.Key != 0 && !Native.RegisterHotKey(source.Handle, candidateId, parsed.Modifiers | 0x4000, parsed.Key))
+            throw new InvalidOperationException("快捷键被占用或被系统保留，原设置已保留。请选择其他组合。");
+        return new(() =>
+        {
+            if (Registered) Native.UnregisterHotKey(source.Handle, activeId);
+            activeId = candidateId; Gesture = parsed.Display; Registered = parsed.Key != 0;
+        }, () => { if (parsed.Key != 0) Native.UnregisterHotKey(source.Handle, candidateId); });
+    }
+    public bool Retry()
+    {
+        if (Registered || Gesture.Length == 0) return Registered;
+        var parsed = Clothesline.Core.ShortcutGesture.Parse(Gesture);
+        return Registered = Native.RegisterHotKey(source.Handle, activeId, parsed.Modifiers | 0x4000, parsed.Key);
+    }
+    public void Dispose() { if (Registered) Native.UnregisterHotKey(source.Handle, activeId); source.Dispose(); }
+}
+
+internal sealed class PreparedShortcut(Action commit, Action rollback) : IDisposable
+{
+    private bool finished;
+    public void Commit() { if (finished) return; commit(); finished = true; }
+    public void Dispose() { if (finished) return; finished = true; rollback(); }
 }

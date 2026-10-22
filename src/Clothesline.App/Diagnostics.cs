@@ -103,6 +103,9 @@ internal static class Diagnostics
                 var dashboard = new Dashboard(controller, true, () => { }) { Exiting = true };
                 dashboard.Show(); await Task.Delay(150);
                 Render((FrameworkElement)dashboard.Content, Path.Combine(directory, "control-panel.png"));
+                dashboard.Hide(); controller.Start(false); controller.Toggle();
+                Check("empty-toggle-reveals-dashboard", dashboard.IsVisible);
+                Check("empty-toggle-keeps-library-empty", controller.Count == 0 && !controller.Visible);
                 dashboard.Hide(); controller.Start();
                 await Task.Delay(2000); // exclude first render/JIT work from the idle sample
                 using var process = Process.GetCurrentProcess();

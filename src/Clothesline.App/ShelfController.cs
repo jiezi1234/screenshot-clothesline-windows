@@ -29,6 +29,7 @@ internal sealed class ShelfController : IDisposable
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;
     public event Action? FilesChanged;
+    public event Action? EmptyRevealRequested;
     public bool ReduceMotion { get; set; }
     public bool SuppressFullscreen { get; set; } = true;
     public bool Visible => presented;
@@ -86,7 +87,12 @@ internal sealed class ShelfController : IDisposable
     {
         if (Busy) return;
         if (presented) { Hide(); return; }
-        if (cards.Count == 0) { Status?.Invoke("晾衣绳为空，可导入图片或从历史重新挂上。"); return; }
+        if (cards.Count == 0)
+        {
+            Status?.Invoke("晾衣绳为空。点击“导入图片…”添加图片，或在“本地历史”中重新挂上。新截图保存到监听目录后也会自动加入。");
+            EmptyRevealRequested?.Invoke();
+            return;
+        }
         var monitor = Native.MonitorAt(Native.Cursor);
         if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke("当前显示器为全屏窗口，已暂缓显示。"); return; }
         Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present();

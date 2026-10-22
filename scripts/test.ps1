@@ -1,0 +1,17 @@
+param([string]$Dotnet = 'dotnet', [switch]$Desktop)
+$ErrorActionPreference = 'Stop'
+$executable = (Get-Command $Dotnet -ErrorAction Stop).Source
+Push-Location (Join-Path $PSScriptRoot '..')
+$previousRoot = $env:DOTNET_ROOT
+try {
+    & $executable build Clothesline.slnx --configuration Release
+    if ($LASTEXITCODE -ne 0) { throw "Build failed: $LASTEXITCODE" }
+    & $executable run --project tests/Clothesline.Core.Tests --configuration Release --no-build
+    if ($LASTEXITCODE -ne 0) { throw "Core checks failed: $LASTEXITCODE" }
+    if ($Desktop) {
+        # Interactive desktop required. This starts only our own test windows.
+        $env:DOTNET_ROOT = Split-Path $executable
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.Prototype.dll --self-test artifacts/validation
+        if ($LASTEXITCODE -ne 0) { throw "Desktop checks failed. See artifacts/validation/diagnostics.json" }
+    }
+} finally { $env:DOTNET_ROOT = $previousRoot; Pop-Location }

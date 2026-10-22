@@ -159,7 +159,7 @@ internal sealed class CardWindow : OverlayWindow
         var p = e.GetPosition(surface);
         if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         down = null; surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
-        try { Report(ShellTransfer.Drag(this, Item, RecycleRequested)); }
+        try { Report(ShellTransfer.Drag(this, Item)); }
         catch (Exception ex) { Report("拖拽未完成：" + ex.Message); }
         finally { Busy = false; DragEnded?.Invoke(); }
     }

@@ -32,6 +32,36 @@
       "details": null
     },
     {
+      "name": "drag-offers-copy-without-move-or-link",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "drag-shell-data-contains-readable-original",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "drag-copy-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "cancelled-drag-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "unexpected-move-result-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "failed-drag-preserves-original-and-shelf-entry",
+      "passed": true,
+      "details": null
+    },
+    {
       "name": "thumbnail-bounded-original-unchanged",
       "passed": true,
       "details": null

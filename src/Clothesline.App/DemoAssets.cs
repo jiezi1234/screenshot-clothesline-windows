@@ -8,7 +8,7 @@ using System.Windows.Media.Imaging;
 
 namespace Clothesline.App;
 
-internal sealed record DemoItem(string Title, string Subtitle, string Path, BitmapSource Image);
+internal sealed record DemoItem(string Title, string Subtitle, string Path, BitmapSource Image, string? EntryId = null);
 
 internal static class DemoAssets
 {

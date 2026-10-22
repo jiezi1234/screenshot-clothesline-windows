@@ -54,9 +54,12 @@ internal sealed class CardWindow : OverlayWindow
 {
     public DemoItem Item { get; }
     public bool Busy { get; private set; }
+    public bool InteractionActive => Busy || down is not null || clickTimer.IsEnabled;
     public event Action<string>? Status;
     public event Action<CardWindow>? TakeDown;
     public event Action? DragEnded;
+    public Action<DemoItem>? RecycleRequested { get; set; }
+    public Action<DemoItem, bool>? ExportRequested { get; set; }
     private Point? down;
     private readonly DispatcherTimer clickTimer;
     private readonly TextBlock caption;
@@ -82,7 +85,7 @@ internal sealed class CardWindow : OverlayWindow
         surface.Child = inside; root.Children.Add(surface);
         var clip = new Border { Width = 14, Height = 28, Background = DemoAssets.Brush("#BC8F58"), CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Center };
         root.Children.Add(clip);
-        var remove = new Button { Content = "×", Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 23, 4, 0), Background = DemoAssets.Brush("#F7FAF6"), Foreground = DemoAssets.Brush("#355446"), BorderThickness = new Thickness(0), Focusable = false, ToolTip = "取下示例（保留文件）" };
+        var remove = new Button { Content = "×", Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 23, 4, 0), Background = DemoAssets.Brush("#F7FAF6"), Foreground = DemoAssets.Brush("#355446"), BorderThickness = new Thickness(0), Focusable = false, ToolTip = "取下到历史（保留文件）" };
         remove.Click += (_, _) => { clickTimer.Stop(); TakeDown?.Invoke(this); };
         AutomationProperties.SetName(remove, "取下" + item.Title);
         root.Children.Add(remove); Content = root;
@@ -96,10 +99,12 @@ internal sealed class CardWindow : OverlayWindow
         var menu = new ContextMenu();
         Add(menu, "复制图片", Copy);
         Add(menu, "打开图片", () => ShellTransfer.Open(item.Path));
-        Add(menu, "打开示例文件夹", () => ShellTransfer.Open(Path.GetDirectoryName(item.Path)!));
+        Add(menu, "在资源管理器中定位", () => ShellTransfer.Reveal(item.Path));
+        Add(menu, "另存为", () => ExportRequested?.Invoke(item, false));
+        Add(menu, "保存副本到桌面", () => ExportRequested?.Invoke(item, true));
         menu.Items.Add(new Separator());
         Add(menu, "取下（保留文件）", () => TakeDown?.Invoke(this));
-        Add(menu, "将示例文件移入回收站", () => { Report(ShellTransfer.Recycle(item.Path)); DragEnded?.Invoke(); });
+        Add(menu, "将文件移入回收站", () => { if (RecycleRequested is not null) RecycleRequested(item); else Report(ShellTransfer.Recycle(item.Path)); DragEnded?.Invoke(); });
         menu.Opened += (_, _) => { Busy = true; clickTimer.Stop(); };
         menu.Closed += (_, _) => Busy = false;
         surface.ContextMenu = menu;
@@ -128,7 +133,7 @@ internal sealed class CardWindow : OverlayWindow
         var p = e.GetPosition(surface);
         if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         down = null; surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
-        try { Report(ShellTransfer.Drag(this, Item)); }
+        try { Report(ShellTransfer.Drag(this, Item, RecycleRequested)); }
         catch (Exception ex) { Report("拖拽未完成：" + ex.Message); }
         finally { Busy = false; DragEnded?.Invoke(); }
     }
@@ -139,13 +144,14 @@ internal sealed class CardWindow : OverlayWindow
     }
     private void Copy()
     {
-        if (!File.Exists(Item.Path)) { Report("示例文件已移走，请恢复示例。"); return; }
+        if (!File.Exists(Item.Path)) { Report("原文件已移走，可在历史中查看失效记录。"); return; }
         try
         {
             var data = new DataObject();
-            data.SetImage(Item.Image);
+            var original = ImageFiles.Read(Item.Path);
+            data.SetImage(original);
             data.SetFileDropList(new StringCollection { Item.Path });
-            data.SetData("PNG", new MemoryStream(File.ReadAllBytes(Item.Path)));
+            data.SetData("PNG", new MemoryStream(ImageFiles.Png(original)));
             data.SetData("ScreenshotClothesline.OwnCopy", "1", false);
             Clipboard.SetDataObject(data, true);
             Report("已复制原图");

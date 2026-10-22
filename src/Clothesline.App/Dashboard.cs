@@ -1,72 +1,122 @@
 using System;
-using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Threading;
+using Clothesline.Storage;
 
 namespace Clothesline.App;
 
 internal sealed class Dashboard : Window
 {
-    private readonly TextBlock status;
-    private readonly TextBlock metrics;
-    private readonly DispatcherTimer timer;
+    private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 12), MinHeight = 34 };
+    private readonly ListBox history = new() { MinHeight = 180, DisplayMemberPath = "Label" };
+    private readonly TabControl tabs = new();
+    private readonly LibraryRuntime? library;
+    private readonly TextBox screenshot = new();
+    private readonly TextBox[] extras = [new(), new(), new()];
+    private readonly CheckBox clipboard = new() { Content = "收集剪贴板纯图片（默认关闭）" };
+    private readonly CheckBox pause = new() { Content = "暂停自动收集" };
+    private readonly CheckBox popup = new() { Content = "新图片加入时短暂展开" };
+    private readonly CheckBox full = new() { Content = "全屏时自动收起" };
+    private readonly CheckBox motion = new() { Content = "减少动画" };
+    private readonly ComboBox capacity = new() { ItemsSource = new[] { "自动：当前屏幕一排", "25 张", "50 张", "100 张" }, MinWidth = 170 };
+    private readonly ComboBox retention = new() { ItemsSource = new[] { "永久保留（不自动清理）", "取下 7 天后清理", "取下 30 天后清理" }, MinWidth = 200 };
+    private readonly ComboBox storage = new() { ItemsSource = new[] { "512 MiB", "1 GiB", "2 GiB" }, MinWidth = 120 };
     public bool Exiting { get; set; }
-    public Dashboard(ShelfController controller, bool shortcutRegistered, Action quit)
+    public Dashboard(ShelfController controller, bool shortcutRegistered, Action quit, LibraryRuntime? library = null)
     {
-        Title = "Screenshot Clothesline · 阶段 0"; Width = 790; Height = 650;
-        MinWidth = 690; MinHeight = 610; WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = DemoAssets.Brush("#F4F5EE"); FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI");
-        var root = new Grid { Margin = new Thickness(30, 25, 30, 22) };
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        var header = new StackPanel();
-        header.Children.Add(Label("SCREENSHOT CLOTHESLINE     /     WINDOWS PROTOTYPE", 11, "#648070"));
-        header.Children.Add(Label("把灵感，晾在手边。", 32, "#213D30", 10));
-        header.Children.Add(Label("阶段 0 · 桌面交互实验     Windows 11 / x64", 13, "#718276", 8));
-        root.Children.Add(header);
-        var body = new StackPanel { Margin = new Thickness(0, 24, 0, 0) }; Grid.SetRow(body, 1);
-        var tip = new Border { Background = DemoAssets.Brush("#E3EBE0"), CornerRadius = new CornerRadius(12), Padding = new Thickness(18) };
-        var instructions = new StackPanel();
-        instructions.Children.Add(Label("屏幕顶部中央停留片刻，即可展开晾衣绳", 17, "#294C38"));
-        instructions.Children.Add(Label(shortcutRegistered ? "Ctrl + Alt + T  显示 / 收起 · 按鼠标所在显示器定位" : "Ctrl + Alt + T 注册失败（可能已被占用），请使用下方按钮或托盘菜单。", 12, "#54715D", 8));
-        instructions.Children.Add(Label("单击复制原图 · 双击打开 · 拖到其他应用 · 右键更多操作", 12, "#54715D", 7));
-        tip.Child = instructions; body.Children.Add(tip);
-        var actions = new WrapPanel { Margin = new Thickness(0, 18, 0, 0) };
-        actions.Children.Add(Button("显示 / 收起晾衣绳", () => controller.Toggle(), true));
-        actions.Children.Add(Button("恢复 3 张示例", controller.ResetSamples));
-        actions.Children.Add(Button("打开示例文件夹", () => ShellTransfer.Open(DemoAssets.Folder)));
-        body.Children.Add(actions);
-        var options = new StackPanel { Margin = new Thickness(1, 16, 0, 12) };
-        var full = new CheckBox { Content = "全屏时自动收起", IsChecked = true, Margin = new Thickness(0, 0, 0, 10), Foreground = DemoAssets.Brush("#355240") };
-        full.Checked += (_, _) => controller.SuppressFullscreen = true; full.Unchecked += (_, _) => controller.SuppressFullscreen = false;
-        var motion = new CheckBox { Content = "减少动画", Foreground = DemoAssets.Brush("#355240") };
-        motion.Checked += (_, _) => controller.ReduceMotion = true; motion.Unchecked += (_, _) => controller.ReduceMotion = false;
-        options.Children.Add(full); options.Children.Add(motion); body.Children.Add(options);
-        status = Label("准备就绪。当前仅使用程序生成的示例图片。", 13, "#354D3D", 7);
-        status.TextWrapping = TextWrapping.Wrap; status.MinHeight = 42; body.Children.Add(status);
-        metrics = Label("", 11, "#7B887E", 10); body.Children.Add(metrics);
-        var footer = new StackPanel(); Grid.SetRow(footer, 2);
-        footer.Children.Add(Label("示例模式：取下保留文件；恢复会生成新样例。尚未接入截图收集与历史。", 11, "#7B887E"));
-        var bottom = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        bottom.Children.Add(Button("收起控制面板", Hide)); bottom.Children.Add(Button("退出原型", quit));
-        footer.Children.Add(bottom); root.Children.Add(body); root.Children.Add(footer); Content = root;
+        this.library = library;
+        Title = "Screenshot Clothesline · 截图与历史"; Width = 880; Height = 760; MinWidth = 740; MinHeight = 640;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = DemoAssets.Brush("#F4F5EE");
+        FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI"); Foreground = DemoAssets.Brush("#294535");
+        var root = new DockPanel { Margin = new Thickness(28, 20, 28, 20) };
+        var header = new StackPanel(); DockPanel.SetDock(header, Dock.Top);
+        header.Children.Add(new TextBlock { Text = "把灵感，晾在手边。", FontSize = 29 });
+        header.Children.Add(new TextBlock { Text = "截图收集 / 本地历史     ·     Windows 11 x64", Margin = new Thickness(0, 5, 0, 12), Foreground = DemoAssets.Brush("#748171") });
+        var actions = new WrapPanel();
+        actions.Children.Add(Button("显示 / 收起", controller.Toggle)); actions.Children.Add(Button("导入图片…", Import));
+        actions.Children.Add(Button("本地历史", ShowHistory)); actions.Children.Add(Button("暂停 / 恢复", () => { library?.TogglePause(); FillSettings(); }));
+        header.Children.Add(actions);
+        header.Children.Add(new TextBlock { Text = shortcutRegistered ? "顶部中央悬停或 Ctrl + Alt + T · 单击复制 · 双击打开 · 拖出 · 滚轮翻页" : "快捷键被占用，请使用按钮或托盘；可在卡片上滚轮翻页。", Margin = new Thickness(0, 12, 0, 12), FontSize = 12 }); root.Children.Add(header);
+        var footer = new StackPanel(); DockPanel.SetDock(footer, Dock.Bottom);
+        footer.Children.Add(status); var exit = new WrapPanel(); exit.Children.Add(Button("收起控制面板", Hide)); exit.Children.Add(Button("退出", quit)); footer.Children.Add(exit); root.Children.Add(footer);
+        tabs.Items.Add(new TabItem { Header = "来源与设置", Content = SettingsPanel() }); tabs.Items.Add(new TabItem { Header = "本地历史", Content = HistoryPanel() }); root.Children.Add(tabs); Content = root;
         controller.Status += SetStatus;
-        timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-        timer.Tick += (_, _) => { if (IsVisible) { using var process = Process.GetCurrentProcess(); metrics.Text = $"{controller.Count} 张示例  ·  {Native.Monitors().Count} 个显示器  ·  工作集 {process.WorkingSet64 / 1048576.0:F1} MB  ·  最近显示调用 {controller.LastShowMilliseconds:F1} ms"; } };
-        timer.Start();
+        if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(library.Settings.Paused ? "自动收集已暂停。" : "准备收集新增图片；取下和超出容量的图片可从历史找回。"); } else SetStatus("界面诊断模式：没有启用收集。");
         Closing += (_, e) => { if (!Exiting) { e.Cancel = true; Hide(); } };
-        Closed += (_, _) => { timer.Stop(); controller.Status -= SetStatus; };
+        Closed += (_, _) => { controller.Status -= SetStatus; if (library is not null) { library.Status -= SetStatus; library.Changed -= UpdateHistory; } };
+    }
+    private FrameworkElement SettingsPanel()
+    {
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(Label("截图目录（首次选择只监听新增图片）")); panel.Children.Add(FolderRow(screenshot));
+        panel.Children.Add(Label("额外目录：最多 3 个，不包含子目录")); foreach (var text in extras) panel.Children.Add(FolderRow(text));
+        foreach (var check in new[] { clipboard, pause, popup, full, motion }) { check.Margin = new Thickness(0, 6, 0, 0); panel.Children.Add(check); }
+        var limits = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) }; limits.Children.Add(Choice("晾衣绳容量", capacity)); limits.Children.Add(Choice("历史期限", retention)); limits.Children.Add(Choice("自管图片上限", storage)); panel.Children.Add(limits);
+        panel.Children.Add(new TextBlock { Text = "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的图片仅尝试移入回收站，失败保留记录。", TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 12, 0, 12) });
+        var container = new DockPanel(); var save = Button("保存设置", SaveSettings); save.Margin = new Thickness(16, 8, 16, 10); DockPanel.SetDock(save, Dock.Bottom); container.Children.Add(save);
+        container.Children.Add(new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }); return container;
+    }
+    private FrameworkElement HistoryPanel()
+    {
+        var panel = new DockPanel { Margin = new Thickness(16) }; var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; DockPanel.SetDock(actions, Dock.Bottom);
+        actions.Children.Add(Button("预览", () => Selected(Preview))); actions.Children.Add(Button("重新挂上", () => Selected(e => library?.Restore(e.Id))));
+        actions.Children.Add(Button("导出…", () => Selected(e => library?.Export(e.Path)))); actions.Children.Add(Button("定位", () => Selected(e => ShellTransfer.Reveal(e.Path))));
+        actions.Children.Add(Button("移除记录", () => Selected(e => library?.Forget(e.Id)))); actions.Children.Add(Button("回收文件", () => Selected(e => library?.Recycle(e.Id)))); panel.Children.Add(actions);
+        var note = new TextBlock { Text = "外部引用依赖原路径。取下时间用于计算期限；重新挂上会取消计时。", TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 10) }; DockPanel.SetDock(note, Dock.Top); panel.Children.Add(note);
+        history.MouseDoubleClick += (_, _) => Selected(Preview); panel.Children.Add(history); return panel;
+    }
+    private sealed record HistoryRow(LibraryEntry Entry)
+    {
+        public string Label => $"{Entry.Title}  ·  {(Entry.Missing ? "文件失效" : Entry.Ownership == Ownership.Managed ? "应用保存" : "外部引用")}\n{(Entry.ArchivedAt is long time ? DateTimeOffset.FromUnixTimeMilliseconds(time).LocalDateTime.ToString("yyyy-MM-dd HH:mm") : "")}  {Entry.Error}";
+    }
+    private void Selected(Action<LibraryEntry> action)
+    { if (history.SelectedItem is HistoryRow row) { try { action(row.Entry); } catch (Exception ex) { SetStatus(ex.Message); } } else SetStatus("请先选择一条历史记录。"); }
+    private void Preview(LibraryEntry entry)
+    {
+        var preview = new Window { Title = entry.Title, Width = 800, Height = 560, Owner = this, Background = DemoAssets.Brush("#1F2D26"), Content = new Image { Source = ImageFiles.Read(entry.Path), Stretch = Stretch.Uniform } };
+        preview.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape) preview.Close(); }; preview.Show();
+    }
+    private void UpdateHistory()
+    {
+        var id = (history.SelectedItem as HistoryRow)?.Entry.Id;
+        var rows = library?.Store.Entries(EntryState.History).Select(e => new HistoryRow(e)).ToArray() ?? [];
+        history.ItemsSource = rows; history.SelectedItem = rows.FirstOrDefault(r => r.Entry.Id == id);
+    }
+    private void FillSettings()
+    {
+        if (library is null) return; var settings = library.Settings; screenshot.Text = settings.ScreenshotFolder;
+        for (var i = 0; i < 3; i++) extras[i].Text = i < settings.ExtraFolders.Length ? settings.ExtraFolders[i] : "";
+        clipboard.IsChecked = settings.ClipboardEnabled; pause.IsChecked = settings.Paused; popup.IsChecked = settings.ShowNew; full.IsChecked = settings.SuppressFullscreen; motion.IsChecked = settings.ReduceMotion;
+        capacity.SelectedIndex = Array.IndexOf(new[] { 0, 25, 50, 100 }, settings.Capacity); retention.SelectedIndex = Array.IndexOf(new[] { 0, 7, 30 }, settings.RetentionDays);
+        storage.SelectedIndex = settings.MaxManagedBytes >= 2L * 1024 * 1024 * 1024 ? 2 : settings.MaxManagedBytes >= 1024L * 1024 * 1024 ? 1 : 0;
+    }
+    private void SaveSettings()
+    {
+        if (library is null) return;
+        library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = pause.IsChecked == true, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
+            Capacity = new[] { 0, 25, 50, 100 }[Math.Max(0, capacity.SelectedIndex)], RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024 });
+    }
+    private async void Import()
+    {
+        if (library is null) return; var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Filter = "图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif" };
+        if (dialog.ShowDialog(this) == true) await library.ImportFiles(dialog.FileNames);
+    }
+    private FrameworkElement FolderRow(TextBox text)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 4, 0, 2) }; var browse = Button("选择…", () => { var dialog = new Microsoft.Win32.OpenFolderDialog(); if (dialog.ShowDialog(this) == true) text.Text = dialog.FolderName; });
+        DockPanel.SetDock(browse, Dock.Right); row.Children.Add(browse); text.VerticalContentAlignment = VerticalAlignment.Center; row.Children.Add(text); return row;
+    }
+    private static FrameworkElement Choice(string title, ComboBox combo) { var p = new StackPanel { Margin = new Thickness(0, 0, 16, 0) }; p.Children.Add(Label(title)); p.Children.Add(combo); return p; }
+    private static TextBlock Label(string text) => new() { Text = text, Margin = new Thickness(0, 7, 0, 5), FontSize = 12 };
+    private Button Button(string title, Action action)
+    {
+        var button = new Button { Content = title, Padding = new Thickness(12, 7, 12, 7), Margin = new Thickness(0, 0, 8, 4), Background = DemoAssets.Brush("#E2E9DD"), BorderThickness = new Thickness(0) };
+        button.Click += (_, _) => { try { action(); } catch (Exception ex) { SetStatus(ex.Message); } }; return button;
     }
     public void SetStatus(string text) => status.Text = text;
     public void Reveal() { Show(); WindowState = WindowState.Normal; Activate(); }
-    private static TextBlock Label(string text, double size, string color, double top = 0) => new() { Text = text, FontSize = size, Foreground = DemoAssets.Brush(color), Margin = new Thickness(0, top, 0, 0) };
-    private System.Windows.Controls.Button Button(string title, Action action, bool primary = false)
-    {
-        var button = new System.Windows.Controls.Button { Content = title, Padding = new Thickness(15, 10, 15, 10), Margin = new Thickness(0, 0, 10, 0), Background = DemoAssets.Brush(primary ? "#315B43" : "#E8ECE3"), Foreground = DemoAssets.Brush(primary ? "#FFFFFF" : "#37503E"), BorderThickness = new Thickness(0), Cursor = System.Windows.Input.Cursors.Hand };
-        button.Click += (_, _) => { try { action(); } catch (Exception ex) { SetStatus(ex.Message); } };
-        return button;
-    }
+    public void ShowHistory() { UpdateHistory(); tabs.SelectedIndex = 1; Reveal(); }
 }

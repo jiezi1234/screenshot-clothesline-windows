@@ -2,8 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Clothesline.App/Clothesline.App.csproj" />
     <Project Path="src/Clothesline.Core/Clothesline.Core.csproj" />
+    <Project Path="src/Clothesline.Storage/Clothesline.Storage.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Clothesline.Core.Tests/Clothesline.Core.Tests.csproj" />
+    <Project Path="tests/Clothesline.Storage.Tests/Clothesline.Storage.Tests.csproj" />
   </Folder>
 </Solution>

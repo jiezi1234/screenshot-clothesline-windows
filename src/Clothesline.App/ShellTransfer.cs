@@ -25,7 +25,7 @@ internal static class ShellTransfer
     [DllImport("kernel32.dll")] private static extern bool GlobalUnlock(nint memory);
     [DllImport("kernel32.dll")] private static extern nuint GlobalSize(nint memory);
 
-    public static string Drag(Window owner, DemoItem item)
+    public static string Drag(Window owner, DemoItem item, Action<DemoItem>? recycle = null)
     {
         if (!File.Exists(item.Path)) return "文件已移走；请恢复示例。";
         var ole = OleInitialize(0);
@@ -43,6 +43,7 @@ internal static class ShellTransfer
             var target = ReadBytes(data, "TargetCLSID", 16);
             var inRecycleBin = target is not null && new Guid(target) == RecycleBinId;
             var decision = TransferPolicy.Decide(result == 0x40100, File.Exists(item.Path), inRecycleBin, effect);
+            if (decision == TransferDisposition.RecycleRequested && recycle is not null) { recycle(item); return "回收站操作已处理。"; }
             return decision switch
             {
                 TransferDisposition.RecycleRequested => Recycle(item.Path),
@@ -76,12 +77,13 @@ internal static class ShellTransfer
     }
     public static string Recycle(string path)
     {
-        // The platform owns its confirmation/error UI. Never fall back to File.Delete.
-        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
-            Microsoft.VisualBasic.FileIO.UIOption.AllDialogs,
-            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin,
-            Microsoft.VisualBasic.FileIO.UICancelOption.ThrowException);
+        SafeRecycle.File(path);
         return File.Exists(path) ? "文件仍在原位置。" : "示例文件已移入回收站。";
     }
     public static void Open(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+    public static void Reveal(string path)
+    {
+        var start = new ProcessStartInfo("explorer.exe") { UseShellExecute = false };
+        start.ArgumentList.Add("/select," + Path.GetFullPath(path)); Process.Start(start);
+    }
 }

@@ -44,6 +44,13 @@ internal static class ImageFiles
         return stream.ToArray();
     }
     public static string Export(string source, string requested)
+        => WriteCopy(requested, output => { using var input = File.OpenRead(source); input.CopyTo(output); });
+    public static string ExportPng(byte[] png, string requested)
+    {
+        if (!Path.GetExtension(requested).Equals(".png", StringComparison.OrdinalIgnoreCase)) requested += ".png";
+        return WriteCopy(requested, output => output.Write(png));
+    }
+    private static string WriteCopy(string requested, Action<FileStream> write)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(requested))!;
         Directory.CreateDirectory(directory);
@@ -55,8 +62,7 @@ internal static class ImageFiles
             var temporary = Path.Combine(directory, ".clothesline-" + Guid.NewGuid().ToString("N") + ".tmp");
             try
             {
-                using (var input = File.OpenRead(source))
-                using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { input.CopyTo(output); output.Flush(true); }
+                using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { write(output); output.Flush(true); }
                 File.Move(temporary, target, false); return target;
             }
             catch (IOException) when (File.Exists(target)) { }

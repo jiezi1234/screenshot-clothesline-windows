@@ -38,8 +38,9 @@ internal sealed class Dashboard : Window
         var actions = new WrapPanel();
         actions.Children.Add(Button("显示 / 收起", controller.Toggle)); actions.Children.Add(Button("导入图片…", Import));
         actions.Children.Add(Button("本地历史", ShowHistory)); actions.Children.Add(Button("暂停 / 恢复", () => { library?.TogglePause(); FillSettings(); }));
+        actions.Children.Add(Button("全部取下", () => library?.ArchiveBatch()));
         header.Children.Add(actions);
-        header.Children.Add(new TextBlock { Text = shortcutRegistered ? "顶部中央悬停或 Ctrl + Alt + T · 单击复制 · 双击打开 · 拖出 · 滚轮翻页" : "快捷键被占用，请使用按钮或托盘；可在卡片上滚轮翻页。", Margin = new Thickness(0, 12, 0, 12), FontSize = 12 }); root.Children.Add(header);
+        header.Children.Add(new TextBlock { Text = shortcutRegistered ? "顶部悬停 / Ctrl + Alt + T · 单击复制 · 双击打开 · 长按编辑 · 拖出 · 滚轮翻页" : "快捷键被占用，请使用按钮或托盘；右键图片可预览、编辑。", Margin = new Thickness(0, 12, 0, 12), FontSize = 12 }); root.Children.Add(header);
         var footer = new StackPanel(); DockPanel.SetDock(footer, Dock.Bottom);
         footer.Children.Add(status); var exit = new WrapPanel(); exit.Children.Add(Button("收起控制面板", Hide)); exit.Children.Add(Button("退出", quit)); footer.Children.Add(exit); root.Children.Add(footer);
         tabs.Items.Add(new TabItem { Header = "来源与设置", Content = SettingsPanel() }); tabs.Items.Add(new TabItem { Header = "本地历史", Content = HistoryPanel() }); root.Children.Add(tabs); Content = root;
@@ -63,6 +64,7 @@ internal sealed class Dashboard : Window
     {
         var panel = new DockPanel { Margin = new Thickness(16) }; var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; DockPanel.SetDock(actions, Dock.Bottom);
         actions.Children.Add(Button("预览", () => Selected(Preview))); actions.Children.Add(Button("重新挂上", () => Selected(e => library?.Restore(e.Id))));
+        actions.Children.Add(Button("编辑…", () => Selected(e => library?.OpenWorkspace(e.Id, true))));
         actions.Children.Add(Button("导出…", () => Selected(e => library?.Export(e.Path)))); actions.Children.Add(Button("定位", () => Selected(e => ShellTransfer.Reveal(e.Path))));
         actions.Children.Add(Button("移除记录", () => Selected(e => library?.Forget(e.Id)))); actions.Children.Add(Button("回收文件", () => Selected(e => library?.Recycle(e.Id)))); panel.Children.Add(actions);
         var note = new TextBlock { Text = "外部引用依赖原路径。取下时间用于计算期限；重新挂上会取消计时。", TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 10) }; DockPanel.SetDock(note, Dock.Top); panel.Children.Add(note);
@@ -76,8 +78,7 @@ internal sealed class Dashboard : Window
     { if (history.SelectedItem is HistoryRow row) { try { action(row.Entry); } catch (Exception ex) { SetStatus(ex.Message); } } else SetStatus("请先选择一条历史记录。"); }
     private void Preview(LibraryEntry entry)
     {
-        var preview = new Window { Title = entry.Title, Width = 800, Height = 560, Owner = this, Background = DemoAssets.Brush("#1F2D26"), Content = new Image { Source = ImageFiles.Read(entry.Path), Stretch = Stretch.Uniform } };
-        preview.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape) preview.Close(); }; preview.Show();
+        library?.OpenWorkspace(entry.Id, false);
     }
     private void UpdateHistory()
     {

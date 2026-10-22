@@ -37,4 +37,10 @@ Check(TransferPolicy.Decide(true, true, 1) == TransferDisposition.Keep, "copy re
 Check(TransferPolicy.Decide(true, false, 1) == TransferDisposition.RemoveMissing, "missing source is reported instead of pretending a copy remains usable");
 Check(TransferPolicy.Decide(true, true, 2) == TransferDisposition.VerifyMove, "unexpected move result cannot authorize source deletion");
 Check(TransferPolicy.Decide(true, true, 0x80000001) == TransferDisposition.Keep, "copy with scroll flag retains source");
+string[] ordered = ["newest", "middle", "oldest", "other-page"];
+Check(BatchSelection.Select(ordered, "middle", ArchiveScope.Left).SequenceEqual(["newest"]), "left archive preserves anchor and newer-first ordering");
+Check(BatchSelection.Select(ordered, "middle", ArchiveScope.Right).SequenceEqual(["oldest", "other-page"]), "right archive includes later pages and excludes anchor");
+Check(BatchSelection.Select(ordered, "middle", ArchiveScope.All).SequenceEqual(ordered), "all archive includes anchor and every page");
+Check(BatchSelection.Select(ordered, "missing", ArchiveScope.All).Length == 0 && BatchSelection.Select([], "missing", ArchiveScope.Left).Length == 0, "stale anchor and empty shelf archive nothing");
+Check(BatchSelection.Select(ordered, "newest", ArchiveScope.Left).Length == 0 && BatchSelection.Select(ordered, "other-page", ArchiveScope.Right).Length == 0, "batch boundaries do not wrap");
 Console.WriteLine($"{checks} checks passed.");

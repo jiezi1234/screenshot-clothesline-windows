@@ -17,6 +17,7 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--self-test") return Diagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--test-backdrop") return Diagnostics.Backdrop(app, args[1]);
         if (args.Length == 2 && args[0] == "--library-test") return LibraryDiagnostics.Run(app, args[1]);
+        if (args.Length == 2 && args[0] == "--editor-test") return EditorDiagnostics.Run(app, args[1]);
         using var instance = new Mutex(true, "Local\\ScreenshotClothesline.Prototype", out var first);
         using var wake = new EventWaitHandle(false, EventResetMode.AutoReset, "Local\\ScreenshotClothesline.Prototype.Wake");
         if (!first) { wake.Set(); return 0; }
@@ -24,7 +25,7 @@ internal static class Program
         using var library = new LibraryRuntime(controller);
         using var shortcut = new HotKey(controller.Toggle);
         Dashboard? dashboard = null;
-        void Quit() { if (dashboard is not null) dashboard.Exiting = true; app.Shutdown(); }
+        void Quit() { if (!library.TryCloseWorkspaces()) return; if (dashboard is not null) dashboard.Exiting = true; app.Shutdown(); }
         dashboard = new Dashboard(controller, shortcut.Registered, Quit, library);
         using var tray = new Forms.NotifyIcon { Text = "Screenshot Clothesline · 截图与历史", Icon = CreateIcon(), Visible = true };
         var menu = new Forms.ContextMenuStrip();

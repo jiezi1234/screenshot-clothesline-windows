@@ -89,4 +89,25 @@ using (var engine = new CollectionEngine(store, path => Convert.ToHexString(SHA2
     Check(store.Entries().Any(e => e.Source == "Clipboard" && File.Exists(e.Path)) && !Directory.GetFiles(store.ManagedFolder, "*.part").Any(), "managed image has no unfinished part after success");
     Check(!await engine.ImportClipboard([1, 2, 3], "over-budget", 1), "storage ceiling refuses new managed content");
 }
+using (var store = new LibraryStore(Path.Combine(root, "editor-library")))
+{
+    var paths = Enumerable.Range(0, 3).Select(i => Make($"batch-{i}.png")).ToArray();
+    var entries = paths.Select((p, i) => store.Add(p, Ownership.External, "test", "batch-" + i, now + i, 100)).ToArray();
+    var changed = store.ArchiveMany([entries[0].Id, entries[0].Id, entries[1].Id, "unknown"], now + 100);
+    Check(changed == 2 && store.Entries(EntryState.Shelf).Single().Id == entries[2].Id && paths.All(File.Exists), "batch archive deduplicates IDs and retains original files");
+    Check(store.ArchiveMany([entries[0].Id], now + 900) == 0 && store.Find(entries[0].Id)!.ArchivedAt == now + 100, "repeated batch archive preserves retention start");
+    var managedPath = Path.Combine(store.ManagedFolder, "in-editor.png"); File.WriteAllText(managedPath, "protected");
+    var managed = store.Add(managedPath, Ownership.Managed, "Clipboard", "protected", now, 100); store.Archive(managed.Id, now);
+    var calls = 0;
+    store.Cleanup(7, now + 10 * day, _ => { calls++; return false; }, e => e.Id == managed.Id || e.Id == entries[0].Id);
+    Check(calls == 0 && store.Find(managed.Id) is not null && File.Exists(managedPath) && store.Find(entries[0].Id) is not null && store.Find(entries[1].Id) is null, "active editor protects managed file and external record while unrelated history expires");
+    store.Cleanup(7, now + 10 * day, p => { calls++; File.Move(p, p + ".test-recycled"); return true; });
+    Check(calls == 1 && store.Find(managed.Id) is null && store.Find(entries[0].Id) is null, "released editor lease permits normal retention cleanup");
+    var copy = Make("edited-copy.png", "copy");
+    var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(copy)));
+    store.Add(Make("copy-original.png", "copy"), Ownership.External, "different-folder", hash, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), 100);
+    using var engine = new CollectionEngine(store, p => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(p))), () => 100);
+    await engine.ImportExternal(copy, preserveCopy: true); await engine.ImportExternal(copy, preserveCopy: true);
+    Check(store.Entries().Count(e => e.Hash == hash) == 2 && store.Entries().Count(e => e.Path == copy) == 1, "explicit edited copy survives cross-source dedup but repeats do not create extra cards");
+}
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

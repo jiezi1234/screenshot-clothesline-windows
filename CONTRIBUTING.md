@@ -1,6 +1,6 @@
 # 贡献说明
 
-项目目前处于阶段 1 开发与验证阶段。开始实现前请阅读 [需求规格](docs/REQUIREMENTS.md)、[迁移计划](docs/MIGRATION_PLAN.md) 和 [来源说明](THIRD_PARTY_NOTICES.md)。
+项目目前处于阶段 2 开发与验证阶段，前序阶段人工验收仍有待办。开始实现前请阅读 [需求规格](docs/REQUIREMENTS.md)、[迁移计划](docs/MIGRATION_PLAN.md) 和 [来源说明](THIRD_PARTY_NOTICES.md)。
 
 - 实现参考限定为原版 macOS Tendedero、项目需求与微软官方文档，不参考已有 Windows 移植实现。
 - 原版代码的复制、改写或移植须记录来源并保留许可。

@@ -28,6 +28,8 @@ internal sealed class ShelfController : IDisposable
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;
+    public event Action<DemoItem, bool>? WorkspaceRequested;
+    public event Action<DemoItem, ArchiveScope>? BatchArchiveRequested;
     public event Action? FilesChanged;
     public bool ReduceMotion { get; set; }
     public bool SuppressFullscreen { get; set; } = true;
@@ -67,6 +69,8 @@ internal sealed class ShelfController : IDisposable
         card.TakeDown += Remove;
         card.RecycleRequested = sampleMode ? null : entry => RecycleRequested?.Invoke(entry);
         card.ExportRequested = (entry, desktop) => ExportRequested?.Invoke(entry, desktop);
+        card.WorkspaceRequested = (entry, edit) => WorkspaceRequested?.Invoke(entry, edit);
+        card.BatchArchiveRequested = (entry, scope) => BatchArchiveRequested?.Invoke(entry, scope);
         card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)(() => { Prune(); FilesChanged?.Invoke(); }));
         card.PreviewMouseWheel += (_, e) => { if (!Busy) { var count = Math.Max(1, (cards.Count + DisplayCapacity - 1) / DisplayCapacity); page = (page + (e.Delta < 0 ? 1 : count - 1)) % count; Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
         cards.Add(card);

@@ -17,5 +17,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Desktop checks failed. See artifacts/validation/diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --library-test artifacts/stage1-validation
         if ($LASTEXITCODE -ne 0) { throw "Library checks failed. See artifacts/stage1-validation/stage1-diagnostics.json" }
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --editor-test artifacts/stage2-validation
+        if ($LASTEXITCODE -ne 0) { throw "Editor checks failed. See artifacts/stage2-validation/editor-diagnostics.json" }
     }
 } finally { $env:DOTNET_ROOT = $previousRoot; Pop-Location }

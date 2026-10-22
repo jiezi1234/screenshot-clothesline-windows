@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Clothesline.App/Clothesline.App.csproj" />
+    <Project Path="src/Clothesline.Core/Clothesline.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Clothesline.Core.Tests/Clothesline.Core.Tests.csproj" />
+  </Folder>
+</Solution>

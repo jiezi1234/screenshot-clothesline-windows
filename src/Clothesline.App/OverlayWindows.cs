@@ -33,7 +33,33 @@ internal class OverlayWindow : Window
 
 internal sealed class RopeWindow : OverlayWindow
 {
-    public RopeWindow() : base("Clothesline · 绳线", true) { Content = new RopeVisual(); }
+    private readonly Border emptyHint;
+    public bool ShowEmptyHint
+    {
+        get => emptyHint.Visibility == Visibility.Visible;
+        set => emptyHint.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+    public RopeWindow() : base("Clothesline · 绳线", true)
+    {
+        var content = new Grid();
+        content.Children.Add(new RopeVisual());
+        emptyHint = new Border
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 46, 0, 0), Padding = new Thickness(18, 8, 18, 8),
+            Background = DemoAssets.Brush("#F9FAF7"), BorderBrush = DemoAssets.Brush("#D6DED6"),
+            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8),
+            Visibility = Visibility.Collapsed, IsHitTestVisible = false,
+            Child = new TextBlock
+            {
+                Text = "暂时没有图片", FontSize = 14,
+                FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI"),
+                Foreground = DemoAssets.Brush("#294535")
+            }
+        };
+        content.Children.Add(emptyHint); Content = content;
+    }
 }
 
 internal sealed class RopeVisual : FrameworkElement

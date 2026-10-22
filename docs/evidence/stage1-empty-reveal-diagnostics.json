@@ -148,7 +148,12 @@
       }
     },
     {
-      "name": "empty-toggle-reveals-dashboard",
+      "name": "empty-toggle-shows-rope-and-message",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-toggle-keeps-dashboard-hidden",
       "passed": true,
       "details": null
     },
@@ -158,13 +163,38 @@
       "details": null
     },
     {
+      "name": "empty-show-keeps-foreground",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-hint-passes-to-another-process",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-toggle-hides-rope",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "first-image-replaces-empty-hint",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "last-image-removed-shows-empty-hint",
+      "passed": true,
+      "details": null
+    },
+    {
       "name": "measurements",
       "monitorCount": 2,
       "dpi": 144,
-      "hiddenIdleCpuOneCorePercent": 0.3123651144962582,
-      "workingSetMiB": 154.94140625,
-      "coldShelfShowCallMilliseconds": 152.7703,
-      "warmSingleCardShowCallMilliseconds": 6.1502,
+      "hiddenIdleCpuOneCorePercent": 0.31233099145390447,
+      "workingSetMiB": 159.54296875,
+      "coldShelfShowCallMilliseconds": 116.1531,
+      "warmSingleCardShowCallMilliseconds": 7.2493,
       "note": "Single five-second sample after two-second warmup; CPU is one logical core basis. Show time excludes compositor/input latency. Self-test process includes diagnostic UI allocations."
     }
   ]

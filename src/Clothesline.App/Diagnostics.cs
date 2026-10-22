@@ -98,14 +98,28 @@ internal static class Diagnostics
                     using var conflict = new HotKey(() => { });
                     Check("hotkey-conflict-is-detected", !conflict.Registered, new { initialRegistration = hotkey.Registered });
                 }
-                backdrop.CloseMainWindow(); await Task.Delay(100);
                 using var controller = new ShelfController();
                 var dashboard = new Dashboard(controller, true, () => { }) { Exiting = true };
+                controller.Start(false);
+                var emptyForeground = Native.GetForegroundWindow();
+                controller.Toggle(); await Task.Delay(250);
+                var emptyRope = app.Windows.OfType<RopeWindow>().Single(w => w.IsVisible);
+                Check("empty-toggle-shows-rope-and-message", controller.Visible && emptyRope.ShowEmptyHint);
+                Check("empty-toggle-keeps-dashboard-hidden", !dashboard.IsVisible);
+                Check("empty-toggle-keeps-library-empty", controller.Count == 0);
+                Check("empty-show-keeps-foreground", Native.GetForegroundWindow() == emptyForeground);
+                Check("empty-hint-passes-to-another-process", Native.WindowFromPoint(new Native.Point { X = monitor.WorkArea.X + monitor.WorkArea.Width / 2, Y = monitor.WorkArea.Y + (int)(64 * scale) }) == backdropHandle);
+                Render((FrameworkElement)emptyRope.Content, Path.Combine(directory, "empty-shelf.png"));
+                controller.Toggle();
+                Check("empty-toggle-hides-rope", !controller.Visible && !emptyRope.IsVisible);
+                controller.Toggle(); controller.SetItems(items.Take(1), false);
+                Check("first-image-replaces-empty-hint", controller.Visible && controller.Count == 1 && !emptyRope.ShowEmptyHint);
+                controller.SetItems([], false);
+                Check("last-image-removed-shows-empty-hint", controller.Visible && controller.Count == 0 && emptyRope.ShowEmptyHint);
+                controller.Hide();
+                backdrop.CloseMainWindow(); await Task.Delay(100);
                 dashboard.Show(); await Task.Delay(150);
                 Render((FrameworkElement)dashboard.Content, Path.Combine(directory, "control-panel.png"));
-                dashboard.Hide(); controller.Start(false); controller.Toggle();
-                Check("empty-toggle-reveals-dashboard", dashboard.IsVisible);
-                Check("empty-toggle-keeps-library-empty", controller.Count == 0 && !controller.Visible);
                 dashboard.Hide(); controller.Start();
                 await Task.Delay(2000); // exclude first render/JIT work from the idle sample
                 using var process = Process.GetCurrentProcess();

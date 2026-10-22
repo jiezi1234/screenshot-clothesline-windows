@@ -44,10 +44,9 @@ internal sealed class Dashboard : Window
         footer.Children.Add(status); var exit = new WrapPanel(); exit.Children.Add(Button("收起控制面板", Hide)); exit.Children.Add(Button("退出", quit)); footer.Children.Add(exit); root.Children.Add(footer);
         tabs.Items.Add(new TabItem { Header = "来源与设置", Content = SettingsPanel() }); tabs.Items.Add(new TabItem { Header = "本地历史", Content = HistoryPanel() }); root.Children.Add(tabs); Content = root;
         controller.Status += SetStatus;
-        controller.EmptyRevealRequested += Reveal;
         if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(library.Settings.Paused ? "自动收集已暂停。" : "准备收集新增图片；取下和超出容量的图片可从历史找回。"); } else SetStatus("界面诊断模式：没有启用收集。");
         Closing += (_, e) => { if (!Exiting) { e.Cancel = true; Hide(); } };
-        Closed += (_, _) => { controller.Status -= SetStatus; controller.EmptyRevealRequested -= Reveal; if (library is not null) { library.Status -= SetStatus; library.Changed -= UpdateHistory; } };
+        Closed += (_, _) => { controller.Status -= SetStatus; if (library is not null) { library.Status -= SetStatus; library.Changed -= UpdateHistory; } };
     }
     private FrameworkElement SettingsPanel()
     {

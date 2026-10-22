@@ -116,6 +116,8 @@ using (var engine = new CollectionEngine(store, _ => "fixture", () => 25))
 {
     var original = await engine.PreserveOriginal([1, 2, 3], "root-hash", 1024 * 1024); originalId = original.Id; originalPath = original.Path;
     Check(original.State == EntryState.History && original.Source == LibraryStore.OriginalSource && File.Exists(originalPath) && store.Entries(EntryState.Shelf).Count == 0, "original snapshot commits atomically to history without occupying shelf");
+    Check(!store.IsDuplicate("new-capture.png", "root-hash", "Folder:New", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), "original backup cannot suppress a new external capture");
+    Check(await engine.ImportClipboard([1, 2, 3], "root-hash", 1024 * 1024), "original backup cannot suppress a new clipboard capture");
     var first = store.Add(Make("derived-one.png"), Ownership.External, "Folder", "one", now + day, 25); firstCopyId = first.Id;
     var second = store.Add(Make("derived-two.png"), Ownership.External, "Folder", "two", now + day, 25); secondCopyId = second.Id;
     store.BindOriginal(first.Id, original.Id); store.BindOriginal(second.Id, original.Id); store.BindOriginal(first.Id, original.Id);

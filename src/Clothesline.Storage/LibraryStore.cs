@@ -149,7 +149,7 @@ public sealed class LibraryStore : IDisposable
         lock (gate)
         {
             // Same-path watcher repeats are not new captures. Cross-source dedup has a short window.
-            return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM Items WHERE Missing=0 AND Hash=$hash AND (Path=$path COLLATE NOCASE OR ($crossSource=1 AND Source<>$source AND AddedAt >= $since))", "$hash", hash, "$path", path, "$source", source, "$since", now - 5000, "$crossSource", includeOtherSources)) > 0;
+            return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM Items WHERE Missing=0 AND Source<>$original AND Hash=$hash AND (Path=$path COLLATE NOCASE OR ($crossSource=1 AND Source<>$source AND AddedAt >= $since))", "$hash", hash, "$path", path, "$source", source, "$since", now - 5000, "$crossSource", includeOtherSources, "$original", OriginalSource)) > 0;
         }
     }
     public LibraryEntry Add(string path, Ownership ownership, string source, string hash, long now, int capacity, EntryState state = EntryState.Shelf, string? id = null)

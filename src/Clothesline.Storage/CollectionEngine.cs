@@ -130,7 +130,7 @@ public sealed class CollectionEngine : IDisposable
         try
         {
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (store.Entries().Any(e => e.Hash == hash && now - e.AddedAt < 5000 && !e.Missing)) return false;
+            if (store.Entries().Any(e => e.Source != LibraryStore.OriginalSource && e.Hash == hash && now - e.AddedAt < 5000 && !e.Missing)) return false;
             var used = Directory.EnumerateFiles(store.ManagedFolder).Sum(p => new FileInfo(p).Length);
             if (used + png.Length > limit) { Status?.Invoke("自管图片已达到存储上限，暂停新增剪贴板图片；可导出或清理历史后重试。"); return false; }
             var id = Guid.NewGuid().ToString("N"); var path = Path.Combine(store.ManagedFolder, $"clip-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{id}.png");

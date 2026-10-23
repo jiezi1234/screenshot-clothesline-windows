@@ -20,6 +20,7 @@ internal sealed class LibraryRuntime : IDisposable
     public LibrarySettings Settings { get; private set; }
     public CollectionEngine Collector { get; }
     public DesktopPreferences? Desktop { get; set; }
+    internal VideoCatalog Videos { get; }
     private readonly ShelfController shelf;
     private readonly ClipboardCollector clipboard;
     private readonly DispatcherTimer refresh;
@@ -31,7 +32,8 @@ internal sealed class LibraryRuntime : IDisposable
     private bool disposed;
     private int fileOperation;
     private readonly CaptureSoundGate soundGate = new();
-    private readonly HashSet<ImageWorkspace> workspaces = new();
+    private readonly HashSet<Window> workspaces = new();
+    private readonly HashSet<string> videoLoads = new();
     private readonly Dictionary<string, int> leases = new(StringComparer.OrdinalIgnoreCase);
     public event Action<string>? Status;
     public event Action? Changed;
@@ -41,7 +43,8 @@ internal sealed class LibraryRuntime : IDisposable
         this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); Settings = Store.LoadSettings();
         UiText.Language = Settings.Language; shelf.RefreshLanguage();
         if (!Store.HasSettings && root is null) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; Store.SaveSettings(Settings); }
-        Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity);
+        Videos = new VideoCatalog(Store.Root);
+        Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash);
         clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); });
         refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         refresh.Tick += (_, _) => { if (shelf.Busy || fileOperation > 0) return; refresh.Stop(); RefreshShelf(revealPending); revealPending = false; };
@@ -65,7 +68,7 @@ internal sealed class LibraryRuntime : IDisposable
         if (shelf.Busy && settings.CardSizePercent != Settings.CardSizePercent) throw new InvalidOperationException(T("图片交互进行中，请稍后再更改卡片大小。"));
         settings = settings with { Shortcut = ShortcutGesture.Parse(settings.Shortcut).Display };
         LibraryStore.ValidateSettings(settings);
-        var all = new[] { settings.ScreenshotFolder }.Concat(settings.ExtraFolders).Where(p => !string.IsNullOrWhiteSpace(p)).Select(Path.GetFullPath);
+        var all = new[] { settings.ScreenshotFolder, settings.VideoFolder }.Concat(settings.ExtraFolders).Where(p => !string.IsNullOrWhiteSpace(p)).Select(Path.GetFullPath);
         foreach (var folder in all)
             if (folder.Equals(Store.Root, StringComparison.OrdinalIgnoreCase) || folder.StartsWith(Store.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException(T("不能将应用数据目录用作截图来源。"));
         if (updateDesktop && Desktop is not null) Desktop.Apply(settings, Store.SaveSettings); else Store.SaveSettings(settings);
@@ -74,7 +77,7 @@ internal sealed class LibraryRuntime : IDisposable
         shelf.SetCardSize(settings.CardSizePercent);
         Collector.Configure(settings); clipboard.Enable(settings.ClipboardEnabled && !settings.Paused);
         Store.EnforceCapacity(Capacity, Now); ScheduleRefresh(false);
-        Report(settings.Paused ? T("收集已暂停；恢复后会补扫新增文件。") : T("设置已保存，开始监听新增图片；首次选择目录不会导入旧文件。"));
+        Report(settings.Paused ? T("收集已暂停；恢复后会补扫新增文件。") : T("设置已保存，开始监听新增图片与录像；首次选择目录不会导入旧文件。"));
     }
     public void TogglePause() => ApplySettings(Settings with { Paused = !Settings.Paused }, false);
     private void CaptureAdded()
@@ -118,8 +121,21 @@ internal sealed class LibraryRuntime : IDisposable
             try
             {
                 var signature = CollectionEngine.Signature(entry.Path);
+                if (cache.TryGetValue(entry.Id, out var loading) && loading.Signature == "loading:" + signature && videoLoads.Contains(entry.Id)) { items.Add(loading.Item); continue; }
                 if (!cache.TryGetValue(entry.Id, out var cached) || cached.Signature != signature)
-                    cache[entry.Id] = (signature, new DemoItem(entry.Title, (entry.Ownership == Ownership.Managed ? T("应用保存") : T("外部引用")) + T(" · 滚轮翻页"), entry.Path, ImageFiles.Read(entry.Path, true), entry.Id));
+                {
+                    if (MediaFiles.IsVideo(entry.Path))
+                    {
+                        if (Videos.TryGet(entry.Path, out var video))
+                            cache[entry.Id] = (signature, new DemoItem(entry.Title, T("录像") + " · " + video!.Duration + " · MP4", entry.Path, video.Image(), entry.Id));
+                        else
+                        {
+                            cache[entry.Id] = ("loading:" + signature, new DemoItem(entry.Title, T("正在读取录像…"), entry.Path, VideoCatalog.Placeholder(), entry.Id));
+                            if (videoLoads.Add(entry.Id)) _ = LoadVideo(entry, signature);
+                        }
+                    }
+                    else cache[entry.Id] = (signature, new DemoItem(entry.Title, (entry.Ownership == Ownership.Managed ? T("应用保存") : T("外部引用")) + T(" · 滚轮翻页"), entry.Path, ImageFiles.Read(entry.Path, true), entry.Id));
+                }
                 items.Add(cache[entry.Id].Item);
             }
             catch (Exception ex) { Store.SetError(entry.Id, ex.Message); Store.Archive(entry.Id, Now); }
@@ -127,13 +143,24 @@ internal sealed class LibraryRuntime : IDisposable
         foreach (var id in cache.Keys.Except(items.Select(i => i.EntryId!)).ToArray()) cache.Remove(id);
         shelf.SetItems(items, reveal); Changed?.Invoke();
     }
+    private async Task LoadVideo(LibraryEntry entry, string signature)
+    {
+        try { await Videos.Get(entry.Path, closing.Token); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!disposed && Store.Find(entry.Id) is not null && File.Exists(entry.Path) && CollectionEngine.Signature(entry.Path) == signature)
+            { Store.SetError(entry.Id, ex.Message); Store.Archive(entry.Id, Now); Report(ex.Message); }
+        }
+        finally { videoLoads.Remove(entry.Id); if (!disposed) ScheduleRefresh(false); }
+    }
     public void Archive(string id) { Store.Archive(id, Now); ScheduleRefresh(false); }
     public void ArchiveBatch(string? anchor = null, ArchiveScope scope = ArchiveScope.All)
     {
         var ordered = Store.Entries(EntryState.Shelf).Select(e => e.Id).ToArray();
         var ids = anchor is null && scope == ArchiveScope.All ? ordered : BatchSelection.Select(ordered, anchor ?? "", scope);
         var count = Store.ArchiveMany(ids, Now);
-        Report(T("已取下 {0} 张图片到本地历史，原文件保留。", count)); ScheduleRefresh(false);
+        Report(T("已取下 {0} 个项目到本地历史，原文件保留。", count)); ScheduleRefresh(false);
     }
     internal IDisposable AcquireLease(string path)
     {
@@ -149,7 +176,12 @@ internal sealed class LibraryRuntime : IDisposable
     public void OpenWorkspace(string id, bool edit)
     {
         var entry = Store.Find(id); if (entry is null) return;
-        var gallery = Store.Entries(entry.State).Where(e => !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
+        if (MediaFiles.IsVideo(entry.Path))
+        {
+            var video = new VideoWorkspace(entry.Path, AcquireLease);
+            workspaces.Add(video); video.Closed += (_, _) => workspaces.Remove(video); video.Show(); video.Activate(); return;
+        }
+        var gallery = Store.Entries(entry.State).Where(e => !MediaFiles.IsVideo(e.Path) && !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
         var index = Array.FindIndex(gallery, e => e.Id == id);
         if (index < 0) { Report(T("原文件已失效，无法打开。请在历史中检查路径。")); return; }
         var window = new ImageWorkspace(gallery, index, edit, SaveEditedCopy, AcquireLease, ResolveOriginal);
@@ -157,6 +189,7 @@ internal sealed class LibraryRuntime : IDisposable
     }
     public bool TryCloseWorkspaces()
     {
+        if (fileOperation > 0) { Report(T("文件操作进行中，请稍后再退出。")); return false; }
         foreach (var window in workspaces.ToArray()) { window.Close(); if (workspaces.Contains(window)) return false; }
         return true;
     }
@@ -222,7 +255,7 @@ internal sealed class LibraryRuntime : IDisposable
         {
         var entry = Store.Find(id); if (entry is null) return;
         if (Store.HasOriginalDependents(id)) { Report(T("仍有编辑副本依赖这份原版，请先移除相关副本记录。")); return; }
-        if (InUse(entry.Path)) { Report(T("这张图片正在工作台中使用，请关闭对应窗口后再回收。")); return; }
+        if (InUse(entry.Path)) { Report(T("这个文件正在使用，请关闭对应窗口后再回收。")); return; }
         if (MessageBox.Show(T("将这个文件移入系统回收站？\n") + entry.Path, T("删除文件"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         Report(Store.Recycle(id, SafeRecycle.File) ? T("文件已移入回收站。") : T("未能回收，文件与记录已保留。请在历史中查看原因。")); ScheduleRefresh(false);
         }
@@ -239,7 +272,7 @@ internal sealed class LibraryRuntime : IDisposable
         }
         finally { fileOperation--; }
     }
-    public void Export(string source, bool desktop = false)
+    public async void Export(string source, bool desktop = false)
     {
         if (fileOperation > 0) return;
         fileOperation++;
@@ -248,11 +281,12 @@ internal sealed class LibraryRuntime : IDisposable
         var destination = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Path.GetFileName(source));
         if (!desktop)
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = Path.GetFileName(source), Filter = T("原格式图片|*") + Path.GetExtension(source), OverwritePrompt = false };
+            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = Path.GetFileName(source), Filter = T("原格式文件|*") + Path.GetExtension(source), OverwritePrompt = false };
             if (dialog.ShowDialog() != true) return; destination = dialog.FileName;
         }
-        Report(T("已导出：") + ImageFiles.Export(source, destination));
+        Report(T("已导出：") + await Task.Run(() => ImageFiles.Export(source, destination)));
         }
+        catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }
         finally { fileOperation--; }
     }
     private void Report(string text)

@@ -13,17 +13,19 @@ try {
     if ($Desktop) {
         # Interactive desktop required. This starts only our own test windows.
         $env:DOTNET_ROOT = Split-Path $executable
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --self-test artifacts/validation
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --self-test artifacts/validation
         if ($LASTEXITCODE -ne 0) { throw "Desktop checks failed. See artifacts/validation/diagnostics.json" }
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --library-test artifacts/stage1-validation
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --library-test artifacts/stage1-validation
         if ($LASTEXITCODE -ne 0) { throw "Library checks failed. See artifacts/stage1-validation/stage1-diagnostics.json" }
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --editor-test artifacts/stage2-validation
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --editor-test artifacts/stage2-validation
         if ($LASTEXITCODE -ne 0) { throw "Editor checks failed. See artifacts/stage2-validation/editor-diagnostics.json" }
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --preferences-test artifacts/preferences-validation
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --preferences-test artifacts/preferences-validation
         if ($LASTEXITCODE -ne 0) { throw "Preferences checks failed. See artifacts/preferences-validation/preferences-diagnostics.json" }
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --appearance-test artifacts/appearance-validation
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --appearance-test artifacts/appearance-validation
         if ($LASTEXITCODE -ne 0) { throw "Appearance checks failed. See artifacts/appearance-validation/appearance-diagnostics.json" }
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows/Clothesline.dll --motion-test artifacts/motion-validation
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --motion-test artifacts/motion-validation
         if ($LASTEXITCODE -ne 0) { throw "Motion checks failed. See artifacts/motion-validation/motion-diagnostics.json" }
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --video-test artifacts/video-validation
+        if ($LASTEXITCODE -ne 0) { throw "Video checks failed. See artifacts/video-validation/video-diagnostics.json" }
     }
 } finally { $env:DOTNET_ROOT = $previousRoot; Pop-Location }

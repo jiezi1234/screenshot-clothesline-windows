@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Clothesline.Core;
 
 namespace Clothesline.Storage;
 
@@ -6,6 +7,7 @@ public sealed class CollectionEngine : IDisposable
 {
     private readonly LibraryStore store;
     private readonly Func<string, string> imageHash;
+    private readonly Func<string, CancellationToken, Task<string>>? videoHash;
     private readonly Func<int> capacity;
     private readonly CancellationTokenSource stop = new();
     private readonly SemaphoreSlim importLock = new(1);
@@ -13,18 +15,21 @@ public sealed class CollectionEngine : IDisposable
     private readonly List<FileSystemWatcher> watchers = [];
     private readonly ConcurrentDictionary<string, (long Due, int Retry)> pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Task worker;
+    private Task? videoImport;
     private string[] folders = [];
+    private string[] imageFolders = [];
+    private string videoFolder = "";
     private volatile bool paused;
     private int scanRequested;
     private long nextScan;
     public event Action? Changed;
     public event Action? CaptureAdded;
     public event Action<string>? Status;
-    public static bool Supported(string path) => new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".gif" }.Contains(Path.GetExtension(path).ToLowerInvariant());
+    public static bool Supported(string path) => MediaFiles.IsImage(path) || MediaFiles.IsVideo(path);
     public static string Signature(string path) { var info = new FileInfo(path); return $"{info.Length}:{info.LastWriteTimeUtc.Ticks}"; }
-    public CollectionEngine(LibraryStore store, Func<string, string> imageHash, Func<int> capacity)
+    public CollectionEngine(LibraryStore store, Func<string, string> imageHash, Func<int> capacity, Func<string, CancellationToken, Task<string>>? videoHash = null)
     {
-        this.store = store; this.imageHash = imageHash; this.capacity = capacity;
+        this.store = store; this.imageHash = imageHash; this.capacity = capacity; this.videoHash = videoHash;
         worker = Task.Run(Work);
     }
     public void Configure(LibrarySettings settings)
@@ -34,18 +39,31 @@ public sealed class CollectionEngine : IDisposable
         if (paths.Length > 4) throw new ArgumentException(T("最多一个截图目录与三个额外目录。"));
         lock (watcherGate)
         {
-            foreach (var watcher in watchers) watcher.Dispose(); watchers.Clear(); folders = paths;
-            foreach (var folder in paths) { if (!Directory.Exists(folder)) store.InitializeSource(folder, []); Attach(folder); }
+            foreach (var watcher in watchers) watcher.Dispose(); watchers.Clear(); imageFolders = paths;
+            videoFolder = string.IsNullOrWhiteSpace(settings.VideoFolder) ? "" : Path.TrimEndingDirectorySeparator(Path.GetFullPath(settings.VideoFolder));
+            folders = paths.Concat(videoFolder.Length == 0 ? [] : new[] { videoFolder }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            foreach (var folder in folders) { if (!Directory.Exists(folder)) Baseline(folder, []); Attach(folder); }
             Interlocked.Exchange(ref scanRequested, 1);
         }
+    }
+    private bool Allowed(string path)
+    {
+        var folder = Path.GetDirectoryName(path);
+        return MediaFiles.IsVideo(path) ? videoHash is not null && folder!.Equals(videoFolder, StringComparison.OrdinalIgnoreCase)
+            : MediaFiles.IsImage(path) && imageFolders.Contains(folder, StringComparer.OrdinalIgnoreCase);
+    }
+    private void Baseline(string folder, string[] files)
+    {
+        if (imageFolders.Contains(folder, StringComparer.OrdinalIgnoreCase)) store.InitializeSource(folder, files.Where(MediaFiles.IsImage).Select(p => (p, Signature(p))));
+        // Separate baseline: enabling video in an existing image directory must not import old recordings.
+        if (folder.Equals(videoFolder, StringComparison.OrdinalIgnoreCase)) store.InitializeSource("Video:" + folder, files.Where(MediaFiles.IsVideo).Select(p => (p, Signature(p))));
     }
     private void Attach(string folder)
     {
         if (!Directory.Exists(folder)) { Status?.Invoke(T("等待目录可用：") + folder); return; }
         try
         {
-            var existing = Directory.EnumerateFiles(folder).Where(Supported).Select(p => (p, Signature(p))).ToArray();
-            store.InitializeSource(folder, existing);
+            Baseline(folder, Directory.GetFiles(folder));
             var watcher = new FileSystemWatcher(folder) { IncludeSubdirectories = false, NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite, InternalBufferSize = 32768 };
             watcher.Created += (_, e) => Queue(e.FullPath);
             watcher.Changed += (_, e) => Queue(e.FullPath);
@@ -58,7 +76,7 @@ public sealed class CollectionEngine : IDisposable
     }
     private void Queue(string path)
     {
-        if (Supported(path)) pending.AddOrUpdate(path, (Environment.TickCount64 + 180, 0), (_, old) => (Environment.TickCount64 + 180, old.Retry));
+        lock (watcherGate) if (Allowed(path)) pending.AddOrUpdate(path, (Environment.TickCount64 + 180, 0), (_, old) => (Environment.TickCount64 + 180, old.Retry));
     }
     public void RequestRescan() => Interlocked.Exchange(ref scanRequested, 1);
     private void Rescan()
@@ -71,7 +89,7 @@ public sealed class CollectionEngine : IDisposable
                 if (!watchers.Any(w => w.Path.Equals(folder, StringComparison.OrdinalIgnoreCase))) Attach(folder);
                 try
                 {
-                    foreach (var path in Directory.EnumerateFiles(folder).Where(Supported))
+                    foreach (var path in Directory.EnumerateFiles(folder).Where(Allowed))
                         if (!store.HasObserved(path, Signature(path))) pending.TryAdd(path, (Environment.TickCount64, 0));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Status?.Invoke(T("补扫未完成：") + ex.Message); }
@@ -87,37 +105,61 @@ public sealed class CollectionEngine : IDisposable
                 await Task.Delay(120, stop.Token);
                 if (paused) continue;
                 if (Interlocked.Exchange(ref scanRequested, 0) == 1 || Environment.TickCount64 > nextScan) { nextScan = Environment.TickCount64 + 30000; Rescan(); }
-                foreach (var pair in pending.Where(p => p.Value.Due <= Environment.TickCount64).ToArray())
+                foreach (var pair in pending.Where(p => p.Value.Due <= Environment.TickCount64).OrderBy(p => MediaFiles.IsVideo(p.Key)).ToArray())
                 {
+                    if (MediaFiles.IsVideo(pair.Key) && videoImport is { IsCompleted: false }) continue;
                     if (!pending.TryRemove(pair.Key, out var state)) continue;
-                    lock (watcherGate) if (!folders.Any(f => string.Equals(Path.GetDirectoryName(pair.Key), f, StringComparison.OrdinalIgnoreCase))) continue;
-                    try { await ImportExternal(pair.Key, true, stop.Token); }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        if (state.Retry < 9) pending.TryAdd(pair.Key, (Environment.TickCount64 + Math.Min(5000, 250 * (1 << Math.Min(state.Retry, 4))), state.Retry + 1));
-                        else { Status?.Invoke(T("图片暂未收集，补扫时会重试：") + Path.GetFileName(pair.Key) + " · " + ex.Message); }
-                    }
+                    lock (watcherGate) if (!Allowed(pair.Key)) continue;
+                    if (MediaFiles.IsVideo(pair.Key)) videoImport = ProcessPending(pair.Key, state.Retry);
+                    else await ProcessPending(pair.Key, state.Retry);
                 }
             }
         }
         catch (OperationCanceledException) { }
     }
+    private async Task ProcessPending(string path, int retry)
+    {
+        try { await ImportExternal(path, true, stop.Token).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            if (MediaFiles.IsVideo(path))
+            {
+                pending.TryAdd(path, (Environment.TickCount64 + (retry < 2 ? 30000 : 300000), retry + 1));
+                Status?.Invoke(T("录像暂未收集，稍后重试：") + Path.GetFileName(path) + " · " + ex.Message);
+            }
+            else if (retry < 9) pending.TryAdd(path, (Environment.TickCount64 + Math.Min(5000, 250 * (1 << Math.Min(retry, 4))), retry + 1));
+            else Status?.Invoke(T("图片暂未收集，补扫时会重试：") + Path.GetFileName(path) + " · " + ex.Message);
+        }
+    }
     public async Task<bool> ImportExternal(string path, bool automatic = false, CancellationToken cancellation = default, bool preserveCopy = false)
     {
         path = Path.GetFullPath(path);
         if (!Supported(path)) return false;
+        string? videoSignature = null, preparedVideoHash = null;
+        if (MediaFiles.IsVideo(path))
+        {
+            if (!File.Exists(path) || (automatic && paused)) return false;
+            videoSignature = Signature(path);
+            if (automatic && store.HasObserved(path, videoSignature)) return false;
+            await Task.Delay(1000, cancellation).ConfigureAwait(false);
+            if (Signature(path) != videoSignature) throw new IOException(T("文件仍在写入。"));
+            // Native probing must not hold the image/clipboard commit lock.
+            preparedVideoHash = videoHash is null ? throw new NotSupportedException(T("录像解析不可用。")) : await videoHash(path, cancellation).ConfigureAwait(false);
+        }
         await importLock.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
             if (!File.Exists(path)) return false;
             var before = Signature(path);
             if (automatic && store.HasObserved(path, before)) return false;
-            await Task.Delay(180, cancellation).ConfigureAwait(false);
+            if (videoSignature is not null && videoSignature != before) throw new IOException(T("文件在读取期间发生变化。"));
+            if (videoSignature is null) await Task.Delay(180, cancellation).ConfigureAwait(false);
             if (Signature(path) != before) throw new IOException(T("文件仍在写入。"));
-            var hash = await Task.Run(() => imageHash(path), cancellation).ConfigureAwait(false);
+            var hash = preparedVideoHash ?? await Task.Run(() => imageHash(path), cancellation).ConfigureAwait(false);
             if (Signature(path) != before) throw new IOException(T("文件在读取期间发生变化。"));
             if (automatic && paused) return false;
-            if (automatic) { lock (watcherGate) if (!folders.Any(f => string.Equals(Path.GetDirectoryName(path), f, StringComparison.OrdinalIgnoreCase))) return false; }
+            if (automatic) { lock (watcherGate) if (!Allowed(path)) return false; }
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var source = "Folder:" + Path.GetDirectoryName(path);
             if (!store.IsDuplicate(path, hash, source, now, !preserveCopy)) { store.Add(path, Ownership.External, source, hash, now, capacity()); Changed?.Invoke(); if (automatic) CaptureAdded?.Invoke(); }
@@ -169,6 +211,7 @@ public sealed class CollectionEngine : IDisposable
     {
         stop.Cancel(); lock (watcherGate) { foreach (var watcher in watchers) watcher.Dispose(); watchers.Clear(); }
         worker.GetAwaiter().GetResult();
+        videoImport?.GetAwaiter().GetResult();
         importLock.Wait(); importLock.Release();
         stop.Dispose();
     }

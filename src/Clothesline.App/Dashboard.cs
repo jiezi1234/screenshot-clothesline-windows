@@ -16,20 +16,21 @@ internal sealed class Dashboard : Window
     private readonly TabControl tabs = new();
     private readonly LibraryRuntime? library;
     private readonly TextBox screenshot = new();
+    private readonly TextBox videoFolder = new();
     private readonly TextBox[] extras = [new(), new(), new()];
     private readonly CheckBox clipboard = new() { Content = T("收集剪贴板纯图片（默认关闭）") };
     private readonly CheckBox pause = new() { Content = T("暂停自动收集") };
-    private readonly CheckBox popup = new() { Content = T("新图片加入时短暂展开") };
+    private readonly CheckBox popup = new() { Content = T("新项目加入时短暂展开") };
     private readonly CheckBox full = new() { Content = T("全屏时自动收起") };
     private readonly CheckBox motion = new() { Content = T("减少动画") };
-    private readonly CheckBox sound = new() { Content = T("自动收集新图片时播放提示音（默认关闭）") };
+    private readonly CheckBox sound = new() { Content = T("自动收集新项目时播放提示音（默认关闭）") };
     private readonly ComboBox cardSize = new() { ItemsSource = new[] { T("小 · 80%"), T("标准 · 100%"), T("大 · 120%") }, MinWidth = 200 };
     private readonly ComboBox language = new() { ItemsSource = new[] { "简体中文", "English" }, MinWidth = 200 };
     private readonly TextBox shortcut = new() { MinWidth = 180, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly CheckBox shortcutEnabled = new() { Content = T("启用全局快捷键") };
     private readonly CheckBox login = new() { Content = T("登录 Windows 时启动到托盘（默认关闭）") };
     private readonly TextBlock interactionHint = new() { Margin = new Thickness(0, 12, 0, 12), FontSize = 12, TextWrapping = TextWrapping.Wrap };
-    private readonly ComboBox capacity = new() { ItemsSource = new[] { T("自动：当前屏幕一排"), T("25 张"), T("50 张"), T("100 张") }, MinWidth = 170 };
+    private readonly ComboBox capacity = new() { ItemsSource = new[] { T("自动：当前屏幕一排"), T("25 项"), T("50 项"), T("100 项") }, MinWidth = 170 };
     private readonly ComboBox retention = new() { ItemsSource = new[] { T("永久保留（不自动清理）"), T("取下 7 天后清理"), T("取下 30 天后清理") }, MinWidth = 200 };
     private readonly ComboBox storage = new() { ItemsSource = new[] { "512 MiB", "1 GiB", "2 GiB" }, MinWidth = 120 };
     public bool Exiting { get; set; }
@@ -43,13 +44,13 @@ internal sealed class Dashboard : Window
         var root = new DockPanel { Margin = new Thickness(28, 20, 28, 20) };
         var header = new StackPanel(); DockPanel.SetDock(header, Dock.Top);
         header.Children.Add(new TextBlock { Text = T("把灵感，晾在手边。"), FontSize = 29 });
-        header.Children.Add(new TextBlock { Text = T("截图收集 / 本地历史     ·     Windows 11 x64"), Margin = new Thickness(0, 5, 0, 12), Foreground = DemoAssets.Brush("#748171") });
+        header.Children.Add(new TextBlock { Text = T("截图与录像 / 本地历史     ·     Windows 11 x64"), Margin = new Thickness(0, 5, 0, 12), Foreground = DemoAssets.Brush("#748171") });
         var actions = new WrapPanel();
-        actions.Children.Add(Button(T("显示 / 收起"), controller.Toggle)); actions.Children.Add(Button(T("导入图片…"), Import));
+        actions.Children.Add(Button(T("显示 / 收起"), controller.Toggle)); actions.Children.Add(Button(T("导入图片或录像…"), Import));
         actions.Children.Add(Button(T("本地历史"), ShowHistory)); actions.Children.Add(Button(T("暂停 / 恢复"), () => { library?.TogglePause(); FillSettings(); }));
         actions.Children.Add(Button(T("全部取下"), () => library?.ArchiveBatch()));
         header.Children.Add(actions);
-        interactionHint.Text = shortcutRegistered ? T("顶部悬停 / Ctrl+Alt+T · 单击复制 · 双击打开 · 长按编辑 · 拖出 · 滚轮翻页") : T("快捷键被占用，请使用按钮或托盘；右键图片可预览、编辑。");
+        interactionHint.Text = shortcutRegistered ? T("顶部悬停 / Ctrl+Alt+T · 单击复制 · 双击打开 · 长按编辑图片或播放录像 · 拖出 · 滚轮翻页") : T("快捷键被占用，请使用按钮或托盘；右键图片可预览、编辑。");
         header.Children.Add(interactionHint); root.Children.Add(header);
         var footer = new StackPanel(); DockPanel.SetDock(footer, Dock.Bottom);
         footer.Children.Add(status); var exit = new WrapPanel(); exit.Children.Add(Button(T("收起控制面板"), Hide)); exit.Children.Add(Button(T("退出"), quit)); footer.Children.Add(exit); root.Children.Add(footer);
@@ -57,10 +58,11 @@ internal sealed class Dashboard : Window
         tabs.Items.Add(new TabItem { Header = T("快捷键与启动"), Content = DesktopSettingsPanel() });
         tabs.Items.Add(new TabItem { Header = T("外观与语言"), Content = AppearancePanel() }); root.Children.Add(tabs); Content = root;
         AutomationProperties.SetName(screenshot, T("截图目录"));
+        AutomationProperties.SetName(videoFolder, T("录像目录"));
         for (var i = 0; i < extras.Length; i++) AutomationProperties.SetName(extras[i], T("额外目录 {0}", i + 1));
         AutomationProperties.SetName(shortcut, T("全局快捷键")); AutomationProperties.SetName(history, T("本地历史"));
         controller.Status += SetStatus;
-        if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(library.Settings.Paused ? T("自动收集已暂停。") : T("准备收集新增图片；取下和超出容量的图片可从历史找回。")); } else SetStatus(T("界面诊断模式：没有启用收集。"));
+        if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(library.Settings.Paused ? T("自动收集已暂停。") : T("准备收集新增图片与录像；取下和超出容量的项目可从历史找回。")); } else SetStatus(T("界面诊断模式：没有启用收集。"));
         Closing += (_, e) => { if (!Exiting) { e.Cancel = true; Hide(); } };
         Closed += (_, _) => { controller.Status -= SetStatus; if (library is not null) { library.Status -= SetStatus; library.Changed -= UpdateHistory; } };
     }
@@ -69,6 +71,8 @@ internal sealed class Dashboard : Window
         var panel = new StackPanel { Margin = new Thickness(16) };
         panel.Children.Add(Label(T("截图目录（首次选择只监听新增图片）"))); panel.Children.Add(FolderRow(screenshot));
         panel.Children.Add(Label(T("额外目录：最多 3 个，不包含子目录"))); foreach (var text in extras) panel.Children.Add(FolderRow(text));
+        panel.Children.Add(Label(T("录像目录（可选；只收集新增 MP4，不包含子目录）"))); panel.Children.Add(FolderRow(videoFolder));
+        panel.Children.Add(new TextBlock { Text = T("支持 H.264 视频与 AAC 音频或无音轨，最高 4K、单文件 2 GiB。首次选择不导入旧录像；留空关闭。"), TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 6, 0, 8) });
         foreach (var check in new[] { clipboard, pause, popup, full, motion }) { check.Margin = new Thickness(0, 6, 0, 0); panel.Children.Add(check); }
         motion.ToolTip = T("关闭卡片入场、摆动、取下及绳线淡入；Windows 关闭动画时也会自动停用。鼠标进入卡片时立即停稳。");
         var limits = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) }; limits.Children.Add(Choice(T("晾衣绳容量"), capacity)); limits.Children.Add(Choice(T("历史期限"), retention)); limits.Children.Add(Choice(T("自管图片上限"), storage)); panel.Children.Add(limits);
@@ -105,7 +109,9 @@ internal sealed class Dashboard : Window
     {
         var panel = new DockPanel { Margin = new Thickness(16) }; var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; DockPanel.SetDock(actions, Dock.Bottom);
         actions.Children.Add(Button(T("预览"), () => Selected(Preview))); actions.Children.Add(Button(T("重新挂上"), () => Selected(e => library?.Restore(e.Id))));
-        actions.Children.Add(Button(T("编辑…"), () => Selected(e => library?.OpenWorkspace(e.Id, true))));
+        var edit = Button(T("编辑…"), () => Selected(e => library?.OpenWorkspace(e.Id, true))); edit.IsEnabled = false;
+        history.SelectionChanged += (_, _) => edit.IsEnabled = history.SelectedItem is HistoryRow row && !Clothesline.Core.MediaFiles.IsVideo(row.Entry.Path);
+        actions.Children.Add(edit);
         actions.Children.Add(Button(T("导出…"), () => Selected(e => library?.Export(e.Path)))); actions.Children.Add(Button(T("定位"), () => Selected(e => ShellTransfer.Reveal(e.Path))));
         actions.Children.Add(Button(T("移除记录"), () => Selected(e => library?.Forget(e.Id)))); actions.Children.Add(Button(T("回收文件"), () => Selected(e => library?.Recycle(e.Id)))); panel.Children.Add(actions);
         var note = new TextBlock { Text = T("外部引用依赖原路径。取下时间用于计算期限；重新挂上会取消计时。"), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 10) }; DockPanel.SetDock(note, Dock.Top); panel.Children.Add(note);
@@ -129,7 +135,7 @@ internal sealed class Dashboard : Window
     }
     private void FillSettings()
     {
-        if (library is null) return; var settings = library.Settings; screenshot.Text = settings.ScreenshotFolder;
+        if (library is null) return; var settings = library.Settings; screenshot.Text = settings.ScreenshotFolder; videoFolder.Text = settings.VideoFolder;
         for (var i = 0; i < 3; i++) extras[i].Text = i < settings.ExtraFolders.Length ? settings.ExtraFolders[i] : "";
         clipboard.IsChecked = settings.ClipboardEnabled; pause.IsChecked = settings.Paused; popup.IsChecked = settings.ShowNew; full.IsChecked = settings.SuppressFullscreen; motion.IsChecked = settings.ReduceMotion;
         capacity.SelectedIndex = Array.IndexOf(new[] { 0, 25, 50, 100 }, settings.Capacity); retention.SelectedIndex = Array.IndexOf(new[] { 0, 7, 30 }, settings.RetentionDays);
@@ -139,11 +145,11 @@ internal sealed class Dashboard : Window
         shortcutEnabled.IsChecked = settings.Shortcut.Length > 0; shortcut.Text = settings.Shortcut.Length > 0 ? settings.Shortcut : "Ctrl+Alt+T";
         shortcut.IsEnabled = shortcutEnabled.IsChecked == true; login.IsChecked = library.Desktop?.LoginEnabled ?? settings.RunAtLogin; UpdateShortcutHint();
     }
-    private void UpdateShortcutHint() => interactionHint.Text = T("顶部悬停 / ") + (library?.Desktop?.ShortcutStatus ?? library?.Settings.Shortcut ?? T("诊断模式")) + T(" · 单击复制 · 双击打开 · 长按编辑 · 拖出 · 滚轮翻页");
+    private void UpdateShortcutHint() => interactionHint.Text = T("顶部悬停 / ") + (library?.Desktop?.ShortcutStatus ?? library?.Settings.Shortcut ?? T("诊断模式")) + T(" · 单击复制 · 双击打开 · 长按编辑图片或播放录像 · 拖出 · 滚轮翻页");
     private void SaveSettings()
     {
         if (library is null) return;
-        library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = pause.IsChecked == true, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
+        library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), VideoFolder = videoFolder.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = pause.IsChecked == true, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
             Capacity = new[] { 0, 25, 50, 100 }[Math.Max(0, capacity.SelectedIndex)], RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024,
             Shortcut = shortcutEnabled.IsChecked == true ? shortcut.Text : "", RunAtLogin = login.IsChecked == true,
             CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], CaptureSound = sound.IsChecked == true, Language = language.SelectedIndex == 1 ? "en" : "zh-CN" });
@@ -151,7 +157,7 @@ internal sealed class Dashboard : Window
     }
     private async void Import()
     {
-        if (library is null) return; var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Filter = T("图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif") };
+        if (library is null) return; var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Filter = T("图片与 MP4 录像|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.mp4|图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif|MP4 录像|*.mp4") };
         if (dialog.ShowDialog(this) == true) await library.ImportFiles(dialog.FileNames);
     }
     private FrameworkElement FolderRow(TextBox text)

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Specialized;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -10,6 +11,18 @@ namespace Clothesline.App;
 
 internal static class ShellTransfer
 {
+    internal static DataObject CopyData(string path)
+    {
+        if (!File.Exists(path)) throw new FileNotFoundException(T("原文件已移走，可在历史中查看失效记录。"), path);
+        var data = new DataObject();
+        if (!MediaFiles.IsVideo(path))
+        {
+            var original = ImageFiles.Read(path); data.SetImage(original); data.SetData("PNG", new MemoryStream(ImageFiles.Png(original)));
+        }
+        data.SetFileDropList(new StringCollection { path });
+        data.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes(1)));
+        data.SetData("ScreenshotClothesline.OwnCopy", "1", false); return data;
+    }
     private static readonly Guid DataObjectId = new("0000010e-0000-0000-C000-000000000046");
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern int SHParseDisplayName(string name, nint context, out nint pidl, uint mask, out uint attributes);
     [DllImport("shell32.dll")] private static extern nint ILFindLastID(nint pidl);
@@ -39,8 +52,8 @@ internal static class ShellTransfer
             return decision switch
             {
                 TransferDisposition.RemoveMissing => T("原文件已失效，请在历史中查看记录。"),
-                TransferDisposition.VerifyMove => T("目标返回了不支持的移动结果；原图和卡片已保留。"),
-                _ => result != 0x40100 || (effect & 1) == 0 ? T("拖拽未完成，原图和卡片已保留。") : T("已交付副本，卡片保留。")
+                TransferDisposition.VerifyMove => T("目标返回了不支持的移动结果；原文件和卡片已保留。"),
+                _ => result != 0x40100 || (effect & 1) == 0 ? T("拖拽未完成，原文件和卡片已保留。") : T("已交付副本，卡片保留。")
             };
         }
         finally

@@ -31,3 +31,12 @@
 | SQLitePCLRaw.bundle_e_sqlite3 / core / lib.e_sqlite3 / provider.e_sqlite3 | 2.1.13 | Apache-2.0；包含的原生 SQLite 使用公共领域声明 |
 
 完整文本及来源说明保存在 [licenses/](licenses/README.md)，分发包同时包含实际还原的 NuGet 包元数据。Microsoft.Data.Sqlite 许可来自对应的上游 v10.0.13 标签。SQLitePCLRaw 2.1.13 包声明 Apache-2.0，但包内未包含独立许可/通知文件，上游也无对应标签，因此保留其前一 v2.1.12 标签的完整许可和通知，并如实记录来源；其中对 SQLCipher、OpenSSL 等可选变体的说明不表示本应用使用了这些变体。未修改这些第三方源码。
+
+## 阶段 3：Windows 系统媒体接口
+
+v0.6.0 通过 Windows.Media.Editing 生成缩略图，并用 WPF MediaElement 播放。Windows 自身媒体组件提供编解码能力，应用不另外分发编码器。
+
+- Microsoft.Windows.SDK.NET.Ref 10.0.19041.57 是 SDK 隐式引用的投影包；分发其中 Microsoft.Windows.SDK.NET.dll 与 WinRT.Runtime.dll。SDK 许可原文按包元数据指向的 [Windows SDK 许可](https://aka.ms/WinSDKLicenseURL) 获取，保存在 licenses/Windows-SDK-LICENSE.rtf；包元数据随便携包附带。
+- WinRT.Runtime.dll 文件版本为 2.2.0.48161，产品版本对应 microsoft/CsWinRT 提交 8649ee3eeb2445ca2a36d80d878ef60b96a6c65d；该提交的完整 MIT 许可保存为 licenses/CsWinRT-LICENSE.txt。来源：[许可文件](https://github.com/microsoft/CsWinRT/blob/8649ee3eeb2445ca2a36d80d878ef60b96a6c65d/LICENSE)。
+
+目标框架中的 Windows 10 API 版本用于接口绑定，不改变首发 Windows 11 x64 的产品范围。打包脚本额外复制隐式 SDK 投影包的实际版本元数据，避免仅枚举普通 NuGet 依赖时漏项。

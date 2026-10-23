@@ -10,6 +10,7 @@ public sealed record LibraryEntry(string Id, string Path, string Title, Ownershi
 public sealed record LibrarySettings
 {
     public string ScreenshotFolder { get; init; } = "";
+    public string VideoFolder { get; init; } = "";
     public string[] ExtraFolders { get; init; } = [];
     public bool ClipboardEnabled { get; init; }
     public bool Paused { get; init; }

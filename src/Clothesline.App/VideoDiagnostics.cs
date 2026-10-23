@@ -21,7 +21,7 @@ namespace Clothesline.App;
 
 internal static class VideoDiagnostics
 {
-    private static async Task<string> Generate(string folder, bool audio, bool portrait = false)
+    internal static async Task<string> Generate(string folder, bool audio, bool portrait = false)
     {
         var file = await (await StorageFolder.GetFolderFromPathAsync(folder)).CreateFileAsync(portrait ? "portrait.mp4" : audio ? "audio.mp4" : "silent.mp4", CreationCollisionOption.FailIfExists);
         var composition = new MediaComposition();

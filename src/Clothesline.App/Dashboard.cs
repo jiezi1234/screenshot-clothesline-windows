@@ -56,7 +56,8 @@ internal sealed class Dashboard : Window
         footer.Children.Add(status); var exit = new WrapPanel(); exit.Children.Add(Button(T("收起控制面板"), Hide)); exit.Children.Add(Button(T("退出"), quit)); footer.Children.Add(exit); root.Children.Add(footer);
         tabs.Items.Add(new TabItem { Header = T("来源与设置"), Content = SettingsPanel() }); tabs.Items.Add(new TabItem { Header = T("本地历史"), Content = HistoryPanel() });
         tabs.Items.Add(new TabItem { Header = T("快捷键与启动"), Content = DesktopSettingsPanel() });
-        tabs.Items.Add(new TabItem { Header = T("外观与语言"), Content = AppearancePanel() }); root.Children.Add(tabs); Content = root;
+        tabs.Items.Add(new TabItem { Header = T("外观与语言"), Content = AppearancePanel() });
+        tabs.Items.Add(new TabItem { Header = T("格式支持"), Content = new ScrollViewer { Content = new ImageFormatPanel(), VerticalScrollBarVisibility = ScrollBarVisibility.Auto } }); root.Children.Add(tabs); Content = root;
         AutomationProperties.SetName(screenshot, T("截图目录"));
         AutomationProperties.SetName(videoFolder, T("录像目录"));
         for (var i = 0; i < extras.Length; i++) AutomationProperties.SetName(extras[i], T("额外目录 {0}", i + 1));
@@ -157,7 +158,7 @@ internal sealed class Dashboard : Window
     }
     private async void Import()
     {
-        if (library is null) return; var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Filter = T("图片与 MP4 录像|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.mp4|图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif|MP4 录像|*.mp4") };
+        if (library is null) return; var dialog = new Microsoft.Win32.OpenFileDialog { Multiselect = true, Filter = T("图片与 MP4 录像|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif;*.mp4|图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif|MP4 录像|*.mp4") };
         if (dialog.ShowDialog(this) == true) await library.ImportFiles(dialog.FileNames);
     }
     private FrameworkElement FolderRow(TextBox text)

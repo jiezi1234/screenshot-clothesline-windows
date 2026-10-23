@@ -96,14 +96,15 @@ internal sealed class LibraryRuntime : IDisposable
     public async Task ImportFiles(string[] paths)
     {
         var count = 0;
+        var failures = new List<string>();
         foreach (var path in paths)
         {
             if (disposed) break;
             try { if (await Collector.ImportExternal(path, cancellation: closing.Token)) count++; }
             catch (OperationCanceledException) { break; }
-            catch (Exception ex) { Report(T("未导入 ") + Path.GetFileName(path) + "：" + ex.Message); }
+            catch (Exception ex) { var message = T("未导入 ") + Path.GetFileName(path) + "：" + ex.Message; failures.Add(message); Report(message); }
         }
-        if (!disposed) Report(T("导入完成，共处理 {0} 个文件。重复内容会合并。", count));
+        if (!disposed) Report(T("导入完成，共处理 {0} 个文件。重复内容会合并。", count) + (failures.Count > 0 ? "\n" + T("失败 {0} 个文件。", failures.Count) + "\n" + string.Join("\n", failures.Take(3)) : ""));
     }
     private void ScheduleRefresh(bool reveal)
     {

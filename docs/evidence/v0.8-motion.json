@@ -1,0 +1,179 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "separate-process-backdrop-covers-test-location",
+      "passed": true,
+      "details": {
+        "actual": 10424516,
+        "actualPid": 85016,
+        "expected": 10424516,
+        "expectedPid": 85016,
+        "backgroundVisible": true,
+        "backgroundStyle": 264,
+        "cardOpacity": 1,
+        "cardVisible": false,
+        "cardRetiring": false,
+        "X": 219,
+        "Y": 135
+      }
+    },
+    {
+      "name": "entry-starts-finite-motion",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "swing-painted-elements-stay-inside-hwnd",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "entry-releases-animation-clocks-after-settling",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "entry-keeps-foreground",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "pointer-enter-immediately-stops-motion",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "steady-card-remains-interactive",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "retirement-visible-but-immediately-pass-through",
+      "passed": true,
+      "details": {
+        "actual": 10424516,
+        "actualPid": 85016,
+        "expected": 10424516,
+        "expectedPid": 85016,
+        "backgroundVisible": true,
+        "backgroundStyle": 264,
+        "cardOpacity": 1,
+        "cardVisible": true,
+        "cardRetiring": true,
+        "X": 219,
+        "Y": 135
+      }
+    },
+    {
+      "name": "retirement-closes-window-and-stops-clocks",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "retirement-keeps-source-file",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "entry-to-exit-race-does-not-leave-retiring-window",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "hide-during-entry-is-immediate-and-clock-free",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "disabled-motion-has-no-clocks",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "disabled-removal-closes-immediately",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "failed-history-write-keeps-card-visible-and-interactive",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "visible-shelf-animates-new-card-without-restarting-existing",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "removed-card-exits-outside-active-list",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "reduce-motion-stops-active-and-retiring-animations",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "reduce-motion-prevents-new-entry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "reduce-motion-removal-leaves-no-retiring-window",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "system-animation-off-stops-current-motion",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "system-animation-off-prevents-new-motion",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "hide-closes-exiting-windows-and-hides-active-windows",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "rapid-list-updates-bound-retiring-window-count",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "rapid-hide-leaves-no-animation-clocks",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "controller-disposal-leaves-no-overlay-windows",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "archive-commits-history-before-visual-exit",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "last-removal-shows-empty-message-during-exit",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "workspace-navigation-does-not-consume-slider-arrow",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "workspace-navigation-preserves-text-caret-arrows",
+      "passed": true,
+      "details": null
+    }
+  ]
+}

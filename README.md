@@ -4,13 +4,13 @@
 
 An independently maintained Windows implementation of a screenshot clothesline, inspired by [Tendedero](https://github.com/alejandrobujan/tendedero).
 
-> 当前状态：**阶段 3 第二批 v0.7.0 开发版**，在录像基础闭环上增加首尾裁剪、片段预览和新 MP4 副本导出。用户已反馈 v0.5 关键流程正常；录像人工验收、完整兼容性矩阵与性能目标仍待完成。
+> 当前状态：**阶段 3 第三批 v0.8.0 开发版**，增加 WebP、HEIC/HEIF 的系统解码检测与图片流程支持，保留录像首尾裁剪。用户已反馈 v0.5 关键流程正常；录像人工验收、完整兼容性矩阵与性能目标仍待完成。
 
 ![阶段 0 示例晾衣绳](docs/images/stage0-shelf.png)
 
 ## 运行开发版
 
-面向 Windows 11 x64。将 `Clothesline-0.7.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
+面向 Windows 11 x64。将 `Clothesline-0.8.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
 
 升级前先保存编辑并从托盘退出旧版。v0.3.0 首次打开旧库时，会先创建 `library-v1-backup-*.db` 数据库备份，再事务迁移至 v2；原有记录和设置保留。迁移后的库不能直接用 v0.2.0 打开；数据库备份不包含图片文件。
 
@@ -43,9 +43,11 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 - 录像卡片显示时长和播放标记；单击复制文件，双击默认应用打开，长按或右键播放。内置预览初始暂停，支持播放/暂停、进度、静音与音量，Esc 关闭。
 - 录像复制、拖出和导出均保留源文件与卡片；取下、超容量和历史规则与图片共用。预览窗口可填写起止秒数、设定当前位置为起点或终点、预览片段，再“导出片段并挂上…”。最短 0.1 秒，重新编码为 H.264/AAC MP4（无音轨输入仍无音轨），验证后另存并挂上；原录像和原卡片保留，同名自动编号，可取消导出。开始使用录像后请继续使用 v0.6 或更新版本，旧版不能识别录像卡片。
 
+WebP、HEIC/HEIF 可从截图目录、额外目录和手动导入进入同一图片流程。升级时已有文件跳过，之后收集新增或修改的文件；复制提供 PNG、位图和原文件，拖出/原格式导出保留原文件，编辑另存 PNG 并保留原图像素快照。只处理首帧或主图，不保留动画、全部容器元数据或多图序列。解码失败时显示原因，文件保留；应用不自动安装图像扩展。
+
 设置、记录与应用保存的 PNG 位于 `%LOCALAPPDATA%\ScreenshotClothesline\Library`，重启后恢复。外部图片只保存引用，移动或删除原文件会导致失效。阶段 0 的示例目录独立保留，不自动导入本地历史。
 
-支持 PNG、JPEG、BMP、TIFF、GIF 首帧；当前限制单文件 64 MiB、4000 万像素。首次目录清单与后续补扫基于路径、大小和修改时间；跨来源像素去重窗口为 5 秒，不能保证延迟很长的双来源事件合并。全屏判断采用窗口几何启发式。限制及实测范围见 [阶段 1 验证报告](docs/STAGE1_VALIDATION.md)。
+支持 PNG、JPEG、BMP、TIFF、GIF 首帧；WebP、HEIC/HEIF 依赖本机 Windows 图像组件。控制面板新增“格式支持”，用内置小样本实际解码检测，可重新检测；样本成功不代表所有变体均支持。当前限制单文件 64 MiB、4000 万像素。首次目录清单与后续补扫基于路径、大小和修改时间；跨来源像素去重窗口为 5 秒，不能保证延迟很长的双来源事件合并。全屏判断采用窗口几何启发式。限制及实测范围见 [阶段 1 验证报告](docs/STAGE1_VALIDATION.md)。
 
 ![阶段 1 来源与设置](docs/images/stage1-settings.png)
 
@@ -60,7 +62,7 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 ./scripts/publish.ps1
 ```
 
-所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.7.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.7.0.txt`。
+所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.8.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.8.0.txt`。
 
 普通测试包含核心规则、SQLite 生命周期和 100 文件监听突发测试。有交互式 Windows 桌面时，先退出正在运行的应用，再执行 `./scripts/test.ps1 -Desktop`：会短暂显示本程序专用测试窗口，检查跨进程窗口命中、100 张生成的有效 PNG、导出和原生回收站。结果与自身界面渲染位于 `artifacts/validation/` 和 `artifacts/stage1-validation/`。该命令不采集屏幕图像、不修改系统剪贴板；回收站测试仅处理生成的夹具文件。
 
@@ -75,6 +77,8 @@ v0.5.0 新增 `--motion-test artifacts/motion-validation`，检查动画生命�
 v0.6.0 新增录像专项诊断（--video-test），使用原生编码器生成测试录像，检查实际解码、播放、缩略图、文件操作与历史生命周期。已纳入桌面诊断；不写真实剪贴板，实际跨应用粘贴、音轨和拖放仍需人工验收。
 
 v0.7.0 新增裁剪专项诊断（--video-trim-test），包含原生精确裁剪、输出解码验证、原文件保护、取消、超时、同名处理、目录收集和中英文工作台。已纳入桌面诊断，结果位于 artifacts/video-trim-validation/；真实录屏声音与音画同步仍需人工核验。
+
+v0.8.0 新增图片格式专项诊断（--image-format-test），检查本机样本能力、WebP 透明度、首帧、缩略图、HEIF 别名、文件保护与编辑快照，以及缺组件的模拟错误分支。结果位于 artifacts/image-format-validation/；已纳入桌面诊断。运行程序不需要 Python，仓库的生成样本脚本仅用于开发重建测试素材。
 
 GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备好，将执行构建、核心规则检查与打包。当前推送凭据没有 `workflow` 权限，因此模板暂放在文档目录，待具备相应权限后再安装到 `.github/workflows/build.yml`。
 
@@ -98,6 +102,7 @@ GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备�
 - [阶段 2 第四批验证报告](docs/STAGE2_MOTION.md)：动效、减少动画、键盘修正与完整人工核验清单。
 - [阶段 3 第一批报告](docs/STAGE3_VIDEO.md)：录像使用方式、编码与资源边界、验证结果及人工清单。
 - [阶段 3 第二批报告](docs/STAGE3_VIDEO_TRIMMING.md)：首尾裁剪、导出安全边界、验证结果与人工核验清单。
+- [阶段 3 第三批报告](docs/STAGE3_IMAGE_FORMATS.md)：可选图片格式、能力检测、验证结果和人工核验清单。
 - [来源与授权说明](THIRD_PARTY_NOTICES.md)：原项目基线、参考范围和品牌限制。
 - [贡献说明](CONTRIBUTING.md)：开发与贡献约定。
 
@@ -112,7 +117,7 @@ C#、.NET 10 LTS、WPF、Win32/COM 接口、Microsoft.Data.Sqlite。
 - [ ] 阶段 0：桌面交互原型（可运行，待完成验收矩阵）
 - [ ] 阶段 1：截图收集、复制、拖拽与历史闭环（已实现开发版，人工验收待完成）
 - [ ] 阶段 2：预览、标注、批量取下、原图恢复、快捷键与登录启动已实现；大小/音效、中英文及基础无障碍名称已实现；动效已实现；用户本机关键流程反馈正常，完整兼容性矩阵与性能目标待完成
-- [ ] 阶段 3：录像基础闭环与首尾裁剪已实现；扩展格式与兼容性矩阵待继续
+- [ ] 阶段 3：录像基础闭环、首尾裁剪与 WebP/HEIC 系统能力检测已实现；扩展变体和完整兼容性矩阵待继续
 - [ ] 阶段 4：安装、升级与正式发布
 
 ## 项目关系与许可证

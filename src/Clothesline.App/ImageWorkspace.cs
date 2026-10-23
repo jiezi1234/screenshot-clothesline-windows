@@ -239,7 +239,7 @@ internal sealed class ImageWorkspace : Window
             else if (!textInput && !saving && !loading && e.Key is Key.Z or Key.Y) { canvas.Cancel(); if (e.Key == Key.Z) document?.Undo(); else document?.Redo(); e.Handled = true; }
             return;
         }
-        if (textInput || canvas.Drawing || saving || loading) return;
+        if (textInput || Keyboard.FocusedElement is RangeBase || canvas.Drawing || saving || loading) return;
         switch (e.Key)
         {
             case Key.Left: _ = Navigate(-1); break;

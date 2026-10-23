@@ -4,13 +4,13 @@
 
 An independently maintained Windows implementation of a screenshot clothesline, inspired by [Tendedero](https://github.com/alejandrobujan/tendedero).
 
-> 当前状态：**阶段 2 第三批 v0.4.0 开发版**，新增三档卡片大小、默认关闭的提示音和中英文界面。尚未完成全部人工验收，暂不作为正式发布版。
+> 当前状态：**阶段 2 第四批 v0.5.0 开发版**，新增卡片入场/摆动/取下动效，完善减少动画与键盘交互。阶段 2 功能开发已覆盖计划范围，人工验收、混合 DPI 与性能目标仍待完成。
 
 ![阶段 0 示例晾衣绳](docs/images/stage0-shelf.png)
 
 ## 运行开发版
 
-面向 Windows 11 x64。将 `Clothesline-0.4.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
+面向 Windows 11 x64。将 `Clothesline-0.5.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
 
 升级前先保存编辑并从托盘退出旧版。v0.3.0 首次打开旧库时，会先创建 `library-v1-backup-*.db` 数据库备份，再事务迁移至 v2；原有记录和设置保留。迁移后的库不能直接用 v0.2.0 打开；数据库备份不包含图片文件。
 
@@ -35,6 +35,9 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 - 自动收集提示音默认关闭，仅成功收集新图片时播放 Windows 提示音，每 2 秒最多一次；暂停和当前鼠标屏幕全屏时静音。手动导入、历史恢复、原图快照、重复与失败不发声。
 - 可选择简体中文或 English，保存后重启生效。先保存未完成编辑，再从托盘退出并重新打开；界面会显示重启提示。
 
+- 卡片入场时短暂摆动，鼠标进入时立即停稳。取下动画期间鼠标立即穿透，结束后关闭；收起时立即隐藏。勾选“减少动画”或关闭 Windows 客户端动画可关闭这些效果。
+- 编辑器的粗细滑块获得焦点后，方向键用于调节粗细；文字框内仍用于移动光标。
+
 设置、记录与应用保存的 PNG 位于 `%LOCALAPPDATA%\ScreenshotClothesline\Library`，重启后恢复。外部图片只保存引用，移动或删除原文件会导致失效。阶段 0 的示例目录独立保留，不自动导入本地历史。
 
 支持 PNG、JPEG、BMP、TIFF、GIF 首帧；当前限制单文件 64 MiB、4000 万像素。首次目录清单与后续补扫基于路径、大小和修改时间；跨来源像素去重窗口为 5 秒，不能保证延迟很长的双来源事件合并。全屏判断采用窗口几何启发式。限制及实测范围见 [阶段 1 验证报告](docs/STAGE1_VALIDATION.md)。
@@ -52,7 +55,7 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 ./scripts/publish.ps1
 ```
 
-所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.4.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.4.0.txt`。
+所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.5.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.5.0.txt`。
 
 普通测试包含核心规则、SQLite 生命周期和 100 文件监听突发测试。有交互式 Windows 桌面时，先退出正在运行的应用，再执行 `./scripts/test.ps1 -Desktop`：会短暂显示本程序专用测试窗口，检查跨进程窗口命中、100 张生成的有效 PNG、导出和原生回收站。结果与自身界面渲染位于 `artifacts/validation/` 和 `artifacts/stage1-validation/`。该命令不采集屏幕图像、不修改系统剪贴板；回收站测试仅处理生成的夹具文件。
 
@@ -61,6 +64,8 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 v0.3.0 追加原图快照关联、迁移、配额、重启恢复与清理检查。设置诊断在 `artifacts/preferences-validation/`，使用临时快捷键和隔离注册表键验证冲突/回滚，不修改用户真实登录启动项，不发送键盘输入。
 
 v0.4.0 新增 `--appearance-test artifacts/appearance-validation`，验证三档尺寸、无障碍名称、中英文自身界面及设置保存。`test.ps1 -Desktop` 已包含此诊断。提示音策略和事件测试不播放实际系统声音，试听仍待人工完成。
+
+v0.5.0 新增 `--motion-test artifacts/motion-validation`，检查动画生命周期、退场穿透、快速更新清理、历史提交与键盘路由；已纳入 `test.ps1 -Desktop`。该命令会短暂显示本程序专用窗口。
 
 GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备好，将执行构建、核心规则检查与打包。当前推送凭据没有 `workflow` 权限，因此模板暂放在文档目录，待具备相应权限后再安装到 `.github/workflows/build.yml`。
 
@@ -81,6 +86,7 @@ GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备�
 - [阶段 2 验证报告](docs/STAGE2_VALIDATION.md)：图片工作台、编辑边界与待人工核验清单。
 - [阶段 2 第二批验证报告](docs/STAGE2_ORIGINALS_PREFERENCES.md)：原图恢复、快捷键、登录启动及升级说明。
 - [阶段 2 第三批验证报告](docs/STAGE2_APPEARANCE_LANGUAGE.md)：大小、音效、中英文界面及待人工核验清单。
+- [阶段 2 第四批验证报告](docs/STAGE2_MOTION.md)：动效、减少动画、键盘修正与完整人工核验清单。
 - [来源与授权说明](THIRD_PARTY_NOTICES.md)：原项目基线、参考范围和品牌限制。
 - [贡献说明](CONTRIBUTING.md)：开发与贡献约定。
 
@@ -94,7 +100,7 @@ C#、.NET 10 LTS、WPF、Win32/COM 接口、Microsoft.Data.Sqlite。
 
 - [ ] 阶段 0：桌面交互原型（可运行，待完成验收矩阵）
 - [ ] 阶段 1：截图收集、复制、拖拽与历史闭环（已实现开发版，人工验收待完成）
-- [ ] 阶段 2：预览、标注、批量取下、原图恢复、快捷键与登录启动已实现；大小/音效、中英文及基础无障碍名称已实现；动效完善与人工验收待完成
+- [ ] 阶段 2：预览、标注、批量取下、原图恢复、快捷键与登录启动已实现；大小/音效、中英文及基础无障碍名称已实现；动效已实现；人工验收与性能目标待完成
 - [ ] 阶段 3：录像处理与兼容性
 - [ ] 阶段 4：安装、升级与正式发布
 

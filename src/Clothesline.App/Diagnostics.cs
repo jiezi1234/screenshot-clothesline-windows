@@ -20,10 +20,15 @@ internal static class Diagnostics
     public static int Backdrop(Application app, string path)
     {
         var monitor = Native.MonitorAt(Native.Cursor);
-        var window = new Window { Title = "Clothesline integration-test backdrop", WindowStyle = WindowStyle.None, Background = Brushes.AliceBlue, ShowInTaskbar = false };
+        var window = new Window { Title = "Clothesline integration-test backdrop", WindowStyle = WindowStyle.None, Background = Brushes.AliceBlue, Content = new Border { Background = Brushes.AliceBlue }, ShowInTaskbar = false, Topmost = true };
+        var ready = false;
+        window.ContentRendered += (_, _) =>
+        {
+            if (ready) return; ready = true;
+            File.WriteAllText(path, JsonSerializer.Serialize(new { Handle = new WindowInteropHelper(window).Handle.ToInt64(), ProcessId = Environment.ProcessId }));
+        };
         window.Show(); Native.Place(window, new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, Math.Min(450, monitor.WorkArea.Height)));
         window.Activate();
-        File.WriteAllText(path, JsonSerializer.Serialize(new { Handle = new WindowInteropHelper(window).Handle.ToInt64(), ProcessId = Environment.ProcessId }));
         window.Closed += (_, _) => app.Shutdown();
         return app.Run();
     }
@@ -50,7 +55,7 @@ internal static class Diagnostics
                 {
                     var hit = Native.WindowFromPoint(point); Native.GetWindowThreadProcessId(hit, out var processId);
                     Native.GetWindowRect(backdropHandle, out var backdropRect);
-                    return new { x = point.X, y = point.Y, actualHandle = hit.ToInt64(), actualProcessId = processId, expectedHandle = backdropHandle.ToInt64(), backdropBounds = backdropRect.Pixels };
+                    return new { x = point.X, y = point.Y, actualHandle = hit.ToInt64(), actualProcessId = processId, expectedHandle = backdropHandle.ToInt64(), backdropBounds = backdropRect.Pixels, backdropStyle = Native.GetWindowLongPtrW(backdropHandle, -20).ToInt64() };
                 }
                 var monitor = Native.MonitorAt(Native.Cursor);
                 rope = new RopeWindow(); var scale = Native.MoveAndGetScale(rope, monitor);

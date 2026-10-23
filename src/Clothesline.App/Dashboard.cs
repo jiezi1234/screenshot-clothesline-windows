@@ -70,6 +70,7 @@ internal sealed class Dashboard : Window
         panel.Children.Add(Label(T("截图目录（首次选择只监听新增图片）"))); panel.Children.Add(FolderRow(screenshot));
         panel.Children.Add(Label(T("额外目录：最多 3 个，不包含子目录"))); foreach (var text in extras) panel.Children.Add(FolderRow(text));
         foreach (var check in new[] { clipboard, pause, popup, full, motion }) { check.Margin = new Thickness(0, 6, 0, 0); panel.Children.Add(check); }
+        motion.ToolTip = T("关闭卡片入场、摆动、取下及绳线淡入；Windows 关闭动画时也会自动停用。鼠标进入卡片时立即停稳。");
         var limits = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) }; limits.Children.Add(Choice(T("晾衣绳容量"), capacity)); limits.Children.Add(Choice(T("历史期限"), retention)); limits.Children.Add(Choice(T("自管图片上限"), storage)); panel.Children.Add(limits);
         panel.Children.Add(new TextBlock { Text = T("取下或超出容量会进入历史。到期时外部原文件保留；应用保存的图片仅尝试移入回收站，失败保留记录。"), TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 12, 0, 12) });
         var container = new DockPanel(); var save = Button(T("保存设置"), SaveSettings); save.Margin = new Thickness(16, 8, 16, 10); DockPanel.SetDock(save, Dock.Bottom); container.Children.Add(save);

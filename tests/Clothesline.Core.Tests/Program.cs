@@ -82,4 +82,11 @@ var sourceKeys = Directory.EnumerateFiles("src", "*.cs", SearchOption.AllDirecto
 Check(sourceKeys.All(UiText.English.ContainsKey), "all application translation keys exist in English resource");
 UiText.Language = "zh-CN";
 Check(UiText.T("暂时没有图片") == "暂时没有图片", "Chinese empty state preserves requested wording");
+Check(VideoTrimRange.Create(.25, 1.25, 4).Seconds == 1, "fractional video selection keeps one second");
+Check(VideoTrimRange.Create(0, 4.01, 4).End == 4, "player tail discrepancy clamps to actual media duration");
+foreach (var range in new[] { new VideoTrimRange(-1, 2), new VideoTrimRange(2, 1), new VideoTrimRange(1, 1), new VideoTrimRange(0, .05), new VideoTrimRange(0, 4.2), new VideoTrimRange(double.NaN, 2), new VideoTrimRange(0, double.PositiveInfinity) })
+{
+    var rejected = false; try { VideoTrimRange.Create(range.Start, range.End, 4); } catch (ArgumentException) { rejected = true; }
+    Check(rejected, "unsafe or empty video selection rejected: " + range);
+}
 Console.WriteLine($"{checks} checks passed.");

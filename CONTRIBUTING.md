@@ -1,6 +1,6 @@
 # 贡献说明
 
-项目目前处于阶段 3 录像基础闭环开发与验证阶段；用户本机 v0.5 关键流程反馈正常，完整兼容性矩阵仍有待办。开始实现前请阅读 [需求规格](docs/REQUIREMENTS.md)、[迁移计划](docs/MIGRATION_PLAN.md) 和 [来源说明](THIRD_PARTY_NOTICES.md)。
+项目目前处于阶段 3 录像基础闭环与首尾裁剪开发验证阶段；用户本机 v0.5 关键流程反馈正常，完整兼容性矩阵仍有待办。开始实现前请阅读 [需求规格](docs/REQUIREMENTS.md)、[迁移计划](docs/MIGRATION_PLAN.md) 和 [来源说明](THIRD_PARTY_NOTICES.md)。
 
 - 实现参考限定为原版 macOS Tendedero、项目需求与微软官方文档，不参考已有 Windows 移植实现。
 - 原版代码的复制、改写或移植须记录来源并保留许可。

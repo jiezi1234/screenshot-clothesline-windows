@@ -222,4 +222,36 @@ using (var store = new LibraryStore(Path.Combine(root, "video-rules")))
     var sub = Path.Combine(folder, "sub"); Directory.CreateDirectory(sub); File.WriteAllText(Path.Combine(sub, "ignored.mp4"), "nested");
     engine.RequestRescan(); await Task.Delay(300); Check(store.Entries().Count == 7, "video directory remains nonrecursive");
 }
+using (var store = new LibraryStore(Path.Combine(root, "extended-rules")))
+{
+    var folder = Path.Combine(root, "optional-images"); Directory.CreateDirectory(folder);
+    store.InitializeSource(folder, []); // Emulate a pre-v0.8 source that only baselined the standard formats.
+    var old = Path.Combine(folder, "old.heic"); File.WriteAllText(old, "existing photo");
+    var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); using var release = new ManualResetEventSlim();
+    using var engine = new CollectionEngine(store, path =>
+    {
+        if (Path.GetFileName(path) == "slow.heic") { entered.TrySetResult(); release.Wait(TimeSpan.FromSeconds(10)); }
+        if (Path.GetFileName(path) == "unsupported.heic") throw new NotSupportedException("Simulated missing codec.");
+        return File.ReadAllText(path);
+    }, () => 25);
+    var config = new LibrarySettings { ScreenshotFolder = folder };
+    engine.Configure(config); await Task.Delay(300);
+    Check(store.Entries().Count == 0 && store.HasObserved(old, CollectionEngine.Signature(old)), "upgrade baselines existing optional images separately");
+    var fresh = Path.Combine(folder, "fresh.WEBP"); File.WriteAllText(fresh, "fresh WebP");
+    var deadline = DateTime.UtcNow.AddSeconds(4); while (store.Entries().Count == 0 && DateTime.UtcNow < deadline) await Task.Delay(80);
+    Check(store.Entries().Single().Path == fresh, "new case-insensitive WebP enters common history");
+    engine.Configure(config); engine.RequestRescan(); await Task.Delay(250);
+    Check(store.Entries().Count == 1, "reconfiguration does not import pre-upgrade HEIC or duplicate WebP");
+    File.WriteAllText(Path.Combine(folder, "slow.heic"), "slow HEIC"); await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    File.WriteAllText(Path.Combine(folder, "responsive.png"), "normal PNG");
+    deadline = DateTime.UtcNow.AddSeconds(3); while (store.Entries().Count < 2 && DateTime.UtcNow < deadline) await Task.Delay(80);
+    Check(store.Entries().Count == 2, "optional decoder does not hold ordinary image commit lock");
+    engine.Configure(new LibrarySettings()); release.Set(); await Task.Delay(250);
+    Check(!store.Entries().Any(e => e.Title == "slow.heic"), "source removal during optional decode prevents late commit");
+    var missing = Path.Combine(folder, "unsupported.heic"); File.WriteAllText(missing, "preserved");
+    try { await engine.ImportExternal(missing); Check(false, "optional decode failure"); }
+    catch (NotSupportedException) { Check(File.ReadAllText(missing) == "preserved" && !store.HasObserved(missing, CollectionEngine.Signature(missing)), "missing optional codec retains source and permits retry"); }
+    var alias = Path.Combine(folder, "manual.heif"); File.WriteAllText(alias, "manual HEIF");
+    Check(await engine.ImportExternal(alias) && store.Entries().Any(e => e.Path == alias), "HEIF manual import shares image lifecycle");
+}
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

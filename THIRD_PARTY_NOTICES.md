@@ -40,3 +40,7 @@ v0.6.0 通过 Windows.Media.Editing 生成缩略图，并用 WPF MediaElement �
 - WinRT.Runtime.dll 文件版本为 2.2.0.48161，产品版本对应 microsoft/CsWinRT 提交 8649ee3eeb2445ca2a36d80d878ef60b96a6c65d；该提交的完整 MIT 许可保存为 licenses/CsWinRT-LICENSE.txt。来源：[许可文件](https://github.com/microsoft/CsWinRT/blob/8649ee3eeb2445ca2a36d80d878ef60b96a6c65d/LICENSE)。
 
 目标框架中的 Windows 10 API 版本用于接口绑定，不改变首发 Windows 11 x64 的产品范围。打包脚本额外复制隐式 SDK 投影包的实际版本元数据，避免仅枚举普通 NuGet 依赖时漏项。
+
+## v0.8 图片格式检测样本
+
+Fixtures 中的 WebP/HEIC/PNG 均为本项目生成的色块，不含用户照片、原项目素材或第三方样例图片。生成工具仅用于开发，版本和重建方式见 src/Clothesline.App/Fixtures/README.md；应用不随包分发 Pillow、libwebp、libheif、x265 或 Python。产品通过现有 Windows WIC 组件解码，是否可用取决于机器已安装的组件。本批未新增应用运行时依赖。

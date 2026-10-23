@@ -89,4 +89,7 @@ foreach (var range in new[] { new VideoTrimRange(-1, 2), new VideoTrimRange(2, 1
     var rejected = false; try { VideoTrimRange.Create(range.Start, range.End, 4); } catch (ArgumentException) { rejected = true; }
     Check(rejected, "unsafe or empty video selection rejected: " + range);
 }
+foreach (var extension in new[] { ".webp", ".WEBP", ".heic", ".HEIF" }) Check(MediaFiles.IsImage("photo" + extension) && MediaFiles.IsExtendedImage("photo" + extension) && !MediaFiles.IsVideo("photo" + extension), "optional image extension classified: " + extension);
+Check(!MediaFiles.IsExtendedImage("photo.png") && MediaFiles.IsImage("photo.png"), "standard images retain existing decoder route");
+Check(!MediaFiles.IsImage("photo.avif") && !MediaFiles.IsImage("photo.webp.exe"), "unverified and disguised extensions are not admitted");
 Console.WriteLine($"{checks} checks passed.");

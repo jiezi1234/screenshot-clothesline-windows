@@ -181,4 +181,45 @@ using (var store = new LibraryStore(migration))
 }
 using (var store = new LibraryStore(migration))
     Check(store.LoadSettings().CardSizePercent == 120 && store.LoadSettings().CaptureSound && store.LoadSettings().Language == "en", "size sound and language survive restart");
+using (var store = new LibraryStore(Path.Combine(root, "video-rules")))
+{
+    Check(store.LoadSettings().VideoFolder == "", "video collection stays opt-in for old/default settings");
+    var folder = Path.Combine(root, "mixed-media"); Directory.CreateDirectory(folder);
+    File.WriteAllText(Path.Combine(folder, "old.png"), "old image"); File.WriteAllText(Path.Combine(folder, "old.mp4"), "old video");
+    var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    using var engine = new CollectionEngine(store, p => File.ReadAllText(p), () => 25, async (p, cancel) =>
+    {
+        if (Path.GetFileName(p) == "in-flight.mp4") { entered.TrySetResult(); await release.Task.WaitAsync(cancel); }
+        return "video:" + File.ReadAllText(p);
+    });
+    var config = new LibrarySettings { ScreenshotFolder = folder };
+    engine.Configure(config); await Task.Delay(200);
+    File.WriteAllText(Path.Combine(folder, "before-video-enabled.mp4"), "pre-existing video");
+    engine.Configure(config with { VideoFolder = folder }); engine.RequestRescan(); await Task.Delay(350);
+    Check(store.Entries().Count == 0, "enabling video in image folder baselines old videos independently");
+    File.WriteAllText(Path.Combine(folder, "fresh.png"), "fresh image"); File.WriteAllText(Path.Combine(folder, "fresh.mp4"), "fresh video");
+    var deadline = DateTime.UtcNow.AddSeconds(6);
+    while (store.Entries().Count < 2 && DateTime.UtcNow < deadline) await Task.Delay(100);
+    Check(store.Entries().Count == 2 && store.Entries().All(e => e.Ownership == Ownership.External), "same directory collects each enabled media kind exactly once");
+    engine.RequestRescan(); await Task.Delay(300); Check(store.Entries().Count == 2, "video repeats deduplicate without changing image behavior");
+    File.WriteAllText(Path.Combine(folder, "in-flight.mp4"), "slow video"); await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    File.WriteAllText(Path.Combine(folder, "during-probe.png"), "responsive image");
+    deadline = DateTime.UtcNow.AddSeconds(3); while (store.Entries().Count < 3 && DateTime.UtcNow < deadline) await Task.Delay(100);
+    Check(store.Entries().Count == 3 && store.Entries().Any(e => e.Title == "during-probe.png"), "slow video decoder does not block new images");
+    engine.Configure(config); release.TrySetResult(); await Task.Delay(300);
+    Check(!store.Entries().Any(e => e.Title == "in-flight.mp4"), "disabling video during probe prevents stale commit");
+    File.WriteAllText(Path.Combine(folder, "disabled.mp4"), "disabled video");
+    File.WriteAllText(Path.Combine(folder, "still-image.png"), "image stays enabled");
+    deadline = DateTime.UtcNow.AddSeconds(3); while (store.Entries().Count < 4 && DateTime.UtcNow < deadline) await Task.Delay(100);
+    Check(store.Entries().Count == 4 && store.Entries().Any(e => e.Title == "still-image.png"), "clearing video source retains image watcher");
+    engine.Configure(config with { VideoFolder = folder, Paused = true });
+    File.WriteAllText(Path.Combine(folder, "paused.mp4"), "paused video"); await Task.Delay(300);
+    Check(store.Entries().Count == 4, "paused video is not collected");
+    engine.Configure(config with { VideoFolder = folder });
+    deadline = DateTime.UtcNow.AddSeconds(7); while (store.Entries().Count < 7 && DateTime.UtcNow < deadline) await Task.Delay(100);
+    Check(store.Entries().Count == 7, "resume and source reenable rescan unseen recordings");
+    var sub = Path.Combine(folder, "sub"); Directory.CreateDirectory(sub); File.WriteAllText(Path.Combine(sub, "ignored.mp4"), "nested");
+    engine.RequestRescan(); await Task.Delay(300); Check(store.Entries().Count == 7, "video directory remains nonrecursive");
+}
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

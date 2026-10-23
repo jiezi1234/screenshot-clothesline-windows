@@ -8,7 +8,10 @@ using System.Windows.Media.Imaging;
 
 namespace Clothesline.App;
 
-internal sealed record DemoItem(string Title, string Subtitle, string Path, BitmapSource Image, string? EntryId = null);
+internal sealed record DemoItem(string Title, string Subtitle, string Path, BitmapSource Image, string? EntryId = null)
+{
+    public bool IsVideo => Clothesline.Core.MediaFiles.IsVideo(Path);
+}
 
 internal static class DemoAssets
 {

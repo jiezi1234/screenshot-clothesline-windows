@@ -124,6 +124,8 @@ internal sealed class CardWindow : OverlayWindow
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var image = new Image { Source = item.Image, Stretch = Stretch.UniformToFill, ClipToBounds = true };
         inside.Children.Add(image);
+        if (item.IsVideo)
+            inside.Children.Add(new TextBlock { Text = "▶", FontSize = 28, Foreground = Brushes.White, Background = DemoAssets.Brush("#203B36"), Padding = new Thickness(8, 0, 8, 0), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false });
         caption = new TextBlock { Text = item.Title, ToolTip = item.Title, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = DemoAssets.Brush("#243E35"), FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 7, 0, 0) };
         Grid.SetRow(caption, 1); inside.Children.Add(caption);
         var sub = new TextBlock { Text = item.Subtitle, ToolTip = item.Subtitle, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 9, Foreground = DemoAssets.Brush("#7D8B83"), Margin = new Thickness(2, 3, 0, 0) };
@@ -142,7 +144,7 @@ internal sealed class CardWindow : OverlayWindow
         {
             holdTimer.Stop(); if (down is null || Busy || Mouse.LeftButton != MouseButtonState.Pressed) return;
             down = null; clickTimer.Stop(); surface.ReleaseMouseCapture();
-            try { WorkspaceRequested?.Invoke(Item, true); } catch (Exception ex) { Report(ex.Message); }
+            try { WorkspaceRequested?.Invoke(Item, !Item.IsVideo); } catch (Exception ex) { Report(ex.Message); }
         };
         surface.MouseLeftButtonDown += Down;
         surface.MouseMove += Move;
@@ -152,10 +154,10 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseEnter += (_, _) => { if (!Busy) caption.Text = T("单击复制 · 双击打开 · 拖出"); };
         surface.MouseLeave += (_, _) => { if (!Busy) caption.Text = item.Title; };
         var menu = new ContextMenu();
-        Add(menu, T("复制图片"), Copy);
-        Add(menu, T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
-        Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
-        Add(menu, T("打开图片"), () => ShellTransfer.Open(item.Path));
+        Add(menu, item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
+        Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
+        if (!item.IsVideo) Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
+        Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
         Add(menu, T("在资源管理器中定位"), () => ShellTransfer.Reveal(item.Path));
         Add(menu, T("另存为"), () => ExportRequested?.Invoke(item, false));
         Add(menu, T("保存副本到桌面"), () => ExportRequested?.Invoke(item, true));
@@ -237,16 +239,11 @@ internal sealed class CardWindow : OverlayWindow
         if (!File.Exists(Item.Path)) { Report(T("原文件已移走，可在历史中查看失效记录。")); return; }
         try
         {
-            var data = new DataObject();
-            var original = ImageFiles.Read(Item.Path);
-            data.SetImage(original);
-            data.SetFileDropList(new StringCollection { Item.Path });
-            data.SetData("PNG", new MemoryStream(ImageFiles.Png(original)));
-            data.SetData("ScreenshotClothesline.OwnCopy", "1", false);
-            Clipboard.SetDataObject(data, true);
-            Report(T("已复制原图"));
+            Clipboard.SetDataObject(ShellTransfer.CopyData(Item.Path), true);
+            Report(Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
         }
         catch (System.Runtime.InteropServices.COMException) { Report(T("剪贴板正在被占用，请稍后再试。")); }
+        catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }
     }
     private void Report(string text) { feedback = text; caption.Text = feedback; Status?.Invoke(text); }
 }

@@ -1,6 +1,6 @@
 # 迁移计划
 
-更新日期：2026-10-22。[PR #1](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/1)、[PR #2](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/2) 和阶段 2 首批 [PR #3](https://github.com/jiezi1234/screenshot-clothesline-windows/pull/3) 已合并；继续阶段 2 第二批，补充跨会话原图恢复、自定义快捷键和登录启动。前序阶段的人工兼容性验收仍保留为待办，不因合并或进入下一阶段而视为通过。详见 [阶段 0](STAGE0_VALIDATION.md)、[阶段 1](STAGE1_VALIDATION.md)、[阶段 2 首批](STAGE2_VALIDATION.md) 和 [阶段 2 第二批验证报告](STAGE2_ORIGINALS_PREFERENCES.md)。
+更新日期：2026-10-23。PR #1–#6 已合并；用户反馈 v0.5 关键人工核验项“都正常”。阶段 3 第一批实现录像基础闭环，详见 [阶段 3 报告](STAGE3_VIDEO.md)。完整兼容性矩阵和性能目标继续保留待办，不因合并或本机关键流程通过而视为全部完成。
 
 ## 参考边界
 
@@ -78,7 +78,7 @@
 
 ## 阶段 3：录像与兼容性
 
-- [ ] 指定录像目录、缩略图、播放、复制与拖拽。
+- [x] 指定录像目录、MP4 H.264/AAC 或无音轨的缩略图、播放、复制与拖拽；实际录像及跨应用人工验收待完成。
 - [ ] 首尾裁剪、编码支持清单和输出验证。
 - [ ] WebP/HEIC 等扩展格式能力检测。
 - [ ] 虚拟桌面、远程桌面、睡眠/唤醒与屏幕共享验证。

@@ -22,7 +22,7 @@ internal static class SafeRecycle
             SHCreateItemFromParsingName(Path.GetFullPath(path), 0, iid, out item);
             var sink = new RecycleSink(); operation.DeleteItem(item, sink); operation.PerformOperations();
             operation.GetAnyOperationsAborted(out var aborted);
-            if (aborted || sink.Failed || System.IO.File.Exists(path)) throw new IOException("未能移入回收站，文件已保留。");
+            if (aborted || sink.Failed || System.IO.File.Exists(path)) throw new IOException(T("未能移入回收站，文件已保留。"));
             return true;
         }
         finally { if (item is not null) Marshal.ReleaseComObject(item); Marshal.ReleaseComObject(operation); }

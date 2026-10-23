@@ -20,6 +20,7 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--library-test") return LibraryDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--editor-test") return EditorDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--preferences-test") return PreferencesDiagnostics.Run(app, args[1]);
+        if (args.Length == 2 && args[0] == "--appearance-test") return AppearanceDiagnostics.Run(app, args[1]);
         using var instance = new Mutex(true, "Local\\ScreenshotClothesline.Prototype", out var first);
         using var wake = new EventWaitHandle(false, EventResetMode.AutoReset, "Local\\ScreenshotClothesline.Prototype.Wake");
         if (!first) { if (!args.Contains("--startup")) wake.Set(); return 0; }
@@ -30,18 +31,19 @@ internal static class Program
         Dashboard? dashboard = null;
         void Quit() { if (!library.TryCloseWorkspaces()) return; if (dashboard is not null) dashboard.Exiting = true; app.Shutdown(); }
         dashboard = new Dashboard(controller, shortcut.Registered, Quit, library);
-        using var tray = new Forms.NotifyIcon { Text = "Screenshot Clothesline · 截图与历史", Icon = CreateIcon(), Visible = true };
+        using var tray = new Forms.NotifyIcon { Text = T("Screenshot Clothesline · 截图与历史"), Icon = CreateIcon(), Visible = true };
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("显示 / 收起晾衣绳", null, (_, _) => controller.Toggle());
-        menu.Items.Add("打开控制面板", null, (_, _) => dashboard.Reveal());
-        menu.Items.Add("本地历史", null, (_, _) => dashboard.ShowHistory());
-        menu.Items.Add("快捷键与登录启动", null, (_, _) => dashboard.ShowDesktopSettings());
-        menu.Items.Add("暂停 / 恢复收集", null, (_, _) => library.TogglePause());
+        menu.Items.Add(T("显示 / 收起晾衣绳"), null, (_, _) => controller.Toggle());
+        menu.Items.Add(T("打开控制面板"), null, (_, _) => dashboard.Reveal());
+        menu.Items.Add(T("本地历史"), null, (_, _) => dashboard.ShowHistory());
+        menu.Items.Add(T("快捷键与登录启动"), null, (_, _) => dashboard.ShowDesktopSettings());
+        menu.Items.Add(T("外观与语言"), null, (_, _) => dashboard.ShowAppearance());
+        menu.Items.Add(T("暂停 / 恢复收集"), null, (_, _) => library.TogglePause());
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("退出", null, (_, _) => Quit()); tray.ContextMenuStrip = menu;
+        menu.Items.Add(T("退出"), null, (_, _) => Quit()); tray.ContextMenuStrip = menu;
         tray.DoubleClick += (_, _) => dashboard.Reveal();
         var waiter = ThreadPool.RegisterWaitForSingleObject(wake, (_, _) => app.Dispatcher.BeginInvoke((Action)dashboard.Reveal), null, Timeout.Infinite, false);
-        app.DispatcherUnhandledException += (_, e) => { dashboard.SetStatus("操作失败：" + e.Exception.Message); e.Handled = true; };
+        app.DispatcherUnhandledException += (_, e) => { dashboard.SetStatus(T("操作失败：") + e.Exception.Message); e.Handled = true; };
         try { library.Start(); if (!args.Contains("--startup")) dashboard.Show(); return app.Run(); }
         finally { waiter.Unregister(null); tray.Visible = false; tray.Icon?.Dispose(); menu.Dispose(); instance.ReleaseMutex(); }
     }

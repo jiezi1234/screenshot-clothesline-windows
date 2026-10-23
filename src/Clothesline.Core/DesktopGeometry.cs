@@ -20,16 +20,19 @@ public static class DesktopGeometry
             Math.Max(2, (int)Math.Round(3 * scale)));
     }
 
-    public static IReadOnlyList<PixelRect> Cards(PixelRect workArea, double scale, int count)
+    public static IReadOnlyList<PixelRect> Cards(PixelRect workArea, double scale, int count, double cardScale = 1)
     {
-        if (scale <= 0 || count < 0) throw new ArgumentOutOfRangeException();
-        var width = (int)Math.Round(CardWidth * scale);
-        var height = (int)Math.Round(CardHeight * scale);
-        var step = width + (int)Math.Round(28 * scale);
+        if (!double.IsFinite(scale) || scale <= 0 || !double.IsFinite(cardScale) || cardScale <= 0 || count < 0 || workArea.Width < 1 || workArea.Height < 1) throw new ArgumentOutOfRangeException();
+        var top = Math.Min((int)(20 * scale), Math.Max(0, workArea.Height - 1));
+        // User size and monitor DPI are independent. Tiny work areas still contain a complete card.
+        var effective = Math.Min(scale * cardScale, Math.Min(workArea.Width / CardWidth, (workArea.Height - top) / CardHeight));
+        var width = Math.Max(1, (int)Math.Round(CardWidth * effective));
+        var height = Math.Max(1, (int)Math.Round(CardHeight * effective));
+        var step = width + Math.Max(1, (int)Math.Round(28 * scale * cardScale));
         var visible = Math.Min(count, Math.Max(1, (workArea.Width - (int)(32 * scale)) / step));
         var start = workArea.X + (workArea.Width - (visible * step - (step - width))) / 2;
         return Enumerable.Range(0, visible)
-            .Select(i => new PixelRect(start + i * step, workArea.Y + (int)(20 * scale), width, height)).ToArray();
+            .Select(i => new PixelRect(start + i * step, workArea.Y + top, width, height)).ToArray();
     }
 
     public static bool CoversMonitor(PixelRect window, PixelRect monitor, bool hasStandardFrame)

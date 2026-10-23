@@ -74,9 +74,9 @@ internal sealed class ClipboardCollector : IDisposable
         catch (COMException)
         {
             if (enabled && current == GetClipboardSequenceNumber() && ++attempts < 6) retry.Start();
-            else Status?.Invoke("剪贴板忙，已跳过本次图片。");
+            else Status?.Invoke(T("剪贴板忙，已跳过本次图片。"));
         }
-        catch (Exception ex) { Status?.Invoke("剪贴板图片未收集：" + ex.Message); }
+        catch (Exception ex) { Status?.Invoke(T("剪贴板图片未收集：") + ex.Message); }
     }
     public void Dispose() { Enable(false); retry.Stop(); source.Dispose(); }
 }

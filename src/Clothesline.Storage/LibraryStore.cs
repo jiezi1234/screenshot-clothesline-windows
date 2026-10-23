@@ -21,6 +21,9 @@ public sealed record LibrarySettings
     public long MaxManagedBytes { get; init; } = 512L * 1024 * 1024;
     public string Shortcut { get; init; } = "Ctrl+Alt+T";
     public bool RunAtLogin { get; init; }
+    public int CardSizePercent { get; init; } = 100;
+    public bool CaptureSound { get; init; }
+    public string Language { get; init; } = "zh-CN";
 }
 
 /// A single serialized connection. File side effects are journaled before execution.
@@ -36,7 +39,7 @@ public sealed class LibraryStore : IDisposable
         db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, "library.db"), Pooling = false }.ToString());
         db.Open(); Execute("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
         var version = Convert.ToInt32(Scalar("PRAGMA user_version;"));
-        if (version > 2) { db.Dispose(); throw new InvalidOperationException("数据库来自更新版本，请使用更新的应用。"); }
+        if (version > 2) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
         if (version == 1)
         {
             using var backup = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, "library-v1-backup-" + Guid.NewGuid().ToString("N") + ".db"), Pooling = false }.ToString());
@@ -101,8 +104,9 @@ public sealed class LibraryStore : IDisposable
     }
     public static void ValidateSettings(LibrarySettings settings)
     {
-        if (settings.ExtraFolders.Length > 3 || settings.Capacity is not (0 or 25 or 50 or 100) || settings.RetentionDays is not (0 or 7 or 30) || settings.MaxManagedBytes < 1024 * 1024)
-            throw new ArgumentException("设置值超出支持范围。");
+        if (settings.ExtraFolders.Length > 3 || settings.Capacity is not (0 or 25 or 50 or 100) || settings.RetentionDays is not (0 or 7 or 30) || settings.MaxManagedBytes < 1024 * 1024
+            || settings.CardSizePercent is not (80 or 100 or 120) || settings.Language is not ("zh-CN" or "en"))
+            throw new ArgumentException(T("设置值超出支持范围。"));
         Clothesline.Core.ShortcutGesture.Parse(settings.Shortcut);
     }
     public IReadOnlyList<LibraryEntry> Entries(EntryState? state = null)
@@ -136,9 +140,9 @@ public sealed class LibraryStore : IDisposable
             var original = Find(originalId); var entry = Find(entryId);
             if (entry is null || original is null || original.Source != OriginalSource || original.Ownership != Ownership.Managed ||
                 original.State == EntryState.Pending || original.Error.Length > 0 || !File.Exists(original.Path) || entryId == originalId)
-                throw new InvalidOperationException("原版快照尚不可用，未建立编辑关联。");
+                throw new InvalidOperationException(T("原版快照尚不可用，未建立编辑关联。"));
             var previous = Scalar("SELECT OriginalId FROM EditOrigins WHERE EntryId=$id", "$id", entryId) as string;
-            if (previous is not null && previous != originalId) throw new InvalidOperationException("这份副本已经关联另一份原版。");
+            if (previous is not null && previous != originalId) throw new InvalidOperationException(T("这份副本已经关联另一份原版。"));
             Execute("INSERT INTO EditOrigins VALUES($id,$original) ON CONFLICT(EntryId) DO NOTHING", "$id", entryId, "$original", originalId);
         }
     }
@@ -212,8 +216,8 @@ public sealed class LibraryStore : IDisposable
         lock (gate)
         {
             var entry = Find(id); if (entry is null) return;
-            if (HasOriginalDependents(id)) throw new InvalidOperationException("仍有编辑副本依赖这份原版，请先移除相关副本记录。");
-            if (entry.Ownership == Ownership.Managed && File.Exists(entry.Path)) throw new InvalidOperationException("应用保存的文件仍存在，请使用移入回收站。");
+            if (HasOriginalDependents(id)) throw new InvalidOperationException(T("仍有编辑副本依赖这份原版，请先移除相关副本记录。"));
+            if (entry.Ownership == Ownership.Managed && File.Exists(entry.Path)) throw new InvalidOperationException(T("应用保存的文件仍存在，请使用移入回收站。"));
             using var transaction = db.BeginTransaction(); RemoveItem(id, now ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); transaction.Commit();
         }
     }
@@ -226,7 +230,7 @@ public sealed class LibraryStore : IDisposable
             Execute("INSERT OR REPLACE INTO Operations VALUES($id,'recycle')", "$id", id);
             try
             {
-                if (File.Exists(entry.Path) && (!recycle(entry.Path) || File.Exists(entry.Path))) throw new IOException("回收未完成，文件与记录已保留。");
+                if (File.Exists(entry.Path) && (!recycle(entry.Path) || File.Exists(entry.Path))) throw new IOException(T("回收未完成，文件与记录已保留。"));
                 using var transaction = db.BeginTransaction();
                 RemoveItem(id, now ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); Execute("DELETE FROM Operations WHERE EntryId=$id", "$id", id); transaction.Commit(); return true;
             }
@@ -276,7 +280,7 @@ public sealed class LibraryStore : IDisposable
             {
                 var path = File.Exists(entry.Path) ? entry.Path : entry.Path + ".part";
                 Execute("UPDATE Items SET State=1,ArchivedAt=$now,Path=$path,Error=$error WHERE Id=$id", "$id", entry.Id, "$now", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "$path", path,
-                    "$error", File.Exists(entry.Path) ? "" : "上次写入被中断，保留待检查文件。");
+                    "$error", File.Exists(entry.Path) ? "" : T("上次写入被中断，保留待检查文件。"));
             }
             using var command = Command("SELECT EntryId FROM Operations");
             var ids = new List<string>(); using (var reader = command.ExecuteReader()) while (reader.Read()) ids.Add(reader.GetString(0));
@@ -287,7 +291,7 @@ public sealed class LibraryStore : IDisposable
                 {
                     using var transaction = db.BeginTransaction(); RemoveItem(id, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); transaction.Commit();
                 }
-                else if (entry is not null) SetError(id, "上次文件操作被中断，文件仍在；请检查后手动重试。");
+                else if (entry is not null) SetError(id, T("上次文件操作被中断，文件仍在；请检查后手动重试。"));
                 Execute("DELETE FROM Operations WHERE EntryId=$id", "$id", id);
             }
             RefreshMissing();

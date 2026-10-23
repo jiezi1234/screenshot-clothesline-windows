@@ -21,7 +21,7 @@ internal static class ShellTransfer
     public static string Drag(Window owner, DemoItem item) => Drag(new WindowInteropHelper(owner).Handle, item, SHDoDragDrop);
     internal static string Drag(nint owner, DemoItem item, DragOperation perform)
     {
-        if (!File.Exists(item.Path)) return "原文件已失效，无法拖出。";
+        if (!File.Exists(item.Path)) return T("原文件已失效，无法拖出。");
         var ole = OleInitialize(0);
         if (ole < 0) Marshal.ThrowExceptionForHR(ole);
         nint parent = 0, child = 0;
@@ -38,9 +38,9 @@ internal static class ShellTransfer
             var decision = TransferPolicy.Decide(result == 0x40100, File.Exists(item.Path), effect);
             return decision switch
             {
-                TransferDisposition.RemoveMissing => "原文件已失效，请在历史中查看记录。",
-                TransferDisposition.VerifyMove => "目标返回了不支持的移动结果；原图和卡片已保留。",
-                _ => result != 0x40100 || (effect & 1) == 0 ? "拖拽未完成，原图和卡片已保留。" : "已交付副本，卡片保留。"
+                TransferDisposition.RemoveMissing => T("原文件已失效，请在历史中查看记录。"),
+                TransferDisposition.VerifyMove => T("目标返回了不支持的移动结果；原图和卡片已保留。"),
+                _ => result != 0x40100 || (effect & 1) == 0 ? T("拖拽未完成，原图和卡片已保留。") : T("已交付副本，卡片保留。")
             };
         }
         finally
@@ -54,7 +54,7 @@ internal static class ShellTransfer
     public static string Recycle(string path)
     {
         SafeRecycle.File(path);
-        return File.Exists(path) ? "文件仍在原位置。" : "示例文件已移入回收站。";
+        return File.Exists(path) ? T("文件仍在原位置。") : T("示例文件已移入回收站。");
     }
     public static void Open(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
     public static void Reveal(string path)

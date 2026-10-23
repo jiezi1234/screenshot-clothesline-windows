@@ -15,10 +15,10 @@ internal static class ImageFiles
     public static BitmapSource Read(string path, bool thumbnail = false)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        if (stream.Length > MaxFileBytes) throw new IOException("图片超过 64 MiB 限制。");
+        if (stream.Length > MaxFileBytes) throw new IOException(T("图片超过 64 MiB 限制。"));
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
         var frame = decoder.Frames[0];
-        if ((long)frame.PixelWidth * frame.PixelHeight > MaxPixels) throw new IOException("图片超过 4000 万像素限制。");
+        if ((long)frame.PixelWidth * frame.PixelHeight > MaxPixels) throw new IOException(T("图片超过 4000 万像素限制。"));
         var width = frame.PixelWidth; var height = frame.PixelHeight; stream.Position = 0;
         var image = new BitmapImage(); image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.StreamSource = stream;
         if (thumbnail && Math.Max(width, height) > 420) { if (width >= height) image.DecodePixelWidth = 420; else image.DecodePixelHeight = 420; }
@@ -28,7 +28,7 @@ internal static class ImageFiles
     public static string Hash(string path) => Hash(Read(path));
     public static string Hash(BitmapSource source)
     {
-        if ((long)source.PixelWidth * source.PixelHeight > MaxPixels) throw new IOException("图片超过像素限制。");
+        if ((long)source.PixelWidth * source.PixelHeight > MaxPixels) throw new IOException(T("图片超过像素限制。"));
         var bitmap = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(Encoding.ASCII.GetBytes($"{bitmap.PixelWidth}x{bitmap.PixelHeight}:"));
@@ -40,7 +40,7 @@ internal static class ImageFiles
     {
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
         using var stream = new MemoryStream(); encoder.Save(stream);
-        if (stream.Length > MaxFileBytes) throw new IOException("图片超过 64 MiB 限制。");
+        if (stream.Length > MaxFileBytes) throw new IOException(T("图片超过 64 MiB 限制。"));
         return stream.ToArray();
     }
     public static string Export(string source, string requested)
@@ -68,6 +68,6 @@ internal static class ImageFiles
             catch (IOException) when (File.Exists(target)) { }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
-        throw new IOException("无法生成不重名的导出文件。");
+        throw new IOException(T("无法生成不重名的导出文件。"));
     }
 }

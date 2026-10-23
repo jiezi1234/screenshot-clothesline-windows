@@ -28,7 +28,7 @@ internal sealed class ImageDocument
     public event Action? Changed;
     public ImageDocument(BitmapSource original)
     {
-        if ((long)original.PixelWidth * original.PixelHeight > ImageFiles.MaxPixels) throw new ArgumentException("图片超过像素限制。");
+        if ((long)original.PixelWidth * original.PixelHeight > ImageFiles.MaxPixels) throw new ArgumentException(T("图片超过像素限制。"));
         Original = original.IsFrozen ? original : original.Clone(); Original.Freeze();
         initial = new(new Int32Rect(0, 0, Original.PixelWidth, Original.PixelHeight), [], Original);
         State = saved = initial;
@@ -43,7 +43,7 @@ internal sealed class ImageDocument
     public void Reset() { if (!ReferenceEquals(State, initial)) Commit(initial); }
     public void RestoreOriginal(BitmapSource original)
     {
-        if ((long)original.PixelWidth * original.PixelHeight > ImageFiles.MaxPixels) throw new ArgumentException("原版超过像素限制。");
+        if ((long)original.PixelWidth * original.PixelHeight > ImageFiles.MaxPixels) throw new ArgumentException(T("原版超过像素限制。"));
         var bitmap = original.IsFrozen ? original : original.Clone(); bitmap.Freeze();
         Commit(new(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), [], bitmap));
     }
@@ -52,7 +52,7 @@ internal sealed class ImageDocument
     public ImageMark CreateMark(EditorTool tool, IEnumerable<Point> points, Color color, double size, string text = "")
     {
         var coordinates = points.Select(Clamp).Take(10000).ToArray();
-        if (coordinates.Length == 0) throw new ArgumentException("缺少标注坐标。");
+        if (coordinates.Length == 0) throw new ArgumentException(T("缺少标注坐标。"));
         size = Math.Clamp(size, 1, 32);
         var tiles = tool == EditorTool.Mosaic && coordinates.Length > 1 ? Mosaic(new Rect(coordinates[0], coordinates[^1]), size) : [];
         return new(tool, coordinates, color, size, text.Length > 300 ? text[..300] : text, tiles);

@@ -2,9 +2,9 @@ param([string]$Dotnet = 'dotnet')
 $ErrorActionPreference = 'Stop'
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
-    & $Dotnet publish src/Clothesline.App --configuration Release --runtime win-x64 --self-contained true -p:PublishTrimmed=false --output dist/Clothesline-0.3.0-win-x64
+    & $Dotnet publish src/Clothesline.App --configuration Release --runtime win-x64 --self-contained true -p:PublishTrimmed=false --output dist/Clothesline-0.4.0-win-x64
     if ($LASTEXITCODE -ne 0) { throw "Publish failed: $LASTEXITCODE" }
-    $bundle = 'dist/Clothesline-0.3.0-win-x64'
+    $bundle = 'dist/Clothesline-0.4.0-win-x64'
     $assets = Get-Content src/Clothesline.App/obj/project.assets.json -Raw | ConvertFrom-Json
     $packages = @($assets.packageFolders.PSObject.Properties.Name)[0]
     $configuration = Get-Content "$bundle/Clothesline.runtimeconfig.json" -Raw | ConvertFrom-Json
@@ -28,6 +28,6 @@ try {
     Copy-Item docs -Destination $bundle -Recurse -Force
     Compress-Archive -Path $bundle -DestinationPath "$bundle.zip" -Force
     $hash = Get-FileHash "$bundle.zip" -Algorithm SHA256
-    "$($hash.Hash)  Clothesline-0.3.0-win-x64.zip" | Set-Content dist/SHA256SUMS-0.3.0.txt
+    "$($hash.Hash)  Clothesline-0.4.0-win-x64.zip" | Set-Content dist/SHA256SUMS-0.4.0.txt
     $hash | Format-List
 } finally { Pop-Location }

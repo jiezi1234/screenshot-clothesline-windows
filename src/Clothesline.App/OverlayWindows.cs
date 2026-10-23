@@ -16,6 +16,7 @@ internal class OverlayWindow : Window
 {
     public OverlayWindow(string title, bool passThrough)
     {
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);
         Title = title; WindowStyle = WindowStyle.None; AllowsTransparency = true;
         Background = Brushes.Transparent; ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false; ShowActivated = false; Topmost = true;
@@ -34,12 +35,13 @@ internal class OverlayWindow : Window
 internal sealed class RopeWindow : OverlayWindow
 {
     private readonly Border emptyHint;
+    public void RefreshLanguage() { Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language); Title = T("Clothesline · 绳线"); ((TextBlock)emptyHint.Child).Text = T("暂时没有图片"); }
     public bool ShowEmptyHint
     {
         get => emptyHint.Visibility == Visibility.Visible;
         set => emptyHint.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
-    public RopeWindow() : base("Clothesline · 绳线", true)
+    public RopeWindow() : base(T("Clothesline · 绳线"), true)
     {
         var content = new Grid();
         content.Children.Add(new RopeVisual());
@@ -53,7 +55,7 @@ internal sealed class RopeWindow : OverlayWindow
             Visibility = Visibility.Collapsed, IsHitTestVisible = false,
             Child = new TextBlock
             {
-                Text = "暂时没有图片", FontSize = 14,
+                Text = T("暂时没有图片"), FontSize = 14,
                 FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI"),
                 Foreground = DemoAssets.Brush("#294535")
             }
@@ -108,17 +110,19 @@ internal sealed class CardWindow : OverlayWindow
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var image = new Image { Source = item.Image, Stretch = Stretch.UniformToFill, ClipToBounds = true };
         inside.Children.Add(image);
-        caption = new TextBlock { Text = item.Title, Foreground = DemoAssets.Brush("#243E35"), FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 7, 0, 0) };
+        caption = new TextBlock { Text = item.Title, ToolTip = item.Title, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = DemoAssets.Brush("#243E35"), FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 7, 0, 0) };
         Grid.SetRow(caption, 1); inside.Children.Add(caption);
-        var sub = new TextBlock { Text = item.Subtitle, FontSize = 9, Foreground = DemoAssets.Brush("#7D8B83"), Margin = new Thickness(2, 3, 0, 0) };
+        var sub = new TextBlock { Text = item.Subtitle, ToolTip = item.Subtitle, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 9, Foreground = DemoAssets.Brush("#7D8B83"), Margin = new Thickness(2, 3, 0, 0) };
         Grid.SetRow(sub, 2); inside.Children.Add(sub);
         surface.Child = inside; root.Children.Add(surface);
         var clip = new Border { Width = 14, Height = 28, Background = DemoAssets.Brush("#BC8F58"), CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Center };
         root.Children.Add(clip);
-        var remove = new Button { Content = "×", Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 23, 4, 0), Background = DemoAssets.Brush("#F7FAF6"), Foreground = DemoAssets.Brush("#355446"), BorderThickness = new Thickness(0), Focusable = false, ToolTip = "取下到历史（保留文件）" };
+        var remove = new Button { Content = "×", Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 23, 4, 0), Background = DemoAssets.Brush("#F7FAF6"), Foreground = DemoAssets.Brush("#355446"), BorderThickness = new Thickness(0), Focusable = false, ToolTip = T("取下到历史（保留文件）") };
         remove.Click += (_, _) => { clickTimer.Stop(); TakeDown?.Invoke(this); };
-        AutomationProperties.SetName(remove, "取下" + item.Title);
-        root.Children.Add(remove); Content = root;
+        AutomationProperties.SetName(remove, T("取下") + item.Title);
+        root.Children.Add(remove);
+        var layout = new Grid { Width = DesktopGeometry.CardWidth, Height = DesktopGeometry.CardHeight }; layout.Children.Add(root);
+        Content = new Viewbox { Child = layout, Stretch = Stretch.Uniform };
         clickTimer.Tick += (_, _) => { clickTimer.Stop(); Copy(); };
         holdTimer.Tick += (_, _) =>
         {
@@ -130,22 +134,22 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseMove += Move;
         surface.MouseLeftButtonUp += Up;
         surface.LostMouseCapture += (_, _) => { down = null; holdTimer.Stop(); };
-        surface.MouseEnter += (_, _) => { if (!Busy) caption.Text = "单击复制 · 双击打开 · 拖出"; };
+        surface.MouseEnter += (_, _) => { if (!Busy) caption.Text = T("单击复制 · 双击打开 · 拖出"); };
         surface.MouseLeave += (_, _) => { if (!Busy) caption.Text = item.Title; };
         var menu = new ContextMenu();
-        Add(menu, "复制图片", Copy);
-        Add(menu, "预览与缩放", () => WorkspaceRequested?.Invoke(item, false));
-        Add(menu, "编辑图片…", () => WorkspaceRequested?.Invoke(item, true));
-        Add(menu, "打开图片", () => ShellTransfer.Open(item.Path));
-        Add(menu, "在资源管理器中定位", () => ShellTransfer.Reveal(item.Path));
-        Add(menu, "另存为", () => ExportRequested?.Invoke(item, false));
-        Add(menu, "保存副本到桌面", () => ExportRequested?.Invoke(item, true));
+        Add(menu, T("复制图片"), Copy);
+        Add(menu, T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
+        Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
+        Add(menu, T("打开图片"), () => ShellTransfer.Open(item.Path));
+        Add(menu, T("在资源管理器中定位"), () => ShellTransfer.Reveal(item.Path));
+        Add(menu, T("另存为"), () => ExportRequested?.Invoke(item, false));
+        Add(menu, T("保存副本到桌面"), () => ExportRequested?.Invoke(item, true));
         menu.Items.Add(new Separator());
-        Add(menu, "取下（保留文件）", () => TakeDown?.Invoke(this));
-        Add(menu, "取下左侧全部（跨页）", () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Left));
-        Add(menu, "取下右侧全部（跨页）", () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Right));
-        Add(menu, "全部取下到历史", () => BatchArchiveRequested?.Invoke(item, ArchiveScope.All));
-        Add(menu, "将文件移入回收站", () => { if (RecycleRequested is not null) RecycleRequested(item); else Report(ShellTransfer.Recycle(item.Path)); DragEnded?.Invoke(); });
+        Add(menu, T("取下（保留文件）"), () => TakeDown?.Invoke(this));
+        Add(menu, T("取下左侧全部（跨页）"), () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Left));
+        Add(menu, T("取下右侧全部（跨页）"), () => BatchArchiveRequested?.Invoke(item, ArchiveScope.Right));
+        Add(menu, T("全部取下到历史"), () => BatchArchiveRequested?.Invoke(item, ArchiveScope.All));
+        Add(menu, T("将文件移入回收站"), () => { if (RecycleRequested is not null) RecycleRequested(item); else Report(ShellTransfer.Recycle(item.Path)); DragEnded?.Invoke(); });
         menu.Opened += (_, _) => { Busy = true; clickTimer.Stop(); holdTimer.Stop(); };
         menu.Closed += (_, _) => Busy = false;
         surface.ContextMenu = menu;
@@ -154,7 +158,7 @@ internal sealed class CardWindow : OverlayWindow
     private void Add(ContextMenu menu, string title, Action action)
     {
         var entry = new MenuItem { Header = title };
-        entry.Click += (_, _) => { try { action(); } catch (Exception ex) { Report("操作未完成：" + ex.Message); } };
+        entry.Click += (_, _) => { try { action(); } catch (Exception ex) { Report(T("操作未完成：") + ex.Message); } };
         menu.Items.Add(entry);
     }
     private void Down(object sender, MouseButtonEventArgs e)
@@ -166,16 +170,16 @@ internal sealed class CardWindow : OverlayWindow
             try { ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
             e.Handled = true; return;
         }
-        down = e.GetPosition(surface); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
+        down = e.GetPosition(this); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
     }
     private void Move(object sender, MouseEventArgs e)
     {
         if (down is not Point start || e.LeftButton != MouseButtonState.Pressed || Busy) return;
-        var p = e.GetPosition(surface);
+        var p = e.GetPosition(this); // Keep the drag threshold in window DIPs, independent of the Viewbox size.
         if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
         try { Report(ShellTransfer.Drag(this, Item)); }
-        catch (Exception ex) { Report("拖拽未完成：" + ex.Message); }
+        catch (Exception ex) { Report(T("拖拽未完成：") + ex.Message); }
         finally { Busy = false; DragEnded?.Invoke(); }
     }
     private void Up(object sender, MouseButtonEventArgs e)
@@ -185,7 +189,7 @@ internal sealed class CardWindow : OverlayWindow
     }
     private void Copy()
     {
-        if (!File.Exists(Item.Path)) { Report("原文件已移走，可在历史中查看失效记录。"); return; }
+        if (!File.Exists(Item.Path)) { Report(T("原文件已移走，可在历史中查看失效记录。")); return; }
         try
         {
             var data = new DataObject();
@@ -195,9 +199,9 @@ internal sealed class CardWindow : OverlayWindow
             data.SetData("PNG", new MemoryStream(ImageFiles.Png(original)));
             data.SetData("ScreenshotClothesline.OwnCopy", "1", false);
             Clipboard.SetDataObject(data, true);
-            Report("已复制原图");
+            Report(T("已复制原图"));
         }
-        catch (System.Runtime.InteropServices.COMException) { Report("剪贴板正在被占用，请稍后再试。"); }
+        catch (System.Runtime.InteropServices.COMException) { Report(T("剪贴板正在被占用，请稍后再试。")); }
     }
     private void Report(string text) { feedback = text; caption.Text = feedback; Status?.Invoke(text); }
 }

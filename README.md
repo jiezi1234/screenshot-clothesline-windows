@@ -4,13 +4,13 @@
 
 An independently maintained Windows implementation of a screenshot clothesline, inspired by [Tendedero](https://github.com/alejandrobujan/tendedero).
 
-> 当前状态：**阶段 2 第二批 v0.3.0 开发版，新增跨会话恢复原图、自定义快捷键和登录启动。** PR #3 已合并。跨应用拖放、真实剪贴板、编辑手势、真实登录启动和混合 DPI 等人工验收尚未完成。仓库名称为开发工作名，正式应用名称与图标待定。
+> 当前状态：**阶段 2 第三批 v0.4.0 开发版**，新增三档卡片大小、默认关闭的提示音和中英文界面。尚未完成全部人工验收，暂不作为正式发布版。
 
 ![阶段 0 示例晾衣绳](docs/images/stage0-shelf.png)
 
 ## 运行开发版
 
-面向 Windows 11 x64。将 `Clothesline-0.3.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
+面向 Windows 11 x64。将 `Clothesline-0.4.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
 
 升级前先保存编辑并从托盘退出旧版。v0.3.0 首次打开旧库时，会先创建 `library-v1-backup-*.db` 数据库备份，再事务迁移至 v2；原有记录和设置保留。迁移后的库不能直接用 v0.2.0 打开；数据库备份不包含图片文件。
 
@@ -31,6 +31,10 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 - 在“快捷键与启动”页修改或关闭全局快捷键；需包含 Ctrl 或 Alt，可加 Shift，搭配字母、数字或 F1–F24（不含 F12）。注册冲突或设置写入失败会保留旧快捷键；“重试当前注册”可在冲突解除后重试。
 - 登录启动默认关闭，主动开启并保存后，登录 Windows 时启动到托盘。移动便携包后须从新位置启动并重新保存设置。Windows 启动应用页可能另外禁用此项，应用不会自动重启被系统禁用的启动项。
 
+- “外观与语言”提供小 80% / 标准 100% / 大 120% 卡片，保存后立即生效；自动容量随一排可显示的数量调整，超出图片进入历史。
+- 自动收集提示音默认关闭，仅成功收集新图片时播放 Windows 提示音，每 2 秒最多一次；暂停和当前鼠标屏幕全屏时静音。手动导入、历史恢复、原图快照、重复与失败不发声。
+- 可选择简体中文或 English，保存后重启生效。先保存未完成编辑，再从托盘退出并重新打开；界面会显示重启提示。
+
 设置、记录与应用保存的 PNG 位于 `%LOCALAPPDATA%\ScreenshotClothesline\Library`，重启后恢复。外部图片只保存引用，移动或删除原文件会导致失效。阶段 0 的示例目录独立保留，不自动导入本地历史。
 
 支持 PNG、JPEG、BMP、TIFF、GIF 首帧；当前限制单文件 64 MiB、4000 万像素。首次目录清单与后续补扫基于路径、大小和修改时间；跨来源像素去重窗口为 5 秒，不能保证延迟很长的双来源事件合并。全屏判断采用窗口几何启发式。限制及实测范围见 [阶段 1 验证报告](docs/STAGE1_VALIDATION.md)。
@@ -48,13 +52,15 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 ./scripts/publish.ps1
 ```
 
-所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.3.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.3.0.txt`。
+所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.4.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.4.0.txt`。
 
 普通测试包含核心规则、SQLite 生命周期和 100 文件监听突发测试。有交互式 Windows 桌面时，先退出正在运行的应用，再执行 `./scripts/test.ps1 -Desktop`：会短暂显示本程序专用测试窗口，检查跨进程窗口命中、100 张生成的有效 PNG、导出和原生回收站。结果与自身界面渲染位于 `artifacts/validation/` 和 `artifacts/stage1-validation/`。该命令不采集屏幕图像、不修改系统剪贴板；回收站测试仅处理生成的夹具文件。
 
 编辑诊断同时检查标注渲染、裁剪坐标、撤销重做、原图保留、同名副本保存和工作台文件保护，结果位于 `artifacts/stage2-validation/`。这些测试不代替真实鼠标手势与保存对话框人工验收。
 
 v0.3.0 追加原图快照关联、迁移、配额、重启恢复与清理检查。设置诊断在 `artifacts/preferences-validation/`，使用临时快捷键和隔离注册表键验证冲突/回滚，不修改用户真实登录启动项，不发送键盘输入。
+
+v0.4.0 新增 `--appearance-test artifacts/appearance-validation`，验证三档尺寸、无障碍名称、中英文自身界面及设置保存。`test.ps1 -Desktop` 已包含此诊断。提示音策略和事件测试不播放实际系统声音，试听仍待人工完成。
 
 GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备好，将执行构建、核心规则检查与打包。当前推送凭据没有 `workflow` 权限，因此模板暂放在文档目录，待具备相应权限后再安装到 `.github/workflows/build.yml`。
 
@@ -74,6 +80,7 @@ GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备�
 - [阶段 1 验证报告](docs/STAGE1_VALIDATION.md)：收集、文件生命周期、持久化与便携包验证。
 - [阶段 2 验证报告](docs/STAGE2_VALIDATION.md)：图片工作台、编辑边界与待人工核验清单。
 - [阶段 2 第二批验证报告](docs/STAGE2_ORIGINALS_PREFERENCES.md)：原图恢复、快捷键、登录启动及升级说明。
+- [阶段 2 第三批验证报告](docs/STAGE2_APPEARANCE_LANGUAGE.md)：大小、音效、中英文界面及待人工核验清单。
 - [来源与授权说明](THIRD_PARTY_NOTICES.md)：原项目基线、参考范围和品牌限制。
 - [贡献说明](CONTRIBUTING.md)：开发与贡献约定。
 
@@ -87,7 +94,7 @@ C#、.NET 10 LTS、WPF、Win32/COM 接口、Microsoft.Data.Sqlite。
 
 - [ ] 阶段 0：桌面交互原型（可运行，待完成验收矩阵）
 - [ ] 阶段 1：截图收集、复制、拖拽与历史闭环（已实现开发版，人工验收待完成）
-- [ ] 阶段 2：预览、标注、批量取下、原图恢复、快捷键与登录启动已实现；大小/音效、语言及动效待完成
+- [ ] 阶段 2：预览、标注、批量取下、原图恢复、快捷键与登录启动已实现；大小/音效、中英文及基础无障碍名称已实现；动效完善与人工验收待完成
 - [ ] 阶段 3：录像处理与兼容性
 - [ ] 阶段 4：安装、升级与正式发布
 

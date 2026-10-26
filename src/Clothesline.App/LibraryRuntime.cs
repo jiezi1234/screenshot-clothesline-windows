@@ -222,7 +222,7 @@ internal sealed class LibraryRuntime : IDisposable
         var entry = Store.Find(id); if (entry is null) return;
         if (MediaFiles.IsVideo(entry.Path))
         {
-            var video = new VideoWorkspace(entry.Path, AcquireLease, SaveTrimmedCopy);
+            var video = new VideoWorkspace(entry.Path, AcquireLease);
             workspaces.Add(video); video.Closed += (_, _) => workspaces.Remove(video); video.Show(); video.Activate(); return;
         }
         var gallery = Store.Entries(entry.State).Where(e => !MediaFiles.IsVideo(e.Path) && !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
@@ -242,36 +242,6 @@ internal sealed class LibraryRuntime : IDisposable
         if (loadedHash != image.Hash) return null; // External replacement starts a new lineage instead of recovering an unrelated image.
         var root = Store.OriginalFor(image.Id);
         return root is null ? null : new(root.Id, root.Path, root.Hash);
-    }
-    private async Task<SavedVideo?> SaveTrimmedCopy(VideoTrimRequest request, Window owner, IProgress<double> progress, CancellationToken cancellation)
-    {
-        if (fileOperation > 0) throw new InvalidOperationException(T("另一项文件操作进行中，请稍后再保存。"));
-        fileOperation++;
-        try
-        {
-            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = Path.GetFileNameWithoutExtension(request.SourcePath) + "-trimmed.mp4", Filter = T("MP4 录像|*.mp4"), DefaultExt = ".mp4", AddExtension = true, OverwritePrompt = false };
-            if (dialog.ShowDialog(owner) != true) return null;
-            return await PersistTrimmedCopy(request, dialog.FileName, progress, cancellation);
-        }
-        finally { fileOperation--; }
-    }
-    internal async Task<SavedVideo> PersistTrimmedCopy(VideoTrimRequest request, string destination, IProgress<double>? progress = null, CancellationToken cancellation = default)
-    {
-        destination = Path.GetFullPath(destination);
-        if (destination.StartsWith(Store.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || destination.Equals(Store.Root, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException(T("请选择应用数据目录以外的位置保存副本。"));
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, closing.Token);
-        using var lease = AcquireLease(request.SourcePath);
-        var path = await VideoTrimmer.Export(request, destination, Videos, progress, linked.Token);
-        // The atomic rename is the commit point. A subsequent cancel or import failure never deletes the saved copy.
-        try
-        {
-            await Collector.ImportExternal(path, cancellation: closing.Token, preserveCopy: true);
-            var entry = Store.Entries().FirstOrDefault(e => string.Equals(e.Path, path, StringComparison.OrdinalIgnoreCase));
-            var hung = entry is not null && (entry.State == EntryState.Shelf || Store.Restore(entry.Id, Capacity, Now));
-            ScheduleRefresh(true); return new(path, hung, hung ? "" : T("副本已保存，请稍后手动导入。"));
-        }
-        catch (Exception ex) { Report(T("副本已保存，挂上未完成：") + ex.Message); return new(path, false, ex.Message); }
     }
     private async Task<SavedImage?> SaveEditedCopy(EditSaveRequest request, Window owner)
     {

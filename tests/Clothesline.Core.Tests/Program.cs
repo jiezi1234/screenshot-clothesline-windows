@@ -92,13 +92,6 @@ foreach (var locale in UiText.Languages.Where(l => l.Code != "zh-CN"))
 }
 UiText.Language = "zh-CN";
 Check(UiText.T("暂时没有图片") == "暂时没有图片", "Chinese empty state preserves requested wording");
-Check(VideoTrimRange.Create(.25, 1.25, 4).Seconds == 1, "fractional video selection keeps one second");
-Check(VideoTrimRange.Create(0, 4.01, 4).End == 4, "player tail discrepancy clamps to actual media duration");
-foreach (var range in new[] { new VideoTrimRange(-1, 2), new VideoTrimRange(2, 1), new VideoTrimRange(1, 1), new VideoTrimRange(0, .05), new VideoTrimRange(0, 4.2), new VideoTrimRange(double.NaN, 2), new VideoTrimRange(0, double.PositiveInfinity) })
-{
-    var rejected = false; try { VideoTrimRange.Create(range.Start, range.End, 4); } catch (ArgumentException) { rejected = true; }
-    Check(rejected, "unsafe or empty video selection rejected: " + range);
-}
 foreach (var extension in new[] { ".webp", ".WEBP", ".heic", ".HEIF" }) Check(MediaFiles.IsImage("photo" + extension) && MediaFiles.IsExtendedImage("photo" + extension) && !MediaFiles.IsVideo("photo" + extension), "optional image extension classified: " + extension);
 Check(!MediaFiles.IsExtendedImage("photo.png") && MediaFiles.IsImage("photo.png"), "standard images retain existing decoder route");
 Check(!MediaFiles.IsImage("photo.avif") && !MediaFiles.IsImage("photo.webp.exe"), "unverified and disguised extensions are not admitted");

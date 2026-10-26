@@ -1,0 +1,142 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "initial-render-preserves-pixels-at-non96-dpi",
+      "passed": true
+    },
+    {
+      "name": "pen-renders-in-image-pixels",
+      "passed": true
+    },
+    {
+      "name": "undo-to-original-after-save-is-dirty",
+      "passed": true
+    },
+    {
+      "name": "redo-to-saved-state-clears-dirty",
+      "passed": true
+    },
+    {
+      "name": "arrow-renders-shaft-and-head",
+      "passed": true
+    },
+    {
+      "name": "rectangle-renders-border-with-unfilled-center",
+      "passed": true
+    },
+    {
+      "name": "unicode-text-changes-render",
+      "passed": true
+    },
+    {
+      "name": "mosaic-covers-selected-area-with-uniform-blocks",
+      "passed": true
+    },
+    {
+      "name": "crop-rejects-zero-area",
+      "passed": true
+    },
+    {
+      "name": "crop-uses-original-pixel-coordinates",
+      "passed": true
+    },
+    {
+      "name": "undo-crop-restores-all-annotations",
+      "passed": true
+    },
+    {
+      "name": "repeated-crop-retains-absolute-origin",
+      "passed": true
+    },
+    {
+      "name": "new-mark-after-undo-clears-redo",
+      "passed": true
+    },
+    {
+      "name": "reset-restores-session-original",
+      "passed": true
+    },
+    {
+      "name": "reset-can-be-undone",
+      "passed": true
+    },
+    {
+      "name": "editing-never-mutates-original-bitmap-or-file",
+      "passed": true
+    },
+    {
+      "name": "save-copy-does-not-overwrite-colliding-source",
+      "passed": true
+    },
+    {
+      "name": "edited-output-is-png-with-matching-extension",
+      "passed": true
+    },
+    {
+      "name": "workspace-loads-own-fixture-and-acquires-lease",
+      "passed": true
+    },
+    {
+      "name": "zoom-percentage-uses-physical-pixels-at-monitor-dpi",
+      "passed": true
+    },
+    {
+      "name": "closing-workspace-releases-file-lease",
+      "passed": true
+    },
+    {
+      "name": "multiple-workspace-leases-protect-until-last-close",
+      "passed": true
+    },
+    {
+      "name": "last-lease-release-restores-cleanup",
+      "passed": true
+    },
+    {
+      "name": "save-persists-independent-original-snapshot-and-linked-copy",
+      "passed": true
+    },
+    {
+      "name": "editing-a-copy-retains-earliest-original-without-extra-snapshot",
+      "passed": true
+    },
+    {
+      "name": "lineage-reopens-after-original-source-moved",
+      "passed": true
+    },
+    {
+      "name": "external-content-replacement-does-not-inherit-stale-lineage",
+      "passed": true
+    },
+    {
+      "name": "workspace-restores-earliest-pixels-and-dimensions-after-restart",
+      "passed": true
+    },
+    {
+      "name": "original-restoration-is-undoable",
+      "passed": true
+    },
+    {
+      "name": "original-restoration-is-redoable",
+      "passed": true
+    },
+    {
+      "name": "session-reset-remains-distinct-from-earliest-original",
+      "passed": true
+    },
+    {
+      "name": "missing-snapshot-leaves-current-edits-intact",
+      "passed": true
+    },
+    {
+      "name": "changed-snapshot-rejected-without-changing-current-document",
+      "passed": true
+    },
+    {
+      "name": "export-failure-preserves-original-snapshot-and-existing-copies",
+      "passed": true
+    }
+  ],
+  "date": "2026-10-26"
+}

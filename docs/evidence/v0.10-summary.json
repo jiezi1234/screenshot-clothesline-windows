@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "date": "2026-10-26",
+  "total": 397,
+  "groups": {
+    "core": 139,
+    "storage": 91,
+    "library": 20,
+    "editor": 34,
+    "video": 30,
+    "functional": 83
+  },
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Focused regression for removal of video editing. Functional compatibility excludes foreground fixtures; physical and external-environment cases still require manual acceptance. Historical full-suite results do not describe this run."
+}

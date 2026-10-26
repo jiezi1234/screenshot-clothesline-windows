@@ -150,4 +150,14 @@ internal sealed class ImageDocument
         var result = new RenderTargetBitmap(State.Crop.Width, State.Crop.Height, 96, 96, PixelFormats.Pbgra32);
         result.Render(drawing); result.Freeze(); return result;
     }
+    internal System.Threading.Tasks.Task<BitmapSource> RenderAsync()
+    {
+        var state = State;
+        return StaWork.Run(() => { var snapshot = new ImageDocument(state.BaseImage) { State = state }; return snapshot.Render(); });
+    }
+    internal System.Threading.Tasks.Task<ImageMark> CreateMarkAsync(EditorTool tool, IEnumerable<Point> points, Color color, double size, string text = "")
+    {
+        var state = State; var coordinates = points.ToArray();
+        return StaWork.Run(() => new ImageDocument(state.BaseImage) { State = state }.CreateMark(tool, coordinates, color, size, text));
+    }
 }

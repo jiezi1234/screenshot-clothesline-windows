@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -42,6 +44,7 @@ internal sealed class ImageWorkspace : Window
     private Point? panStart;
     private Point panOffset;
     private ImageDocument? document;
+    private readonly CancellationTokenSource closing = new();
     internal ImageDocument? Document => document;
     internal bool Loading => loading;
     internal double PhysicalMagnification => scale;
@@ -88,6 +91,10 @@ internal sealed class ImageWorkspace : Window
         annotation.TextChanged += (_, _) => canvas.Annotation = annotation.Text; canvas.Annotation = annotation.Text;
         header.Children.Add(new TextBlock { Text = T("Ctrl + 滚轮缩放 · 空格拖动 · ← → 切图 · Ctrl + Z / Y 撤销重做 · Ctrl + S 另存 · Esc 关闭"), FontSize = 11, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap });
         DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
+        UiAccessibility.Install(this); UiAccessibility.LiveStatus(this, status);
+        canvas.Focusable = true; AutomationProperties.SetName(canvas, T("图片画布"));
+        AutomationProperties.SetHelpText(canvas, T("Alt+C 聚焦画布。方向键移动光标，Shift 加速，Enter 设置起点或完成标注，Esc 取消。"));
+        canvas.KeyboardPositionChanged += text => status.Text = text;
         canvas.HorizontalAlignment = HorizontalAlignment.Center; canvas.VerticalAlignment = VerticalAlignment.Center; viewport.Content = canvas; root.Children.Add(viewport);
         canvas.Completed += () => { if (canvas.Tool == EditorTool.Crop) Fit(); };
         canvas.Failed += message => status.Text = message;
@@ -103,7 +110,7 @@ internal sealed class ImageWorkspace : Window
         viewport.SizeChanged += (_, _) => { if (fitMode) Fit(); };
         PreviewKeyDown += KeyPressed;
         Closing += ClosingWorkspace;
-        Closed += (_, _) => { closed = true; loadVersion++; lease?.Dispose(); originalLease?.Dispose(); if (document is not null) document.Changed -= DocumentChanged; };
+        Closed += (_, _) => { closed = true; closing.Cancel(); loadVersion++; lease?.Dispose(); originalLease?.Dispose(); if (document is not null) document.Changed -= DocumentChanged; };
         Loaded += async (_, _) => await Load(index);
         SelectTool(edit ? EditorTool.Pen : EditorTool.Pan); UpdateActions();
     }
@@ -114,19 +121,21 @@ internal sealed class ImageWorkspace : Window
     }
     private void SelectTool(EditorTool tool)
     {
+        if (canvas.Processing) return;
         canvas.Cancel(); canvas.Tool = tool; foreach (var item in tools) item.Value.IsChecked = item.Key == tool;
         canvas.Cursor = tool == EditorTool.Pan ? Cursors.Hand : Cursors.Cross; annotation.IsEnabled = tool == EditorTool.Text;
     }
     private bool DiscardAllowed() => document?.IsDirty != true || MessageBox.Show(this, T("放弃本次尚未保存的修改？"), T("未保存修改"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
     private void ClosingWorkspace(object? sender, CancelEventArgs e)
     {
+        if (canvas.Processing) { e.Cancel = true; return; }
         if (saving) { status.Text = T("正在保存副本，请完成后再关闭。"); e.Cancel = true; return; }
         canvas.Cancel(); if (!DiscardAllowed()) e.Cancel = true;
     }
     private async Task Navigate(int direction)
     {
         var next = index + direction;
-        if (loading || saving || next < 0 || next >= gallery.Length || !DiscardAllowed()) return;
+        if (loading || saving || canvas.Processing || next < 0 || next >= gallery.Length || !DiscardAllowed()) return;
         await Load(next);
     }
     private async Task Load(int next)
@@ -136,7 +145,8 @@ internal sealed class ImageWorkspace : Window
         try
         {
             candidate = acquireLease(gallery[next].Path);
-            var loaded = await Task.Run(() => { var image = ImageFiles.Read(gallery[next].Path); return (Image: image, Hash: ImageFiles.Hash(image)); });
+            var bitmap = await ImageDecoder.Read(gallery[next].Path, cancellation: closing.Token);
+            var loaded = (Image: bitmap, Hash: await Task.Run(() => ImageFiles.Hash(bitmap), closing.Token));
             if (closed || version != loadVersion) return;
             var reference = resolveOriginal(gallery[next], loaded.Hash);
             if (document is not null) document.Changed -= DocumentChanged;
@@ -201,12 +211,8 @@ internal sealed class ImageWorkspace : Window
         try
         {
             var reference = originalReference;
-            var bitmap = await Task.Run(() =>
-            {
-                var image = ImageFiles.Read(reference.Path);
-                if (ImageFiles.Hash(image) != reference.Hash) throw new InvalidOperationException(T("原版快照内容已改变，无法可靠恢复。"));
-                return image;
-            });
+            var bitmap = await ImageDecoder.Read(reference.Path, cancellation: closing.Token);
+            if (await Task.Run(() => ImageFiles.Hash(bitmap), closing.Token) != reference.Hash) throw new InvalidOperationException(T("原版快照内容已改变，无法可靠恢复。"));
             if (closed) return;
             document.RestoreOriginal(bitmap); Fit(); status.Text = T("已恢复最初原图，可撤销；另存后生成新副本。");
         }
@@ -215,11 +221,12 @@ internal sealed class ImageWorkspace : Window
     }
     private async Task Save()
     {
-        if (document is null || saving || loading) return;
+        if (document is null || saving || loading || canvas.Processing) return;
         canvas.Cancel(); saving = true; UpdateActions();
         try
         {
-            var result = await save(new(document.Render(), document.Original, gallery[index].Path, originalReference), this);
+            var rendered = await document.RenderAsync();
+            var result = await save(new(rendered, document.Original, gallery[index].Path, originalReference), this);
             if (result is not null)
             {
                 SetOriginal(result.Original); document.MarkSaved();
@@ -231,7 +238,9 @@ internal sealed class ImageWorkspace : Window
     }
     private void KeyPressed(object sender, KeyEventArgs e)
     {
+        if (e.SystemKey == Key.C && Keyboard.Modifiers == ModifierKeys.Alt) { canvas.Focus(); e.Handled = true; return; }
         if (e.Key == Key.Escape) { if (!canvas.Cancel()) Close(); e.Handled = true; return; }
+        if (Keyboard.FocusedElement == canvas && e.Key is Key.Left or Key.Right or Key.Up or Key.Down or Key.Enter) return;
         var textInput = Keyboard.FocusedElement is TextBoxBase;
         if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
         {
@@ -262,14 +271,70 @@ internal sealed class ImageSurface : FrameworkElement
     public double StrokeSize { get; set; } = 4;
     public string Annotation { get; set; } = "";
     private readonly List<Point> points = new();
+    private Point keyboardPoint;
+    private bool keyboardDrawing, processing;
+    internal bool Processing => processing;
+    public event Action<string>? KeyboardPositionChanged;
     public bool Drawing => points.Count > 0;
     public event Action? Completed;
     public event Action<string>? Failed;
-    public bool Cancel() { var active = Drawing; points.Clear(); if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateVisual(); return active; }
+    public bool Cancel() { var active = Drawing; keyboardDrawing = false; points.Clear(); if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateVisual(); return active; }
+    protected override AutomationPeer OnCreateAutomationPeer() => new ImageSurfacePeer(this);
+    private sealed class ImageSurfacePeer(ImageSurface owner) : FrameworkElementAutomationPeer(owner)
+    {
+        protected override string GetClassNameCore() => nameof(ImageSurface);
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Pane;
+    }
+    protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    {
+        base.OnGotKeyboardFocus(e);
+        if (Document is not null) keyboardPoint = Document.Clamp(keyboardPoint);
+        AnnouncePosition(); InvalidateVisual();
+    }
+    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); if (keyboardDrawing) Cancel(); InvalidateVisual(); }
+    private void AnnouncePosition() => KeyboardPositionChanged?.Invoke(T("画布位置：X {0}，Y {1}。Enter 开始或完成，Esc 取消。", (int)keyboardPoint.X, (int)keyboardPoint.Y));
+    protected override async void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (Document is null || processing) return;
+        var step = (Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? 20 : 1;
+        var delta = e.Key switch { Key.Left => new Vector(-step, 0), Key.Right => new Vector(step, 0), Key.Up => new Vector(0, -step), Key.Down => new Vector(0, step), _ => new Vector() };
+        if (delta.Length > 0)
+        {
+            keyboardPoint = Document.Clamp(keyboardPoint + delta);
+            BringIntoView(new Rect(keyboardPoint.X - Document.State.Crop.X, keyboardPoint.Y - Document.State.Crop.Y, 1, 1));
+            if (keyboardDrawing) { if (Tool == EditorTool.Pen && points.Count < 10000) points.Add(keyboardPoint); else if (points.Count == 1) points.Add(keyboardPoint); else points[^1] = keyboardPoint; }
+            AnnouncePosition(); InvalidateVisual(); e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && Tool != EditorTool.Pan)
+        {
+            e.Handled = true;
+            if (Tool == EditorTool.Text) { Document.Add(Document.CreateMark(Tool, [keyboardPoint], Ink, StrokeSize, Annotation)); Completed?.Invoke(); }
+            else if (!keyboardDrawing) { points.Clear(); points.Add(keyboardPoint); keyboardDrawing = true; InvalidateVisual(); AnnouncePosition(); }
+            else { if (points.Count == 1) points.Add(keyboardPoint); await Complete(); }
+        }
+    }
+    private async System.Threading.Tasks.Task Complete()
+    {
+        if (Document is null || processing || points.Count == 0) return;
+        var document = Document; var state = document.State; var selected = points.ToArray(); var tool = Tool;
+        Cancel(); processing = true;
+        try
+        {
+            if (tool == EditorTool.Crop) document.Crop(new Rect(selected[0], selected[^1]));
+            else
+            {
+                var mark = tool == EditorTool.Mosaic ? await document.CreateMarkAsync(tool, selected, Ink, StrokeSize, Annotation) : document.CreateMark(tool, selected, Ink, StrokeSize, Annotation);
+                if (Document == document && ReferenceEquals(document.State, state)) document.Add(mark);
+            }
+        }
+        catch (Exception ex) { Failed?.Invoke(ex.Message); }
+        finally { processing = false; Completed?.Invoke(); }
+    }
     private Point Position(MouseEventArgs e) { var p = e.GetPosition(this); return Document!.Clamp(new Point(p.X + Document.State.Crop.X, p.Y + Document.State.Crop.Y)); }
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        base.OnMouseLeftButtonDown(e); if (Document is null || Tool == EditorTool.Pan) return;
+        base.OnMouseLeftButtonDown(e); if (Document is null || processing || Tool == EditorTool.Pan) return;
         try
         {
             var p = Position(e);
@@ -288,14 +353,12 @@ internal sealed class ImageSurface : FrameworkElement
         else if (points.Count == 1) points.Add(p); else points[^1] = p;
         InvalidateVisual(); e.Handled = true;
     }
-    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    protected override async void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e); if (!Drawing || Document is null) return;
         var start = points[0]; var end = Position(e);
         if (Tool != EditorTool.Pen) { if (points.Count == 1) points.Add(end); else points[^1] = end; }
-        try { if (Tool == EditorTool.Crop) Document.Crop(new Rect(start, end)); else Document.Add(Document.CreateMark(Tool, points, Ink, StrokeSize, Annotation)); }
-        catch (Exception ex) { Failed?.Invoke(ex.Message); }
-        finally { Cancel(); Completed?.Invoke(); }
+        await Complete();
         e.Handled = true;
     }
     protected override void OnLostMouseCapture(MouseEventArgs e) { base.OnLostMouseCapture(e); points.Clear(); InvalidateVisual(); }
@@ -304,6 +367,12 @@ internal sealed class ImageSurface : FrameworkElement
         dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, ActualWidth, ActualHeight)); if (Document is null) return;
         var preview = Drawing && Tool is not EditorTool.Crop and not EditorTool.Mosaic ? Document.CreateMark(Tool, points, Ink, StrokeSize, Annotation) : null;
         Document.Draw(dc, preview);
+        if (IsKeyboardFocused)
+        {
+            var point = keyboardPoint - new Vector(Document.State.Crop.X, Document.State.Crop.Y);
+            var pen = new Pen(Brushes.DodgerBlue, 2);
+            dc.DrawLine(pen, point - new Vector(8, 0), point + new Vector(8, 0)); dc.DrawLine(pen, point - new Vector(0, 8), point + new Vector(0, 8));
+        }
         if (Drawing && Tool is EditorTool.Crop or EditorTool.Mosaic)
         {
             var crop = Document.State.Crop; var rect = new Rect(points[0], points[^1]); rect.Offset(-crop.X, -crop.Y);

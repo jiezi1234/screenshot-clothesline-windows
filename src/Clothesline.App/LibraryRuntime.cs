@@ -34,6 +34,7 @@ internal sealed class LibraryRuntime : IDisposable
     private readonly CaptureSoundGate soundGate = new();
     private readonly HashSet<Window> workspaces = new();
     private readonly HashSet<string> videoLoads = new();
+    private readonly HashSet<string> imageLoads = new();
     private readonly Dictionary<string, int> leases = new(StringComparer.OrdinalIgnoreCase);
     public event Action<string>? Status;
     public event Action? Changed;
@@ -44,9 +45,9 @@ internal sealed class LibraryRuntime : IDisposable
         UiText.Language = Settings.Language; shelf.RefreshLanguage();
         if (!Store.HasSettings && root is null) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; Store.SaveSettings(Settings); }
         Videos = new VideoCatalog(Store.Root);
-        Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash);
+        Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash, ImageDecoder.Hash);
         clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); });
-        refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         refresh.Tick += (_, _) => { if (shelf.Busy || fileOperation > 0) return; refresh.Stop(); RefreshShelf(revealPending); revealPending = false; };
         maintenance = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         maintenance.Tick += (_, _) => { if (!shelf.Busy) { Cleanup(); Collector.RequestRescan(); ScheduleRefresh(false); } };
@@ -59,9 +60,22 @@ internal sealed class LibraryRuntime : IDisposable
         shelf.WorkspaceRequested += (item, edit) => { if (item.EntryId is not null) OpenWorkspace(item.EntryId, edit); };
         shelf.BatchArchiveRequested += (item, scope) => ArchiveBatch(item.EntryId, scope);
         shelf.FilesChanged += () => ScheduleRefresh(false);
+        shelf.EnvironmentRecovered += RecoverEnvironment;
+    }
+    private void RecoverEnvironment()
+    {
+        if (disposed) return;
+        Collector.RequestRescan(); Desktop?.RetryShortcut(); ScheduleRefresh(false);
     }
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    public void Start() { shelf.Start(false); ApplySettings(Settings, false); RefreshShelf(false); maintenance.Start(); }
+    public void Start() { shelf.Start(false); ApplySettings(Settings, false); RefreshShelf(false); maintenance.Start(); _ = WarmDecoder(); }
+    private async Task WarmDecoder()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "Clothesline-warm-" + Guid.NewGuid().ToString("N") + ".png");
+        try { await File.WriteAllBytesAsync(path, ImageFormatSupport.Fixture("format-probe.png"), closing.Token); await ImageDecoder.Read(path, true, closing.Token); }
+        catch (Exception ex) when (ex is IOException or OperationCanceledException) { }
+        finally { try { File.Delete(path); } catch (IOException) { } }
+    }
     public void ApplySettings(LibrarySettings settings, bool updateDesktop = true)
     {
         if (fileOperation > 0) throw new InvalidOperationException(T("文件操作进行中，请稍后再保存设置。"));
@@ -122,7 +136,7 @@ internal sealed class LibraryRuntime : IDisposable
             try
             {
                 var signature = CollectionEngine.Signature(entry.Path);
-                if (cache.TryGetValue(entry.Id, out var loading) && loading.Signature == "loading:" + signature && videoLoads.Contains(entry.Id)) { items.Add(loading.Item); continue; }
+                if (cache.TryGetValue(entry.Id, out var loading) && loading.Signature == "loading:" + signature && (videoLoads.Contains(entry.Id) || imageLoads.Contains(entry.Id))) { items.Add(loading.Item); continue; }
                 if (!cache.TryGetValue(entry.Id, out var cached) || cached.Signature != signature)
                 {
                     if (MediaFiles.IsVideo(entry.Path))
@@ -135,7 +149,13 @@ internal sealed class LibraryRuntime : IDisposable
                             if (videoLoads.Add(entry.Id)) _ = LoadVideo(entry, signature);
                         }
                     }
-                    else cache[entry.Id] = (signature, new DemoItem(entry.Title, (entry.Ownership == Ownership.Managed ? T("应用保存") : T("外部引用")) + T(" · 滚轮翻页"), entry.Path, ImageFiles.Read(entry.Path, true), entry.Id));
+                    else if (ImageDecoder.TryThumbnail(entry.Path, out var image))
+                        cache[entry.Id] = (signature, new DemoItem(entry.Title, (entry.Ownership == Ownership.Managed ? T("应用保存") : T("外部引用")) + T(" · 滚轮翻页"), entry.Path, image!, entry.Id));
+                    else
+                    {
+                        cache[entry.Id] = ("loading:" + signature, new DemoItem(entry.Title, T("正在读取图片…"), entry.Path, ImagePlaceholder(), entry.Id));
+                        if (imageLoads.Add(entry.Id)) _ = LoadImage(entry, signature);
+                    }
                 }
                 items.Add(cache[entry.Id].Item);
             }
@@ -143,6 +163,29 @@ internal sealed class LibraryRuntime : IDisposable
         }
         foreach (var id in cache.Keys.Except(items.Select(i => i.EntryId!)).ToArray()) cache.Remove(id);
         shelf.SetItems(items, reveal); Changed?.Invoke();
+    }
+    private static System.Windows.Media.Imaging.BitmapSource? imagePlaceholder;
+    private static System.Windows.Media.Imaging.BitmapSource ImagePlaceholder()
+    {
+        if (imagePlaceholder is not null) return imagePlaceholder;
+        var bytes = new byte[] { 220, 230, 220, 255 };
+        imagePlaceholder = BitmapSource.Create(1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, bytes, 4); imagePlaceholder.Freeze(); return imagePlaceholder;
+    }
+    private async Task LoadImage(LibraryEntry entry, string signature)
+    {
+        try
+        {
+            var bitmap = await ImageDecoder.Read(entry.Path, true, closing.Token);
+            if (!disposed && Store.Find(entry.Id)?.State == EntryState.Shelf && CollectionEngine.Signature(entry.Path) == signature)
+                cache[entry.Id] = (signature, new DemoItem(entry.Title, (entry.Ownership == Ownership.Managed ? T("应用保存") : T("外部引用")) + T(" · 滚轮翻页"), entry.Path, bitmap, entry.Id));
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!disposed && Store.Find(entry.Id) is not null && File.Exists(entry.Path) && CollectionEngine.Signature(entry.Path) == signature)
+            { Store.SetError(entry.Id, ex.Message); Store.Archive(entry.Id, Now); Report(ex.Message); }
+        }
+        finally { imageLoads.Remove(entry.Id); if (!disposed) ScheduleRefresh(false); }
     }
     private async Task LoadVideo(LibraryEntry entry, string signature)
     {
@@ -335,6 +378,6 @@ internal sealed class LibraryRuntime : IDisposable
     }
     public void Dispose()
     {
-        disposed = true; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
+        disposed = true; shelf.EnvironmentRecovered -= RecoverEnvironment; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

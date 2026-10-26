@@ -44,3 +44,7 @@ v0.6.0 通过 Windows.Media.Editing 生成缩略图，并用 WPF MediaElement �
 ## v0.8 图片格式检测样本
 
 Fixtures 中的 WebP/HEIC/PNG 均为本项目生成的色块，不含用户照片、原项目素材或第三方样例图片。生成工具仅用于开发，版本和重建方式见 src/Clothesline.App/Fixtures/README.md；应用不随包分发 Pillow、libwebp、libheif、x265 或 Python。产品通过现有 Windows WIC 组件解码，是否可用取决于机器已安装的组件。本批未新增应用运行时依赖。
+
+## v0.9 语言与桌面兼容性
+
+原版提交 `32a3e47187fdea7b2fd43b3ab5a913f0ed33724a` 的语言目录仅用于确认覆盖范围。本批翻译依据本项目界面独立编写，未复制上游翻译或现有 Windows 移植代码；仍需母语复核。解码进程、无障碍和多桌面处理使用现有 .NET/WPF 与 Windows 公共接口，没有新增运行时第三方依赖。

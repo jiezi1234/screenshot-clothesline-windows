@@ -1,0 +1,182 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "capability-probe-completes-for-both-formats",
+      "passed": true,
+      "details": [
+        {
+          "Name": "WebP",
+          "CanDecode": true,
+          "Detail": ""
+        },
+        {
+          "Name": "HEIC / HEIF",
+          "CanDecode": true,
+          "Detail": ""
+        }
+      ]
+    },
+    {
+      "name": "missing-codec-reported-as-unavailable",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "metadata-only-success-does-not-pass-probe",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-real-file-decodes",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-manual-import",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-copy-has-PNG-bitmap-and-original-file",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-original-format-export-preserves-bytes-and-no-overwrite",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-edited-PNG-keeps-original-snapshot",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-history-restores-original-reference",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIC / HEIF-real-file-decodes",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIC / HEIF-manual-import",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIC / HEIF-copy-has-PNG-bitmap-and-original-file",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIC / HEIF-original-format-export-preserves-bytes-and-no-overwrite",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIC / HEIF-edited-PNG-keeps-original-snapshot",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIC / HEIF-history-restores-original-reference",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "lossless-WebP-matches-PNG-pixels",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-alpha-preserved",
+      "passed": true,
+      "details": "FFrSgA=="
+    },
+    {
+      "name": "WebP-copy-PNG-keeps-alpha-pixels",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "optional-thumbnail-bounded-with-alpha",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "optional-image-pixel-limit-before-render",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "animated-WebP-is-first-frame-only",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "WebP-opens-image-editor",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-optional-image-baseline-skips-existing",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-WebP-watcher-to-card",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "optional-image-drag-is-copy-only",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "optional-image-drag-retains-source-and-card",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "HEIF-alias-decodes-same-pixels",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "failed-manual-import-keeps-error-in-final-summary",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "optional-image-byte-limit-before-decode",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "format-panel-exposes-actual-capabilities",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "format-status-has-accessible-name",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "English-panel-distinguishes-available-and-unavailable",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "optional-image-records-and-lineage-survive-reopen",
+      "passed": true,
+      "details": null
+    }
+  ],
+  "evidenceGeneratedAt": "2026-10-26T10:18:00.403959+08:00"
+}

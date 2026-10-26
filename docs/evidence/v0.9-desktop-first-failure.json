@@ -1,0 +1,262 @@
+{
+  "passed": false,
+  "os": "Microsoft Windows NT 10.0.22631.0",
+  "runtime": "10.0.13",
+  "checks": [
+    {
+      "name": "show-does-not-change-foreground",
+      "passed": false,
+      "details": null
+    },
+    {
+      "name": "painted-rope-passes-to-another-process",
+      "passed": true,
+      "details": {
+        "paintedPixelAlpha": 80,
+        "hit": {
+          "x": 1100,
+          "y": 47,
+          "actualHandle": 23332950,
+          "actualProcessId": 78388,
+          "expectedHandle": 23332950,
+          "backdropBounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 2560,
+            "Height": 450,
+            "Right": 2560,
+            "Bottom": 450
+          },
+          "backdropStyle": 264
+        }
+      }
+    },
+    {
+      "name": "gap-passes-to-another-process",
+      "passed": true,
+      "details": {
+        "x": 1100,
+        "y": 105,
+        "actualHandle": 23332950,
+        "actualProcessId": 78388,
+        "expectedHandle": 23332950,
+        "backdropBounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 450,
+          "Right": 2560,
+          "Bottom": 450
+        },
+        "backdropStyle": 264
+      }
+    },
+    {
+      "name": "card-is-interactive-hit-target",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "physical-card-bounds",
+      "passed": true,
+      "details": {
+        "expected": {
+          "X": 761,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1079,
+          "Bottom": 315
+        },
+        "actual": {
+          "X": 761,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1079,
+          "Bottom": 315
+        }
+      }
+    },
+    {
+      "name": "card-toolwindow-noactivate",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "monitor-physical-placement",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "WorkArea": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 144,
+        "expected": {
+          "X": 1121,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1439,
+          "Bottom": 315
+        },
+        "actual": {
+          "X": 1121,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1439,
+          "Bottom": 315
+        }
+      }
+    },
+    {
+      "name": "monitor-physical-placement",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "WorkArea": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 144,
+        "expected": {
+          "X": 4321,
+          "Y": -193,
+          "Width": 318,
+          "Height": 285,
+          "Right": 4639,
+          "Bottom": 92
+        },
+        "actual": {
+          "X": 4321,
+          "Y": -193,
+          "Width": 318,
+          "Height": 285,
+          "Right": 4639,
+          "Bottom": 92
+        }
+      }
+    },
+    {
+      "name": "hidden-windows-are-hidden",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "hidden-cards-pass-to-backdrop",
+      "passed": true,
+      "details": {
+        "x": 791,
+        "y": 90,
+        "actualHandle": 23332950,
+        "actualProcessId": 78388,
+        "expectedHandle": 23332950,
+        "backdropBounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 450,
+          "Right": 2560,
+          "Bottom": 450
+        },
+        "backdropStyle": 264
+      }
+    },
+    {
+      "name": "hotkey-conflict-is-detected",
+      "passed": true,
+      "details": {
+        "initialRegistration": true
+      }
+    },
+    {
+      "name": "empty-toggle-shows-rope-and-message",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-toggle-keeps-dashboard-hidden",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-toggle-keeps-library-empty",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-show-keeps-foreground",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "empty-hint-passes-to-another-process",
+      "passed": true,
+      "details": {
+        "x": 1280,
+        "y": 96,
+        "actualHandle": 23332950,
+        "actualProcessId": 78388,
+        "expectedHandle": 23332950,
+        "backdropBounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 450,
+          "Right": 2560,
+          "Bottom": 450
+        },
+        "backdropStyle": 264
+      }
+    },
+    {
+      "name": "empty-toggle-hides-rope",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "first-image-replaces-empty-hint",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "last-image-removed-shows-empty-hint",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "measurements",
+      "monitorCount": 2,
+      "dpi": 144,
+      "hiddenIdleCpuOneCorePercent": 0,
+      "workingSetMiB": 165.78125,
+      "coldShelfShowCallMilliseconds": 152.5501,
+      "warmSingleCardShowCallMilliseconds": 8.1911,
+      "note": "Single five-second sample after two-second warmup; CPU is one logical core basis. Show time excludes compositor/input latency. Self-test process includes diagnostic UI allocations."
+    }
+  ]
+}

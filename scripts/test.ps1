@@ -1,4 +1,4 @@
-param([string]$Dotnet = 'dotnet', [switch]$Desktop)
+param([string]$Dotnet = 'dotnet', [switch]$Desktop, [switch]$Soak)
 $ErrorActionPreference = 'Stop'
 $executable = (Get-Command $Dotnet -ErrorAction Stop).Source
 Push-Location (Join-Path $PSScriptRoot '..')
@@ -31,5 +31,14 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Video trim checks failed. See artifacts/video-trim-validation/video-trim-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --image-format-test artifacts/image-format-validation
         if ($LASTEXITCODE -ne 0) { throw "Image format checks failed. See artifacts/image-format-validation/image-format-diagnostics.json" }
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --compatibility-test artifacts/compatibility-validation
+        if ($LASTEXITCODE -ne 0) { throw "Compatibility checks failed. See artifacts/compatibility-validation/compatibility-diagnostics.json" }
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --performance-test artifacts/performance-validation
+        if ($LASTEXITCODE -ne 0) { throw "Performance checks failed. See artifacts/performance-validation/performance-diagnostics.json" }
+    }
+    if ($Soak) {
+        $env:DOTNET_ROOT = Split-Path $executable
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --soak-test artifacts/soak-validation
+        if ($LASTEXITCODE -ne 0) { throw "Soak checks failed. See artifacts/soak-validation/soak-diagnostics.json" }
     }
 } finally { $env:DOTNET_ROOT = $previousRoot; Pop-Location }

@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "date": "2026-10-26",
+  "total": 567,
+  "groups": {
+    "core": 148,
+    "storage": 91,
+    "desktop": 20,
+    "library": 20,
+    "editor": 34,
+    "preferences": 16,
+    "appearance": 26,
+    "motion": 30,
+    "video": 30,
+    "video-trim": 24,
+    "image-format": 33,
+    "compatibility": 87,
+    "performance": 4,
+    "soak": 4
+  },
+  "scope": "Automated checks and this machine only; manual-required cases are not counted as passes."
+}

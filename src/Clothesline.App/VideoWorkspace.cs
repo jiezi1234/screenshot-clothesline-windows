@@ -71,6 +71,9 @@ internal sealed class VideoWorkspace : Window
         footer.Children.Add(new TextBlock { Text = T("导出新的 H.264/AAC MP4 副本，保留原录像；精确裁剪会重新编码。"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 6, 12, 0), FontSize = 11 });
         footer.Children.Add(exportStatus); root.Children.Add(footer);
         root.Children.Add(new Border { Background = Brushes.Black, Child = player }); Content = root;
+        UiAccessibility.Install(this);
+        // Playback time updates four times a second; only export results are live announcements.
+        UiAccessibility.LiveStatus(this, exportStatus);
         status.Text = T("正在打开录像…");
         toggle.Click += (_, _) => TogglePlayback();
         export.Click += async (_, _) => await ExportSelection(); cancel.Click += (_, _) => exporting?.Cancel();

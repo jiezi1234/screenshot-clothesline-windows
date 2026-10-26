@@ -1,0 +1,369 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "conservative initial settings",
+      "passed": true
+    },
+    {
+      "name": "100 captures spill into history without loss",
+      "passed": true
+    },
+    {
+      "name": "capacity does not delete external files",
+      "passed": true
+    },
+    {
+      "name": "restore clears history timer and enforces capacity",
+      "passed": true
+    },
+    {
+      "name": "restore maintains shelf limit",
+      "passed": true
+    },
+    {
+      "name": "expired external history never invokes deletion",
+      "passed": true
+    },
+    {
+      "name": "recycle failure preserves record and file",
+      "passed": true
+    },
+    {
+      "name": "background cleanup leaves failed records for manual review",
+      "passed": true
+    },
+    {
+      "name": "successful recycle commits record removal",
+      "passed": true
+    },
+    {
+      "name": "same-path repeated events deduplicate",
+      "passed": true
+    },
+    {
+      "name": "short cross-source duplicate detected",
+      "passed": true
+    },
+    {
+      "name": "dedup window expires",
+      "passed": true
+    },
+    {
+      "name": "distinct same-source files are not globally discarded",
+      "passed": true
+    },
+    {
+      "name": "missing external file is marked rather than forgotten",
+      "passed": true
+    },
+    {
+      "name": "settings survive restart",
+      "passed": true
+    },
+    {
+      "name": "shelf state survives restart",
+      "passed": true
+    },
+    {
+      "name": "completed orphan write recovered into history",
+      "passed": true
+    },
+    {
+      "name": "interrupted partial write retained for inspection",
+      "passed": true
+    },
+    {
+      "name": "interrupted recycle preserves existing source for manual review",
+      "passed": true
+    },
+    {
+      "name": "completed recycle journal reconciles missing source",
+      "passed": true
+    },
+    {
+      "name": "pure PNG accepted",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes UnicodeText",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes Text",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes FileDrop",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes HTML Format",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes Rich Text Format",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes ScreenshotClothesline.OwnCopy",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes ExcludeClipboardContentFromMonitorProcessing",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes ClipboardViewerIgnore",
+      "passed": true
+    },
+    {
+      "name": "clipboard respects privacy DWORD",
+      "passed": true
+    },
+    {
+      "name": "text-only clipboard rejected",
+      "passed": true
+    },
+    {
+      "name": "clipboard respects no-cloud flag conservatively",
+      "passed": true
+    },
+    {
+      "name": "explicit allowed flags accept image",
+      "passed": true
+    },
+    {
+      "name": "initial directory scan does not import old files",
+      "passed": true
+    },
+    {
+      "name": "source baseline produces no capture sound event",
+      "passed": true
+    },
+    {
+      "name": "watcher ingests 100 burst file events",
+      "passed": true
+    },
+    {
+      "name": "rescan and repeated events do not duplicate",
+      "passed": true
+    },
+    {
+      "name": "only committed automatic captures produce events; duplicate rescan is silent",
+      "passed": true
+    },
+    {
+      "name": "pause stops collection",
+      "passed": true
+    },
+    {
+      "name": "resume reconciles pending new files",
+      "passed": true
+    },
+    {
+      "name": "file and clipboard duplicates merge",
+      "passed": true
+    },
+    {
+      "name": "managed import atomically commits file and record",
+      "passed": true
+    },
+    {
+      "name": "managed image has no unfinished part after success",
+      "passed": true
+    },
+    {
+      "name": "storage ceiling refuses new managed content",
+      "passed": true
+    },
+    {
+      "name": "duplicate and failed clipboard writes do not produce sound events",
+      "passed": true
+    },
+    {
+      "name": "original snapshot and manual import are silent",
+      "passed": true
+    },
+    {
+      "name": "batch archive deduplicates IDs and retains original files",
+      "passed": true
+    },
+    {
+      "name": "repeated batch archive preserves retention start",
+      "passed": true
+    },
+    {
+      "name": "active editor protects managed file and external record while unrelated history expires",
+      "passed": true
+    },
+    {
+      "name": "released editor lease permits normal retention cleanup",
+      "passed": true
+    },
+    {
+      "name": "explicit edited copy survives cross-source dedup but repeats do not create extra cards",
+      "passed": true
+    },
+    {
+      "name": "original snapshot commits atomically to history without occupying shelf",
+      "passed": true
+    },
+    {
+      "name": "original backup cannot suppress a new external capture",
+      "passed": true
+    },
+    {
+      "name": "original backup cannot suppress a new clipboard capture",
+      "passed": true
+    },
+    {
+      "name": "multiple generations share one original snapshot",
+      "passed": true
+    },
+    {
+      "name": "referenced original refuses explicit recycle before filesystem side effect",
+      "passed": true
+    },
+    {
+      "name": "referenced original does not expire with time",
+      "passed": true
+    },
+    {
+      "name": "original snapshots share managed quota and rejection adds no orphan record",
+      "passed": true
+    },
+    {
+      "name": "clipboard quota includes retained originals",
+      "passed": true
+    },
+    {
+      "name": "original lineage survives restart",
+      "passed": true
+    },
+    {
+      "name": "desktop preferences survive restart",
+      "passed": true
+    },
+    {
+      "name": "removing one sibling retains original for remaining sibling",
+      "passed": true
+    },
+    {
+      "name": "last dependent expiry restarts original retention and prevents same-pass deletion",
+      "passed": true
+    },
+    {
+      "name": "original recycle failure preserves file and record",
+      "passed": true
+    },
+    {
+      "name": "unreferenced original can be explicitly recycled",
+      "passed": true
+    },
+    {
+      "name": "v1 migration preserves entries and supplies conservative preference defaults",
+      "passed": true
+    },
+    {
+      "name": "v1 migration produces database backup before schema change",
+      "passed": true
+    },
+    {
+      "name": "migration backup remains readable as v1",
+      "passed": true
+    },
+    {
+      "name": "v2 reopening does not repeat migration or create extra backups",
+      "passed": true
+    },
+    {
+      "name": "old JSON settings retain standard size and silent Chinese defaults",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "size sound and language survive restart",
+      "passed": true
+    },
+    {
+      "name": "video collection stays opt-in for old/default settings",
+      "passed": true
+    },
+    {
+      "name": "enabling video in image folder baselines old videos independently",
+      "passed": true
+    },
+    {
+      "name": "same directory collects each enabled media kind exactly once",
+      "passed": true
+    },
+    {
+      "name": "video repeats deduplicate without changing image behavior",
+      "passed": true
+    },
+    {
+      "name": "slow video decoder does not block new images",
+      "passed": true
+    },
+    {
+      "name": "disabling video during probe prevents stale commit",
+      "passed": true
+    },
+    {
+      "name": "clearing video source retains image watcher",
+      "passed": true
+    },
+    {
+      "name": "paused video is not collected",
+      "passed": true
+    },
+    {
+      "name": "resume and source reenable rescan unseen recordings",
+      "passed": true
+    },
+    {
+      "name": "video directory remains nonrecursive",
+      "passed": true
+    },
+    {
+      "name": "upgrade baselines existing optional images separately",
+      "passed": true
+    },
+    {
+      "name": "new case-insensitive WebP enters common history",
+      "passed": true
+    },
+    {
+      "name": "reconfiguration does not import pre-upgrade HEIC or duplicate WebP",
+      "passed": true
+    },
+    {
+      "name": "optional decoder does not hold ordinary image commit lock",
+      "passed": true
+    },
+    {
+      "name": "source removal during optional decode prevents late commit",
+      "passed": true
+    },
+    {
+      "name": "missing optional codec retains source and permits retry",
+      "passed": true
+    },
+    {
+      "name": "HEIF manual import shares image lifecycle",
+      "passed": true
+    }
+  ]
+}

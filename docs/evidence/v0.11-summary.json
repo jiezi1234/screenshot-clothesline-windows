@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "date": "2026-10-26",
+  "total": 360,
+  "groups": {
+    "core": 143,
+    "storage": 107,
+    "preferences": 27,
+    "functional": 83
+  },
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Directional shortcut regression. Functional compatibility excludes foreground fixtures and manual-required external environments."
+}

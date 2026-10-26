@@ -2,11 +2,17 @@ namespace Clothesline.Core;
 
 public sealed record ShortcutGesture(uint Modifiers, uint Key, string Display)
 {
+    public static (ShortcutGesture Show, ShortcutGesture Hide) ParsePair(string show, string hide)
+    {
+        var first = Parse(show); var second = Parse(hide);
+        if (first.Key != 0 && first.Display == second.Display) throw new ArgumentException(T("显示和收回不能使用相同的快捷键。"));
+        return (first, second);
+    }
     public static ShortcutGesture Parse(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return new(0, 0, "");
         var parts = text.Split('+', StringSplitOptions.TrimEntries);
-        if (parts.Length < 2) throw new ArgumentException(T("快捷键需要 Ctrl 或 Alt，并搭配字母、数字或功能键。"));
+        if (parts.Length < 2) throw new ArgumentException(T("快捷键需要 Ctrl 或 Alt，并搭配字母、数字、功能键或上下方向键。"));
         uint modifiers = 0;
         foreach (var part in parts.Take(parts.Length - 1))
         {
@@ -18,7 +24,9 @@ public sealed record ShortcutGesture(uint Modifiers, uint Key, string Display)
         var key = parts[^1].ToUpperInvariant(); uint code;
         if (key.Length == 1 && (key[0] is >= 'A' and <= 'Z' or >= '0' and <= '9')) code = key[0];
         else if (key.StartsWith('F') && int.TryParse(key.AsSpan(1), out var f) && f is >= 1 and <= 24 && f != 12) { code = (uint)(111 + f); key = "F" + f; }
-        else throw new ArgumentException(T("主键支持 A–Z、0–9、F1–F24（F12 为系统调试器保留）。"));
+        else if (key is "UP" or "↑") { code = 0x26; key = "Up"; }
+        else if (key is "DOWN" or "↓") { code = 0x28; key = "Down"; }
+        else throw new ArgumentException(T("主键支持 A–Z、0–9、Up/Down（↑/↓）、F1–F24（不含 F12）。"));
         var prefix = ((modifiers & 2) != 0 ? "Ctrl+" : "") + ((modifiers & 1) != 0 ? "Alt+" : "") + ((modifiers & 4) != 0 ? "Shift+" : "");
         return new(modifiers, code, prefix + key);
     }

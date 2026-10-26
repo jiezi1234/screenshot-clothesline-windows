@@ -208,7 +208,7 @@ internal static class CompatibilityDiagnostics
     {
         var folder = Path.Combine(run, "captures"); Directory.CreateDirectory(folder);
         using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, Path.Combine(run, "library"));
-        runtime.ApplySettings(new LibrarySettings { ScreenshotFolder = folder, ShowNew = false, ReduceMotion = true, Capacity = 100, Shortcut = "" }); runtime.Start();
+        runtime.ApplySettings(new LibrarySettings { ScreenshotFolder = folder, ShowNew = false, ReduceMotion = true, Capacity = 100, ShowShortcut = "", HideShortcut = "" }); runtime.Start();
         await Task.Delay(10000);
         using var process = Process.GetCurrentProcess();
         var samples = new List<double>(); var combinedSamples = new List<double>();
@@ -250,7 +250,7 @@ internal static class CompatibilityDiagnostics
     private static async Task Soak(string run, Action<string, bool, object?> check, List<object> measurements)
     {
         using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, Path.Combine(run, "library"));
-        runtime.ApplySettings(new LibrarySettings { ShowNew = false, ReduceMotion = true, Capacity = 25, Shortcut = "" }); runtime.Start();
+        runtime.ApplySettings(new LibrarySettings { ShowNew = false, ReduceMotion = true, Capacity = 25, ShowShortcut = "", HideShortcut = "" }); runtime.Start();
         for (var n = 0; n < 10; n++) { var path = Path.Combine(run, "soak-" + n + ".png"); WriteImage(path, n); await runtime.Collector.ImportExternal(path, preserveCopy: true); }
         runtime.ArchiveBatch(); runtime.RefreshShelf(false); var baselineWindows = Application.Current.Windows.Count;
         var ids = runtime.Store.Entries().Select(e => e.Id).ToArray(); var watch = Stopwatch.StartNew();

@@ -122,11 +122,18 @@ internal sealed class ShelfController : IDisposable
     {
         if (Busy || SessionBlocked) return;
         if (presented) { Hide(); return; }
+        Show();
+    }
+    public void Show()
+    {
+        if (Busy || SessionBlocked) return;
+        if (presented) { gate.Show(clock.ElapsedMilliseconds); return; }
         var monitor = Native.MonitorAt(Native.Cursor);
         if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke(T("当前显示器为全屏窗口，已暂缓显示。")); return; }
         Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present();
     }
     public void Hide() { gate.Hide(); Dismiss(); }
+    public void HideFromShortcut() { if (!Busy) Hide(); }
     private void Remove(CardWindow card)
     {
         if (!sampleMode) Archived?.Invoke(card.Item);

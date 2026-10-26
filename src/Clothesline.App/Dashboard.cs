@@ -28,7 +28,8 @@ internal sealed class Dashboard : Window
     private readonly CheckBox sound = new() { Content = T("自动收集新项目时播放提示音（默认关闭）") };
     private readonly ComboBox cardSize = new() { ItemsSource = new[] { T("小 · 80%"), T("标准 · 100%"), T("大 · 120%") }, MinWidth = 200 };
     private readonly ComboBox language = new() { ItemsSource = Clothesline.Core.UiText.Languages, DisplayMemberPath = "Name", SelectedValuePath = "Code", MinWidth = 200 };
-    private readonly TextBox shortcut = new() { MinWidth = 180, VerticalContentAlignment = VerticalAlignment.Center };
+    private readonly TextBox showShortcut = new() { MinWidth = 180, VerticalContentAlignment = VerticalAlignment.Center };
+    private readonly TextBox hideShortcut = new() { MinWidth = 180, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly CheckBox shortcutEnabled = new() { Content = T("启用全局快捷键") };
     private readonly CheckBox login = new() { Content = T("登录 Windows 时启动到托盘（默认关闭）") };
     private readonly TextBlock interactionHint = new() { Margin = new Thickness(0, 12, 0, 12), FontSize = 12, TextWrapping = TextWrapping.Wrap };
@@ -53,7 +54,7 @@ internal sealed class Dashboard : Window
         actions.Children.Add(Button(T("全部取下"), () => library?.ArchiveBatch()));
         actions.Children.Add(Button(T("键盘浏览晾衣绳"), ShowShelfList));
         header.Children.Add(actions);
-        interactionHint.Text = shortcutRegistered ? T("顶部悬停 / Ctrl+Alt+T · 单击复制 · 双击打开 · 长按编辑图片或播放录像 · 拖出 · 滚轮翻页") : T("快捷键被占用，请使用按钮或托盘；右键图片可预览、编辑。");
+        UpdateShortcutHint();
         header.Children.Add(interactionHint); root.Children.Add(header);
         var footer = new StackPanel(); DockPanel.SetDock(footer, Dock.Bottom);
         footer.Children.Add(status); var exit = new WrapPanel(); exit.Children.Add(Button(T("收起控制面板"), Hide)); exit.Children.Add(Button(T("退出"), quit)); footer.Children.Add(exit); root.Children.Add(footer);
@@ -67,7 +68,7 @@ internal sealed class Dashboard : Window
         AutomationProperties.SetName(screenshot, T("截图目录"));
         AutomationProperties.SetName(videoFolder, T("录像目录"));
         for (var i = 0; i < extras.Length; i++) AutomationProperties.SetName(extras[i], T("额外目录 {0}", i + 1));
-        AutomationProperties.SetName(shortcut, T("全局快捷键")); AutomationProperties.SetName(history, T("本地历史"));
+        AutomationProperties.SetName(showShortcut, T("显示快捷键")); AutomationProperties.SetName(hideShortcut, T("收回快捷键")); AutomationProperties.SetName(history, T("本地历史"));
         controller.Status += SetStatus;
         if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(library.Settings.Paused ? T("自动收集已暂停。") : T("准备收集新增图片与录像；取下和超出容量的项目可从历史找回。")); } else SetStatus(T("界面诊断模式：没有启用收集。"));
         Closing += (_, e) => { if (!Exiting) { e.Cancel = true; Hide(); } };
@@ -90,11 +91,13 @@ internal sealed class Dashboard : Window
     private FrameworkElement DesktopSettingsPanel()
     {
         var panel = new StackPanel { Margin = new Thickness(16) };
-        panel.Children.Add(Label(T("全局快捷键（如 Ctrl+Alt+T；更改冲突时保留旧设置）")));
-        var shortcuts = new WrapPanel { Margin = new Thickness(0, 4, 0, 8) }; shortcutEnabled.Margin = new Thickness(0, 5, 12, 5); shortcuts.Children.Add(shortcutEnabled); shortcuts.Children.Add(shortcut);
+        panel.Children.Add(Label(T("全局快捷键")));
+        var shortcuts = new WrapPanel { Margin = new Thickness(0, 4, 0, 8) }; shortcutEnabled.Margin = new Thickness(0, 5, 12, 5); shortcuts.Children.Add(shortcutEnabled);
         shortcuts.Children.Add(Button(T("重试当前注册"), () => { library?.Desktop?.RetryShortcut(); UpdateShortcutHint(); })); panel.Children.Add(shortcuts);
-        shortcutEnabled.Checked += (_, _) => shortcut.IsEnabled = true; shortcutEnabled.Unchecked += (_, _) => shortcut.IsEnabled = false;
-        panel.Children.Add(new TextBlock { Text = T("组合至少包含 Ctrl 或 Alt，可增加 Shift；主键支持字母、数字、F1–F24（不含 F12）。关闭快捷键后仍可使用顶部悬停或托盘。"), TextWrapping = TextWrapping.Wrap, FontSize = 12 });
+        panel.Children.Add(Choice(T("显示快捷键"), showShortcut)); panel.Children.Add(Choice(T("收回快捷键"), hideShortcut));
+        shortcutEnabled.Checked += (_, _) => showShortcut.IsEnabled = hideShortcut.IsEnabled = true; shortcutEnabled.Unchecked += (_, _) => showShortcut.IsEnabled = hideShortcut.IsEnabled = false;
+        panel.Children.Add(new TextBlock { Text = T("默认 Ctrl+Down（↓）显示，Ctrl+Up（↑）收回；重复按不会反向切换。留空可单独关闭，冲突时保留原设置。"), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 8, 0, 8) });
+        panel.Children.Add(new TextBlock { Text = T("组合至少包含 Ctrl 或 Alt，可增加 Shift；支持字母、数字、Up/Down（↑/↓）和 F1–F24（不含 F12）。关闭后仍可使用顶部悬停或托盘。"), TextWrapping = TextWrapping.Wrap, FontSize = 12 });
         login.Margin = new Thickness(0, 24, 0, 0); panel.Children.Add(login);
         panel.Children.Add(new TextBlock { Text = T("登录时启动到托盘，不弹出控制面板。移动便携版目录后，请从新位置打开应用并重新保存设置以更新启动路径。Windows 的启动应用设置可能另外禁用此项。"), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 8, 0, 20) });
         panel.Children.Add(Button(T("保存设置"), SaveSettings));
@@ -188,16 +191,18 @@ internal sealed class Dashboard : Window
         storage.SelectedIndex = settings.MaxManagedBytes >= 2L * 1024 * 1024 * 1024 ? 2 : settings.MaxManagedBytes >= 1024L * 1024 * 1024 ? 1 : 0;
         cardSize.SelectedIndex = Array.IndexOf(new[] { 80, 100, 120 }, settings.CardSizePercent); sound.IsChecked = settings.CaptureSound;
         language.SelectedValue = settings.Language;
-        shortcutEnabled.IsChecked = settings.Shortcut.Length > 0; shortcut.Text = settings.Shortcut.Length > 0 ? settings.Shortcut : "Ctrl+Alt+T";
-        shortcut.IsEnabled = shortcutEnabled.IsChecked == true; login.IsChecked = library.Desktop?.LoginEnabled ?? settings.RunAtLogin; UpdateShortcutHint();
+        shortcutEnabled.IsChecked = settings.ShowShortcut.Length > 0 || settings.HideShortcut.Length > 0;
+        showShortcut.Text = shortcutEnabled.IsChecked == true ? settings.ShowShortcut : LibrarySettings.DefaultShowShortcut;
+        hideShortcut.Text = shortcutEnabled.IsChecked == true ? settings.HideShortcut : LibrarySettings.DefaultHideShortcut;
+        showShortcut.IsEnabled = hideShortcut.IsEnabled = shortcutEnabled.IsChecked == true; login.IsChecked = library.Desktop?.LoginEnabled ?? settings.RunAtLogin; UpdateShortcutHint();
     }
-    private void UpdateShortcutHint() => interactionHint.Text = T("顶部悬停 / ") + (library?.Desktop?.ShortcutStatus ?? library?.Settings.Shortcut ?? T("诊断模式")) + T(" · 单击复制 · 双击打开 · 长按编辑图片或播放录像 · 拖出 · 滚轮翻页");
+    private void UpdateShortcutHint() => interactionHint.Text = T("顶部悬停 / ") + (library?.Desktop?.ShortcutStatus ?? (library is null ? T("诊断模式") : T("显示 {0}；收回 {1}", library.Settings.ShowShortcut, library.Settings.HideShortcut))) + T(" · 单击复制 · 双击打开 · 长按编辑图片或播放录像 · 拖出 · 滚轮翻页");
     private void SaveSettings()
     {
         if (library is null) return;
         library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), VideoFolder = videoFolder.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = pause.IsChecked == true, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
             Capacity = new[] { 0, 25, 50, 100 }[Math.Max(0, capacity.SelectedIndex)], RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024,
-            Shortcut = shortcutEnabled.IsChecked == true ? shortcut.Text : "", RunAtLogin = login.IsChecked == true,
+            ShowShortcut = shortcutEnabled.IsChecked == true ? showShortcut.Text : "", HideShortcut = shortcutEnabled.IsChecked == true ? hideShortcut.Text : "", RunAtLogin = login.IsChecked == true,
             CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], CaptureSound = sound.IsChecked == true, Language = language.SelectedValue as string ?? "zh-CN" });
         FillSettings();
     }
@@ -211,7 +216,7 @@ internal sealed class Dashboard : Window
         var row = new DockPanel { Margin = new Thickness(0, 4, 0, 2) }; var browse = Button(T("选择…"), () => { var dialog = new Microsoft.Win32.OpenFolderDialog(); if (dialog.ShowDialog(this) == true) text.Text = dialog.FolderName; });
         DockPanel.SetDock(browse, Dock.Right); row.Children.Add(browse); text.VerticalContentAlignment = VerticalAlignment.Center; row.Children.Add(text); return row;
     }
-    private static FrameworkElement Choice(string title, ComboBox combo) { AutomationProperties.SetName(combo, title); var p = new StackPanel { Margin = new Thickness(0, 0, 16, 0) }; p.Children.Add(Label(title)); p.Children.Add(combo); return p; }
+    private static FrameworkElement Choice(string title, FrameworkElement control) { AutomationProperties.SetName(control, title); var p = new StackPanel { Margin = new Thickness(0, 0, 16, 0) }; p.Children.Add(Label(title)); p.Children.Add(control); return p; }
     private static TextBlock Label(string text) => new() { Text = text, Margin = new Thickness(0, 7, 0, 5), FontSize = 12 };
     private Button Button(string title, Action action)
     {

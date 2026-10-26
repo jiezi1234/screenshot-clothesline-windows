@@ -109,6 +109,7 @@ internal sealed class HotKey : IDisposable
 {
     private readonly HwndSource source;
     private int activeId = 1;
+    private bool disposed;
     public bool Registered { get; private set; }
     public string Gesture { get; private set; }
     public HotKey(Action toggle, string gesture = "Ctrl+Alt+T")
@@ -138,7 +139,7 @@ internal sealed class HotKey : IDisposable
         var parsed = Clothesline.Core.ShortcutGesture.Parse(Gesture);
         return Registered = Native.RegisterHotKey(source.Handle, activeId, parsed.Modifiers | 0x4000, parsed.Key);
     }
-    public void Dispose() { if (Registered) Native.UnregisterHotKey(source.Handle, activeId); source.Dispose(); }
+    public void Dispose() { if (disposed) return; disposed = true; if (Registered) Native.UnregisterHotKey(source.Handle, activeId); Registered = false; source.Dispose(); }
 }
 
 internal sealed class PreparedShortcut(Action commit, Action rollback) : IDisposable

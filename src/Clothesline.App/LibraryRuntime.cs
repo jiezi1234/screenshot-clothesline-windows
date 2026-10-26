@@ -80,7 +80,8 @@ internal sealed class LibraryRuntime : IDisposable
     {
         if (fileOperation > 0) throw new InvalidOperationException(T("文件操作进行中，请稍后再保存设置。"));
         if (shelf.Busy && settings.CardSizePercent != Settings.CardSizePercent) throw new InvalidOperationException(T("图片交互进行中，请稍后再更改卡片大小。"));
-        settings = settings with { Shortcut = ShortcutGesture.Parse(settings.Shortcut).Display };
+        var gestures = ShortcutGesture.ParsePair(settings.ShowShortcut, settings.HideShortcut);
+        settings = settings with { ShowShortcut = gestures.Show.Display, HideShortcut = gestures.Hide.Display };
         LibraryStore.ValidateSettings(settings);
         var all = new[] { settings.ScreenshotFolder, settings.VideoFolder }.Concat(settings.ExtraFolders).Where(p => !string.IsNullOrWhiteSpace(p)).Select(Path.GetFullPath);
         foreach (var folder in all)

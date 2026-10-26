@@ -37,7 +37,7 @@ internal static class Program
         if (!first) { if (!args.Contains("--startup")) wake.Set(); return 0; }
         using var controller = new ShelfController();
         using var library = new LibraryRuntime(controller);
-        using var shortcut = new HotKey(controller.Toggle, library.Settings.Shortcut);
+        using var shortcut = new ShelfHotKeys(controller.Show, controller.HideFromShortcut, library.Settings.ShowShortcut, library.Settings.HideShortcut);
         library.Desktop = DesktopPreferences.Create(shortcut);
         Dashboard? dashboard = null;
         void Quit() { if (!library.TryCloseWorkspaces()) return; if (dashboard is not null) dashboard.Exiting = true; app.Shutdown(); }

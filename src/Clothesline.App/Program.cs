@@ -17,6 +17,7 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--image-server") return ImageDecoder.Serve(args[1]);
         if (args.Length == 5 && args[0] == "--image-worker") { Clothesline.Core.UiText.Language = args[4]; return ImageDecoder.Worker(args[1], args[2], args[3]); }
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        if (args.Length == 2 && args[0] == "--dashboard-test") return DashboardDiagnostics.Run(app, args[1]);
         if (args.Length == 3 && args[0] == "--compatibility-backdrop") return CompatibilityDiagnostics.Backdrop(app, args[1], args[2]);
         if (args.Length == 2 && args[0] == "--compatibility-test") return CompatibilityDiagnostics.Run(app, args[1], false);
         if (args.Length == 2 && args[0] == "--compatibility-functional-test") return CompatibilityDiagnostics.Run(app, args[1], false, foregroundChecks: false);

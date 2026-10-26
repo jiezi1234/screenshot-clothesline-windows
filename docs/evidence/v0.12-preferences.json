@@ -1,0 +1,113 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "conflict-preserves-active-registration",
+      "passed": true
+    },
+    {
+      "name": "preparation-keeps-old-key-reserved",
+      "passed": true
+    },
+    {
+      "name": "uncommitted-preparation-releases-candidate",
+      "passed": true
+    },
+    {
+      "name": "both-shortcuts-register",
+      "passed": true
+    },
+    {
+      "name": "show-twice-keeps-empty-shelf-visible",
+      "passed": true
+    },
+    {
+      "name": "hide-twice-keeps-shelf-hidden",
+      "passed": true
+    },
+    {
+      "name": "show-shortcut-respects-locked-session",
+      "passed": true
+    },
+    {
+      "name": "second-shortcut-conflict-keeps-both-old-registrations",
+      "passed": true
+    },
+    {
+      "name": "second-conflict-releases-first-prepared-key",
+      "passed": true
+    },
+    {
+      "name": "database-failure-rolls-back-startup-and-both-hotkeys",
+      "passed": true
+    },
+    {
+      "name": "failed-apply-releases-both-candidates",
+      "passed": true
+    },
+    {
+      "name": "startup-write-failure-keeps-database-and-both-old-hotkeys",
+      "passed": true
+    },
+    {
+      "name": "successful-apply-commits-both-shortcuts",
+      "passed": true
+    },
+    {
+      "name": "successful-change-releases-both-old-shortcuts",
+      "passed": true
+    },
+    {
+      "name": "swapped-gesture-shows-shelf",
+      "passed": true
+    },
+    {
+      "name": "swapped-gesture-hides-shelf",
+      "passed": true
+    },
+    {
+      "name": "show-can-be-disabled-independently",
+      "passed": true
+    },
+    {
+      "name": "disable-releases-both-hotkeys-and-login-entry",
+      "passed": true
+    },
+    {
+      "name": "startup-conflict-keeps-available-action-working",
+      "passed": true
+    },
+    {
+      "name": "retry-recovers-only-missing-registration",
+      "passed": true
+    },
+    {
+      "name": "startup-command-quotes-executable-path",
+      "passed": true
+    },
+    {
+      "name": "framework-dependent-startup-quotes-host-and-assembly",
+      "passed": true
+    },
+    {
+      "name": "startup-rejects-relative-path",
+      "passed": true
+    },
+    {
+      "name": "startup-enforces-run-command-length",
+      "passed": true
+    },
+    {
+      "name": "isolated-registry-roundtrip",
+      "passed": true
+    },
+    {
+      "name": "disable-removes-only-owned-registry-value",
+      "passed": true
+    },
+    {
+      "name": "real-login-registration-untouched-by-diagnostics",
+      "passed": true
+    }
+  ]
+}

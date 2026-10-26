@@ -1,0 +1,600 @@
+{
+  "passed": true,
+  "scope": "functional-only-foreground-excluded",
+  "os": "Microsoft Windows NT 10.0.22631.0",
+  "runtime": "10.0.13",
+  "checks": [
+    {
+      "name": "suspend-dismisses-and-blocks-shelf",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "suspend-blocks-shortcut-reveal",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "resume-cannot-unblock-a-locked-session",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "unlock-recovers-without-automatic-reveal",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "remote-disconnect-dismisses-overlays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "remote-reconnect-requests-recovery",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "display-change-invalidates-position-and-recovers",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-shelf-lists-real-records",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-shelf-has-selection-automation-peer",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "dashboard-status-is-polite-live-region",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-delete-archives-without-deleting-source",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "public-virtual-desktop-interface-available",
+      "passed": true,
+      "details": {
+        "current": true
+      }
+    },
+    {
+      "name": "own-window-can-follow-current-desktop",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "canvas-exposes-named-focusable-pane",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-can-create-a-mark",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-mark-uses-standard-undo",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-can-crop-in-pixel-coordinates",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-80",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 1153,
+          "Y": 30,
+          "Width": 254,
+          "Height": 228,
+          "Right": 1407,
+          "Bottom": 258
+        },
+        "actual": {
+          "X": 1153,
+          "Y": 30,
+          "Width": 254,
+          "Height": 228,
+          "Right": 1407,
+          "Bottom": 258
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-80",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-100",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 1121,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1439,
+          "Bottom": 315
+        },
+        "actual": {
+          "X": 1121,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1439,
+          "Bottom": 315
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-100",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-120",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 1089,
+          "Y": 30,
+          "Width": 382,
+          "Height": 342,
+          "Right": 1471,
+          "Bottom": 372
+        },
+        "actual": {
+          "X": 1089,
+          "Y": 30,
+          "Width": 382,
+          "Height": 342,
+          "Right": 1471,
+          "Bottom": 372
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-120",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-80",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 4353,
+          "Y": -193,
+          "Width": 254,
+          "Height": 228,
+          "Right": 4607,
+          "Bottom": 35
+        },
+        "actual": {
+          "X": 4353,
+          "Y": -193,
+          "Width": 254,
+          "Height": 228,
+          "Right": 4607,
+          "Bottom": 35
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-80",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-100",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 4321,
+          "Y": -193,
+          "Width": 318,
+          "Height": 285,
+          "Right": 4639,
+          "Bottom": 92
+        },
+        "actual": {
+          "X": 4321,
+          "Y": -193,
+          "Width": 318,
+          "Height": 285,
+          "Right": 4639,
+          "Bottom": 92
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-100",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-120",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 4289,
+          "Y": -193,
+          "Width": 382,
+          "Height": 342,
+          "Right": 4671,
+          "Bottom": 149
+        },
+        "actual": {
+          "X": 4289,
+          "Y": -193,
+          "Width": 382,
+          "Height": 342,
+          "Right": 4671,
+          "Bottom": 149
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-120",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "foreground-fixtures",
+      "status": "manual-required",
+      "reason": "Explicit functional-only diagnostic: fullscreen/foreground checks are excluded and must be run separately."
+    },
+    {
+      "name": "language-picker-zh-CN",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-zh-CN",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-zh-CN",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-zh-CN",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-en",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-en",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-en",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-en",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-es",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-es",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-es",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-es",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-fr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-fr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-fr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-fr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-gl",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-gl",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-gl",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-gl",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-pt-BR",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-pt-BR",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-pt-BR",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-pt-BR",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-ja",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-ja",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-ja",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-ja",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-ko",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-ko",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-ko",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-ko",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-tr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-tr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-tr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-tr",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-az",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-az",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-az",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-az",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-picker-hi",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "window-language-hi",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "localized-title-hi",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "language-selection-persists-hi",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "stale-cleanup-removes-only-known-decoder-output",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "missing-cleanup-directory-does-not-disable-decoder",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "isolated-image-worker-timeout",
+      "passed": true,
+      "details": 302.4825
+    },
+    {
+      "name": "isolated-image-worker-crash",
+      "passed": true,
+      "details": 156.3111
+    },
+    {
+      "name": "isolated-image-worker-cancel",
+      "passed": true,
+      "details": 241.9258
+    },
+    {
+      "name": "isolated-image-worker-memory",
+      "passed": true,
+      "details": 40.8852
+    },
+    {
+      "name": "worker-result-cannot-bypass-pixel-limit",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "isolated-decoder-preserves-source-pixels-and-hash",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "background-render-matches-existing-compositor",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "slow-image-does-not-block-clipboard-commit",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "external-environments",
+      "status": "manual-required",
+      "cases": [
+        "actual mixed-DPI changes and unplugging",
+        "switching real virtual desktops",
+        "RDP connection and reconnect",
+        "physical sleep/wake and lock/unlock",
+        "screen-sharing applications",
+        "browser/Office/chat drag targets",
+        "Narrator spoken output"
+      ]
+    }
+  ],
+  "measurements": []
+}

@@ -4,13 +4,13 @@
 
 An independently maintained Windows implementation of a screenshot clothesline, inspired by [Tendedero](https://github.com/alejandrobujan/tendedero).
 
-> 当前状态：**v0.11.0 开发版**。默认 Ctrl + ↓ 显示晾衣绳、Ctrl + ↑ 收回，可分别修改或关闭，详见[快捷键说明](docs/DIRECTIONAL_SHORTCUTS.md)。视频用于挂绳、预览和文件流转，项目不提供视频剪辑；图片标注保留。完整兼容性仍有[待人工验收项目](docs/STAGE3_COMPATIBILITY.md)。
+> 当前状态：**v0.12.0 开发版**。控制面板采用左侧导航、分组设置、固定保存栏和历史搜索，详见[新版控制面板](docs/DASHBOARD_DESIGN.md)。默认 Ctrl + ↓ 显示晾衣绳、Ctrl + ↑ 收回，可分别修改或关闭，详见[快捷键说明](docs/DIRECTIONAL_SHORTCUTS.md)。视频用于挂绳、预览和文件流转，项目不提供视频剪辑；图片标注保留。完整兼容性仍有[待人工验收项目](docs/STAGE3_COMPATIBILITY.md)。
 
 ![阶段 0 示例晾衣绳](docs/images/stage0-shelf.png)
 
 ## 运行开发版
 
-面向 Windows 11 x64。将 `Clothesline-0.11.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
+面向 Windows 11 x64。将 `Clothesline-0.12.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
 
 升级前先保存编辑并从托盘退出旧版。v0.3.0 首次打开旧库时，会先创建 `library-v1-backup-*.db` 数据库备份，再事务迁移至 v2；原有记录和设置保留。迁移后的库不能直接用 v0.2.0 打开；数据库备份不包含图片文件。
 
@@ -53,7 +53,9 @@ WebP、HEIC/HEIF 可从截图目录、额外目录和手动导入进入同一图
 
 支持 PNG、JPEG、BMP、TIFF、GIF 首帧；WebP、HEIC/HEIF 依赖本机 Windows 图像组件。控制面板新增“格式支持”，用内置小样本实际解码检测，可重新检测；样本成功不代表所有变体均支持。当前限制单文件 64 MiB、4000 万像素。首次目录清单与后续补扫基于路径、大小和修改时间；跨来源像素去重窗口为 5 秒，不能保证延迟很长的双来源事件合并。全屏判断采用窗口几何启发式。限制及实测范围见 [阶段 1 验证报告](docs/STAGE1_VALIDATION.md)。
 
-![阶段 1 来源与设置](docs/images/stage1-settings.png)
+![新版控制面板](docs/images/dashboard-v0.12-appearance.png)
+
+控制面板左侧切换晾衣绳、本地历史和各组设置。编辑设置后，底部提示未保存，可跨页面继续填写，再统一保存或撤销；收起面板会保留当前草稿。本地历史支持按文件名或路径搜索，导出、定位和取下等操作收进“更多操作”。
 
 ## 构建与验证
 
@@ -66,7 +68,7 @@ WebP、HEIC/HEIF 可从截图目录、额外目录和手动导入进入同一图
 ./scripts/publish.ps1
 ```
 
-所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.11.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.11.0.txt`。
+所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.12.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.12.0.txt`。
 
 普通测试包含核心规则、SQLite 生命周期和 100 文件监听突发测试。有交互式 Windows 桌面时，先退出正在运行的应用，再执行 `./scripts/test.ps1 -Desktop`：会短暂显示本程序专用测试窗口，检查跨进程窗口命中、100 张生成的有效 PNG、导出和原生回收站。结果与自身界面渲染位于 `artifacts/validation/` 和 `artifacts/stage1-validation/`。该命令不采集屏幕图像、不修改系统剪贴板；回收站测试仅处理生成的夹具文件。
 
@@ -83,6 +85,8 @@ v0.6.0 新增录像专项诊断（--video-test），使用原生编码器生成�
 v0.8.0 新增图片格式专项诊断（--image-format-test），检查本机样本能力、WebP 透明度、首帧、缩略图、HEIF 别名、文件保护与编辑快照，以及缺组件的模拟错误分支。结果位于 artifacts/image-format-validation/；已纳入桌面诊断。运行程序不需要 Python，仓库的生成样本脚本仅用于开发重建测试素材。
 
 GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备好，将执行构建、核心规则检查与打包。当前推送凭据没有 `workflow` 权限，因此模板暂放在文档目录，待具备相应权限后再安装到 `.github/workflows/build.yml`。
+
+v0.12.0 新增 `--dashboard-test artifacts/dashboard-validation`，使用生成素材与隔离数据库检查页面导航、草稿保存/撤销、历史搜索、下拉框与 11 种语言的小窗口布局，已纳入 `test.ps1 -Desktop`。
 
 ## 已确定的方向
 
@@ -106,6 +110,7 @@ GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备�
 - [阶段 3 第三批报告](docs/STAGE3_IMAGE_FORMATS.md)：可选图片格式、能力检测、验证结果和人工核验清单。
 - [阶段 3 第四批报告](docs/STAGE3_COMPATIBILITY.md)：兼容性状态矩阵、图片解码隔离、性能记录、键盘与语言、剩余人工清单。
 - [视频暂存范围说明](docs/VIDEO_SCOPE.md)：v0.10 的视频边界、移除内容、旧文件兼容与验证。
+- [新版控制面板](docs/DASHBOARD_DESIGN.md)：v0.12 的布局、操作方式与验证结果。
 - [来源与授权说明](THIRD_PARTY_NOTICES.md)：原项目基线、参考范围和品牌限制。
 - [贡献说明](CONTRIBUTING.md)：开发与贡献约定。
 

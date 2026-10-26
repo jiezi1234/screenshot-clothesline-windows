@@ -129,7 +129,7 @@ internal static class VideoDiagnostics
                 // Force an old timestamp through the public restore/archive lifecycle.
                 runtime.Store.Restore(entry.Id, 25, LibraryRuntime.Now); runtime.Store.Archive(entry.Id, LibraryRuntime.Now - (long)TimeSpan.FromDays(8).TotalMilliseconds);
                 runtime.Cleanup(); Check("video-expiry-forgets-reference-keeps-file", runtime.Store.Find(entry.Id) is null && File.Exists(incoming));
-                dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.Show(); dashboard.UpdateLayout();
+                dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.ShowSources(); dashboard.UpdateLayout();
                 Check("recording-folder-control-accessible", Find<TextBox>(dashboard).Any(t => System.Windows.Automation.AutomationProperties.GetName(t) == T("录像目录")));
                 Find<TextBox>(dashboard).First(t => System.Windows.Automation.AutomationProperties.GetName(t) == T("录像目录")).Text = @"C:\Clothesline-test\Recordings";
                 dashboard.UpdateLayout();

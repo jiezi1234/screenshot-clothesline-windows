@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "date": "2026-10-26",
+  "total": 472,
+  "groups": {
+    "core": 143,
+    "storage": 107,
+    "dashboard": 36,
+    "appearance": 26,
+    "preferences": 27,
+    "functional": 83,
+    "library": 20,
+    "video": 30
+  },
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Dashboard redesign regression. Functional compatibility excludes foreground fixtures and manual-required external environments."
+}

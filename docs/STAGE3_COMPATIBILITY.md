@@ -73,6 +73,8 @@ Release 构建 0 警告、0 错误。完整回归通过 567 项：Core 148、Sto
 
 本批保留两份早期失败证据：`v0.9-desktop-first-failure.json` 的前台窗口变化，以及 `v0.9-compatibility-first-failure.json` 的全屏夹具失败。前者原始记录不足以判断是谁改变了前台窗口，现已加入稳定背景起点、前后 HWND/PID 记录；后者的无边框夹具此前仍可调整大小，现改为不可调整大小的真正全屏窗口并记录窗口矩形。后续通过不抹掉失败记录，也不据此宣称真实应用焦点兼容性问题全部解决。
 
+便携包完整兼容性诊断出现两次等待测试窗口取得前台焦点超时；尝试显式授予测试子进程前台权限亦被拒绝，未将该尝试加入产品。完整便携包前台验收仍开放，失败记录保留为 `v0.9-packaged-compatibility-first-failure.json` 和 `v0.9-packaged-compatibility-retry-failure.json`。新增显式 `--compatibility-functional-test` 入口，只运行其余 83 项，并在 JSON 中标记 `functional-only-foreground-excluded` 及未验收前台项目；它不能替代 `--compatibility-test`。标准 `test.ps1 -Desktop` 仍运行完整模式，不会静默跳过失败项。超时错误补充窗口/PID 便于后续定位。
+
 ## 待人工核验清单
 
 使用本次便携包，先保存编辑并退出旧版。为每项记录 Windows 构建、软件版本、屏幕配置、结果及复现步骤；失败项保持开放。

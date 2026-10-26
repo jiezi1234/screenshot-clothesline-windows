@@ -34,7 +34,7 @@ internal static class CompatibilityDiagnostics
         else Native.Place(window, mode == "fullscreen" ? monitor.Bounds : new(monitor.WorkArea.X + 60, monitor.WorkArea.Y + 60, Math.Max(100, monitor.WorkArea.Width - 120), Math.Max(100, monitor.WorkArea.Height - 120)));
         window.Activate(); window.Closed += (_, _) => app.Shutdown(); return app.Run();
     }
-    internal static int Run(Application app, string directory, bool performance, bool soak = false)
+    internal static int Run(Application app, string directory, bool performance, bool soak = false, bool foregroundChecks = true)
     {
         directory = Path.GetFullPath(directory); Directory.CreateDirectory(directory);
         var checks = new List<object>(); var measurements = new List<object>(); var passed = true;
@@ -115,7 +115,8 @@ internal static class CompatibilityDiagnostics
                         }
                         finally { card.Close(); }
                     }
-                    foreach (var mode in new[] { "fullscreen", "maximized", "windowed" })
+                    if (!foregroundChecks) checks.Add(new { name = "foreground-fixtures", status = "manual-required", reason = "Explicit functional-only diagnostic: fullscreen/foreground checks are excluded and must be run separately." });
+                    foreach (var mode in foregroundChecks ? new[] { "fullscreen", "maximized", "windowed" } : Array.Empty<string>())
                     {
                         var handshake = Path.Combine(run, "fullscreen-" + mode + ".json");
                         using var child = Process.Start(VideoCatalog.StartInfo("--compatibility-backdrop", handshake, mode)) ?? throw new IOException("Could not start compatibility window.");
@@ -124,7 +125,12 @@ internal static class CompatibilityDiagnostics
                             await Wait(() => File.Exists(handshake), 5000); await Task.Delay(150);
                             using var info = JsonDocument.Parse(File.ReadAllText(handshake)); var bounds = info.RootElement.GetProperty("Bounds").Deserialize<PixelRect>();
                             var handle = (nint)info.RootElement.GetProperty("Handle").GetInt64();
-                            await Wait(() => Native.GetForegroundWindow() == handle, 3000);
+                            try { await Wait(() => Native.GetForegroundWindow() == handle, 3000); }
+                            catch (TimeoutException)
+                            {
+                                var foreground = Native.GetForegroundWindow(); Native.GetWindowThreadProcessId(foreground, out var actualPid);
+                                throw new TimeoutException($"Foreground fixture unavailable ({mode}): expected HWND {handle}, PID {child.Id}; actual HWND {foreground}, PID {actualPid}.");
+                            }
                             var monitor = Native.Monitors().First(m => m.Bounds == bounds);
                             Native.GetWindowRect(handle, out var actual);
                             Native.DwmGetWindowAttribute(handle, 9, out Native.Rect frame, System.Runtime.InteropServices.Marshal.SizeOf<Native.Rect>());
@@ -190,7 +196,7 @@ internal static class CompatibilityDiagnostics
             finally
             {
                 UiText.Language = language;
-                File.WriteAllText(Path.Combine(directory, soak ? "soak-diagnostics.json" : performance ? "performance-diagnostics.json" : "compatibility-diagnostics.json"), JsonSerializer.Serialize(new { passed, os = Environment.OSVersion.VersionString, runtime = Environment.Version.ToString(), checks, measurements }, new JsonSerializerOptions { WriteIndented = true }));
+                File.WriteAllText(Path.Combine(directory, soak ? "soak-diagnostics.json" : performance ? "performance-diagnostics.json" : "compatibility-diagnostics.json"), JsonSerializer.Serialize(new { passed, scope = foregroundChecks ? "full-owned-fixture" : "functional-only-foreground-excluded", os = Environment.OSVersion.VersionString, runtime = Environment.Version.ToString(), checks, measurements }, new JsonSerializerOptions { WriteIndented = true }));
                 app.Shutdown(passed ? 0 : 1);
             }
         }));

@@ -19,6 +19,7 @@ internal static class Program
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         if (args.Length == 3 && args[0] == "--compatibility-backdrop") return CompatibilityDiagnostics.Backdrop(app, args[1], args[2]);
         if (args.Length == 2 && args[0] == "--compatibility-test") return CompatibilityDiagnostics.Run(app, args[1], false);
+        if (args.Length == 2 && args[0] == "--compatibility-functional-test") return CompatibilityDiagnostics.Run(app, args[1], false, foregroundChecks: false);
         if (args.Length == 2 && args[0] == "--performance-test") return CompatibilityDiagnostics.Run(app, args[1], true);
         if (args.Length == 2 && args[0] == "--soak-test") return CompatibilityDiagnostics.Run(app, args[1], false, true);
         if (args.Length == 2 && args[0] == "--image-format-test") return ImageFormatDiagnostics.Run(app, args[1]);

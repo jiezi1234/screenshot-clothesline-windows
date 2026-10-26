@@ -1,0 +1,316 @@
+{
+  "passed": false,
+  "os": "Microsoft Windows NT 10.0.22631.0",
+  "runtime": "10.0.13",
+  "checks": [
+    {
+      "name": "suspend-dismisses-and-blocks-shelf",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "suspend-blocks-shortcut-reveal",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "resume-cannot-unblock-a-locked-session",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "unlock-recovers-without-automatic-reveal",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "remote-disconnect-dismisses-overlays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "remote-reconnect-requests-recovery",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "display-change-invalidates-position-and-recovers",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-shelf-lists-real-records",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-shelf-has-selection-automation-peer",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "dashboard-status-is-polite-live-region",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-delete-archives-without-deleting-source",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "public-virtual-desktop-interface-available",
+      "passed": true,
+      "details": {
+        "current": true
+      }
+    },
+    {
+      "name": "own-window-can-follow-current-desktop",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "canvas-exposes-named-focusable-pane",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-can-create-a-mark",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-mark-uses-standard-undo",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "keyboard-can-crop-in-pixel-coordinates",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-80",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 1153,
+          "Y": 30,
+          "Width": 254,
+          "Height": 228,
+          "Right": 1407,
+          "Bottom": 258
+        },
+        "actual": {
+          "X": 1153,
+          "Y": 30,
+          "Width": 254,
+          "Height": 228,
+          "Right": 1407,
+          "Bottom": 258
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-80",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-100",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 1121,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1439,
+          "Bottom": 315
+        },
+        "actual": {
+          "X": 1121,
+          "Y": 30,
+          "Width": 318,
+          "Height": 285,
+          "Right": 1439,
+          "Bottom": 315
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-100",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-120",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 0,
+          "Y": 0,
+          "Width": 2560,
+          "Height": 1600,
+          "Right": 2560,
+          "Bottom": 1600
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 1089,
+          "Y": 30,
+          "Width": 382,
+          "Height": 342,
+          "Right": 1471,
+          "Bottom": 372
+        },
+        "actual": {
+          "X": 1089,
+          "Y": 30,
+          "Width": 382,
+          "Height": 342,
+          "Right": 1471,
+          "Bottom": 372
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-120",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-80",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 4353,
+          "Y": -193,
+          "Width": 254,
+          "Height": 228,
+          "Right": 4607,
+          "Bottom": 35
+        },
+        "actual": {
+          "X": 4353,
+          "Y": -193,
+          "Width": 254,
+          "Height": 228,
+          "Right": 4607,
+          "Bottom": 35
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-80",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-100",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 4321,
+          "Y": -193,
+          "Width": 318,
+          "Height": 285,
+          "Right": 4639,
+          "Bottom": 92
+        },
+        "actual": {
+          "X": 4321,
+          "Y": -193,
+          "Width": 318,
+          "Height": 285,
+          "Right": 4639,
+          "Bottom": 92
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-100",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-monitor-card-120",
+      "passed": true,
+      "details": {
+        "Bounds": {
+          "X": 2560,
+          "Y": -223,
+          "Width": 3840,
+          "Height": 2160,
+          "Right": 6400,
+          "Bottom": 1937
+        },
+        "dpi": 1.5,
+        "expected": {
+          "X": 4289,
+          "Y": -193,
+          "Width": 382,
+          "Height": 342,
+          "Right": 4671,
+          "Bottom": 149
+        },
+        "actual": {
+          "X": 4289,
+          "Y": -193,
+          "Width": 382,
+          "Height": 342,
+          "Right": 4671,
+          "Bottom": 149
+        }
+      }
+    },
+    {
+      "name": "native-monitor-hide-removes-hit-surface-120",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "completed",
+      "passed": false,
+      "details": "System.TimeoutException: Diagnostic condition timed out.\r\n   at Clothesline.App.CompatibilityDiagnostics.Wait(Func`1 condition, Int32 milliseconds) in $REPO\\src\\Clothesline.App\\CompatibilityDiagnostics.cs:line 200\r\n   at Clothesline.App.CompatibilityDiagnostics.<>c__DisplayClass1_0.<<Run>b__1>d.MoveNext() in $REPO\\src\\Clothesline.App\\CompatibilityDiagnostics.cs:line 127"
+    }
+  ],
+  "measurements": []
+}

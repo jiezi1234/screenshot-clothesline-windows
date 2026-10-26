@@ -324,5 +324,18 @@
   "格式支持": "Format support",
   "扩展格式图片暂未收集，稍后重试：": "Optional image format not collected yet; retrying later: ",
   "失败 {0} 个文件。": "{0} files failed.",
-  "图片与 MP4 录像|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif;*.mp4|图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif|MP4 录像|*.mp4": "Images and MP4 recordings|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif;*.mp4|Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif|MP4 recordings|*.mp4"
+  "图片与 MP4 录像|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif;*.mp4|图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif|MP4 录像|*.mp4": "Images and MP4 recordings|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif;*.mp4|Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp;*.heic;*.heif|MP4 recordings|*.mp4",
+  "键盘浏览晾衣绳": "Browse the clothesline with the keyboard",
+  "晾衣绳列表": "Clothesline list",
+  "方向键选择，Enter 预览，Ctrl+C 复制，Delete 取下到历史。文件保留。": "Arrow keys select, Enter previews, Ctrl+C copies, Delete archives. Files are kept.",
+  "复制": "Copy",
+  "已复制：": "Copied: ",
+  "图片解析未返回有效结果，原文件保留。": "Image decoding returned invalid data. The source file is kept.",
+  "无法启动图片解析。": "Could not start image decoding.",
+  "图片解析超时，原文件保留，可稍后重试。": "Image decoding timed out. The source file is kept; try again later.",
+  "图片解析超过内存限制，原文件保留。": "Image decoding exceeded the memory limit. The source file is kept.",
+  "图片解析失败，原文件保留。": "Image decoding failed. The source file is kept.",
+  "图片画布": "Image canvas",
+  "Alt+C 聚焦画布。方向键移动光标，Shift 加速，Enter 设置起点或完成标注，Esc 取消。": "Alt+C focuses the canvas. Arrows move the cursor, Shift moves faster, Enter starts or completes an annotation, Esc cancels.",
+  "画布位置：X {0}，Y {1}。Enter 开始或完成，Esc 取消。": "Canvas position: X {0}, Y {1}. Enter starts or finishes; Esc cancels."
 }

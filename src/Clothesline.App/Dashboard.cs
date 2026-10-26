@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation;
 using System.Windows.Media;
+using System.Windows.Input;
 using Clothesline.Storage;
 
 namespace Clothesline.App;
@@ -13,6 +14,7 @@ internal sealed class Dashboard : Window
 {
     private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 12), MinHeight = 34 };
     private readonly ListBox history = new() { MinHeight = 180, DisplayMemberPath = "Label" };
+    private readonly ListBox shelfList = new() { MinHeight = 100, DisplayMemberPath = "Title" };
     private readonly TabControl tabs = new();
     private readonly LibraryRuntime? library;
     private readonly TextBox screenshot = new();
@@ -25,7 +27,7 @@ internal sealed class Dashboard : Window
     private readonly CheckBox motion = new() { Content = T("减少动画") };
     private readonly CheckBox sound = new() { Content = T("自动收集新项目时播放提示音（默认关闭）") };
     private readonly ComboBox cardSize = new() { ItemsSource = new[] { T("小 · 80%"), T("标准 · 100%"), T("大 · 120%") }, MinWidth = 200 };
-    private readonly ComboBox language = new() { ItemsSource = new[] { "简体中文", "English" }, MinWidth = 200 };
+    private readonly ComboBox language = new() { ItemsSource = Clothesline.Core.UiText.Languages, DisplayMemberPath = "Name", SelectedValuePath = "Code", MinWidth = 200 };
     private readonly TextBox shortcut = new() { MinWidth = 180, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly CheckBox shortcutEnabled = new() { Content = T("启用全局快捷键") };
     private readonly CheckBox login = new() { Content = T("登录 Windows 时启动到托盘（默认关闭）") };
@@ -49,6 +51,7 @@ internal sealed class Dashboard : Window
         actions.Children.Add(Button(T("显示 / 收起"), controller.Toggle)); actions.Children.Add(Button(T("导入图片或录像…"), Import));
         actions.Children.Add(Button(T("本地历史"), ShowHistory)); actions.Children.Add(Button(T("暂停 / 恢复"), () => { library?.TogglePause(); FillSettings(); }));
         actions.Children.Add(Button(T("全部取下"), () => library?.ArchiveBatch()));
+        actions.Children.Add(Button(T("键盘浏览晾衣绳"), ShowShelfList));
         header.Children.Add(actions);
         interactionHint.Text = shortcutRegistered ? T("顶部悬停 / Ctrl+Alt+T · 单击复制 · 双击打开 · 长按编辑图片或播放录像 · 拖出 · 滚轮翻页") : T("快捷键被占用，请使用按钮或托盘；右键图片可预览、编辑。");
         header.Children.Add(interactionHint); root.Children.Add(header);
@@ -57,7 +60,10 @@ internal sealed class Dashboard : Window
         tabs.Items.Add(new TabItem { Header = T("来源与设置"), Content = SettingsPanel() }); tabs.Items.Add(new TabItem { Header = T("本地历史"), Content = HistoryPanel() });
         tabs.Items.Add(new TabItem { Header = T("快捷键与启动"), Content = DesktopSettingsPanel() });
         tabs.Items.Add(new TabItem { Header = T("外观与语言"), Content = AppearancePanel() });
-        tabs.Items.Add(new TabItem { Header = T("格式支持"), Content = new ScrollViewer { Content = new ImageFormatPanel(), VerticalScrollBarVisibility = ScrollBarVisibility.Auto } }); root.Children.Add(tabs); Content = root;
+        tabs.Items.Add(new TabItem { Header = T("格式支持"), Content = new ScrollViewer { Content = new ImageFormatPanel(), VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
+        tabs.Items.Add(new TabItem { Header = T("晾衣绳列表"), Content = ShelfListPanel() }); root.Children.Add(tabs); Content = root;
+        UiAccessibility.Install(this); UiAccessibility.LiveStatus(this, status);
+        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { Hide(); e.Handled = true; } };
         AutomationProperties.SetName(screenshot, T("截图目录"));
         AutomationProperties.SetName(videoFolder, T("录像目录"));
         for (var i = 0; i < extras.Length; i++) AutomationProperties.SetName(extras[i], T("额外目录 {0}", i + 1));
@@ -116,7 +122,37 @@ internal sealed class Dashboard : Window
         actions.Children.Add(Button(T("导出…"), () => Selected(e => library?.Export(e.Path)))); actions.Children.Add(Button(T("定位"), () => Selected(e => ShellTransfer.Reveal(e.Path))));
         actions.Children.Add(Button(T("移除记录"), () => Selected(e => library?.Forget(e.Id)))); actions.Children.Add(Button(T("回收文件"), () => Selected(e => library?.Recycle(e.Id)))); panel.Children.Add(actions);
         var note = new TextBlock { Text = T("外部引用依赖原路径。取下时间用于计算期限；重新挂上会取消计时。"), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 10) }; DockPanel.SetDock(note, Dock.Top); panel.Children.Add(note);
-        history.MouseDoubleClick += (_, _) => Selected(Preview); panel.Children.Add(history); return panel;
+        history.MouseDoubleClick += (_, _) => Selected(Preview);
+        history.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Selected(Preview); e.Handled = true; } };
+        panel.Children.Add(history); return panel;
+    }
+    private FrameworkElement ShelfListPanel()
+    {
+        var panel = new DockPanel { Margin = new Thickness(16) };
+        var note = new TextBlock { Text = T("方向键选择，Enter 预览，Ctrl+C 复制，Delete 取下到历史。文件保留。"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) };
+        DockPanel.SetDock(note, Dock.Top); panel.Children.Add(note);
+        var actions = new WrapPanel(); DockPanel.SetDock(actions, Dock.Bottom); panel.Children.Add(actions);
+        void SelectedShelf(Action<LibraryEntry> action) { if (shelfList.SelectedItem is LibraryEntry entry) action(entry); }
+        actions.Children.Add(Button(T("预览"), () => SelectedShelf(Preview)));
+        actions.Children.Add(Button(T("复制"), () => _ = CopySelectedShelf()));
+        actions.Children.Add(Button(T("编辑…"), () => SelectedShelf(e => library?.OpenWorkspace(e.Id, true))));
+        actions.Children.Add(Button(T("导出…"), () => SelectedShelf(e => library?.Export(e.Path))));
+        actions.Children.Add(Button(T("取下（保留文件）"), () => SelectedShelf(e => library?.Archive(e.Id))));
+        AutomationProperties.SetName(shelfList, T("晾衣绳列表")); AutomationProperties.SetHelpText(shelfList, note.Text);
+        shelfList.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter) { SelectedShelf(Preview); e.Handled = true; }
+            else if (e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.None) { SelectedShelf(x => library?.Archive(x.Id)); e.Handled = true; }
+            else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control) { _ = CopySelectedShelf(); e.Handled = true; }
+        };
+        panel.Children.Add(shelfList); return panel;
+    }
+    private async System.Threading.Tasks.Task CopySelectedShelf()
+    {
+        if (shelfList.SelectedItem is not LibraryEntry entry) return;
+        using var lease = library?.AcquireLease(entry.Path);
+        try { var data = await ShellTransfer.CopyDataAsync(entry.Path); Clipboard.SetDataObject(data, true); SetStatus(T("已复制：") + entry.Title); }
+        catch (Exception ex) { SetStatus(ex.Message); }
     }
     private sealed record HistoryRow(LibraryEntry Entry)
     {
@@ -133,6 +169,13 @@ internal sealed class Dashboard : Window
         var id = (history.SelectedItem as HistoryRow)?.Entry.Id;
         var rows = library?.Store.Entries(EntryState.History).Select(e => new HistoryRow(e)).ToArray() ?? [];
         history.ItemsSource = rows; history.SelectedItem = rows.FirstOrDefault(r => r.Entry.Id == id);
+        var shelfId = (shelfList.SelectedItem as LibraryEntry)?.Id; var selectedIndex = shelfList.SelectedIndex;
+        var entries = library?.Store.Entries(EntryState.Shelf).ToArray() ?? [];
+        if (!(shelfList.ItemsSource is LibraryEntry[] old && old.SequenceEqual(entries)))
+        {
+            shelfList.ItemsSource = entries;
+            shelfList.SelectedItem = entries.FirstOrDefault(e => e.Id == shelfId) ?? entries.ElementAtOrDefault(Math.Clamp(selectedIndex, 0, Math.Max(0, entries.Length - 1)));
+        }
     }
     private void FillSettings()
     {
@@ -142,7 +185,7 @@ internal sealed class Dashboard : Window
         capacity.SelectedIndex = Array.IndexOf(new[] { 0, 25, 50, 100 }, settings.Capacity); retention.SelectedIndex = Array.IndexOf(new[] { 0, 7, 30 }, settings.RetentionDays);
         storage.SelectedIndex = settings.MaxManagedBytes >= 2L * 1024 * 1024 * 1024 ? 2 : settings.MaxManagedBytes >= 1024L * 1024 * 1024 ? 1 : 0;
         cardSize.SelectedIndex = Array.IndexOf(new[] { 80, 100, 120 }, settings.CardSizePercent); sound.IsChecked = settings.CaptureSound;
-        language.SelectedIndex = settings.Language == "en" ? 1 : 0;
+        language.SelectedValue = settings.Language;
         shortcutEnabled.IsChecked = settings.Shortcut.Length > 0; shortcut.Text = settings.Shortcut.Length > 0 ? settings.Shortcut : "Ctrl+Alt+T";
         shortcut.IsEnabled = shortcutEnabled.IsChecked == true; login.IsChecked = library.Desktop?.LoginEnabled ?? settings.RunAtLogin; UpdateShortcutHint();
     }
@@ -153,7 +196,7 @@ internal sealed class Dashboard : Window
         library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), VideoFolder = videoFolder.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = pause.IsChecked == true, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
             Capacity = new[] { 0, 25, 50, 100 }[Math.Max(0, capacity.SelectedIndex)], RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024,
             Shortcut = shortcutEnabled.IsChecked == true ? shortcut.Text : "", RunAtLogin = login.IsChecked == true,
-            CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], CaptureSound = sound.IsChecked == true, Language = language.SelectedIndex == 1 ? "en" : "zh-CN" });
+            CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], CaptureSound = sound.IsChecked == true, Language = language.SelectedValue as string ?? "zh-CN" });
         FillSettings();
     }
     private async void Import()
@@ -174,7 +217,8 @@ internal sealed class Dashboard : Window
         button.Click += (_, _) => { try { action(); } catch (Exception ex) { SetStatus(ex.Message); } }; return button;
     }
     public void SetStatus(string text) => status.Text = text + (library is not null && library.Settings.Language != Clothesline.Core.UiText.Language ? "\n" + T("语言设置已保存，重启应用后生效。") : "");
-    public void Reveal() { Show(); WindowState = WindowState.Normal; Activate(); }
+    public void Reveal() { DesktopLifecycle.FollowForeground(this); Show(); WindowState = WindowState.Normal; Activate(); }
+    public void ShowShelfList() { UpdateHistory(); tabs.SelectedIndex = 5; Reveal(); shelfList.Focus(); }
     public void ShowHistory() { UpdateHistory(); tabs.SelectedIndex = 1; Reveal(); }
     public void ShowDesktopSettings() { FillSettings(); tabs.SelectedIndex = 2; Reveal(); }
     public void ShowAppearance() { FillSettings(); tabs.SelectedIndex = 3; Reveal(); }

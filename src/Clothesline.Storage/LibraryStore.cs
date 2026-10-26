@@ -106,7 +106,7 @@ public sealed class LibraryStore : IDisposable
     public static void ValidateSettings(LibrarySettings settings)
     {
         if (settings.ExtraFolders.Length > 3 || settings.Capacity is not (0 or 25 or 50 or 100) || settings.RetentionDays is not (0 or 7 or 30) || settings.MaxManagedBytes < 1024 * 1024
-            || settings.CardSizePercent is not (80 or 100 or 120) || settings.Language is not ("zh-CN" or "en"))
+            || settings.CardSizePercent is not (80 or 100 or 120) || !Clothesline.Core.UiText.IsSupported(settings.Language))
             throw new ArgumentException(T("设置值超出支持范围。"));
         Clothesline.Core.ShortcutGesture.Parse(settings.Shortcut);
     }

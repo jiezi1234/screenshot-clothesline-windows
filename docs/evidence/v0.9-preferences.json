@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "conflict-preserves-active-registration",
+      "passed": true
+    },
+    {
+      "name": "preparation-keeps-old-key-reserved",
+      "passed": true
+    },
+    {
+      "name": "uncommitted-preparation-releases-candidate",
+      "passed": true
+    },
+    {
+      "name": "database-failure-rolls-back-startup-and-hotkey",
+      "passed": true
+    },
+    {
+      "name": "failed-apply-leaves-candidate-available",
+      "passed": true
+    },
+    {
+      "name": "startup-write-failure-keeps-database-and-old-hotkey",
+      "passed": true
+    },
+    {
+      "name": "successful-apply-commits-preferences",
+      "passed": true
+    },
+    {
+      "name": "successful-change-releases-old-hotkey",
+      "passed": true
+    },
+    {
+      "name": "disable-releases-hotkey-and-login-entry",
+      "passed": true
+    },
+    {
+      "name": "startup-command-quotes-executable-path",
+      "passed": true
+    },
+    {
+      "name": "framework-dependent-startup-quotes-host-and-assembly",
+      "passed": true
+    },
+    {
+      "name": "startup-rejects-relative-path",
+      "passed": true
+    },
+    {
+      "name": "startup-enforces-run-command-length",
+      "passed": true
+    },
+    {
+      "name": "isolated-registry-roundtrip",
+      "passed": true
+    },
+    {
+      "name": "disable-removes-only-owned-registry-value",
+      "passed": true
+    },
+    {
+      "name": "real-login-registration-untouched-by-diagnostics",
+      "passed": true
+    }
+  ],
+  "evidenceGeneratedAt": "2026-10-26T10:17:01.370479+08:00"
+}

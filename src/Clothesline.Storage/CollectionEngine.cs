@@ -7,6 +7,7 @@ public sealed class CollectionEngine : IDisposable
 {
     private readonly LibraryStore store;
     private readonly Func<string, string> imageHash;
+    private readonly Func<string, CancellationToken, Task<string>>? imageHashAsync;
     private readonly Func<string, CancellationToken, Task<string>>? videoHash;
     private readonly Func<int> capacity;
     private readonly CancellationTokenSource stop = new();
@@ -17,6 +18,7 @@ public sealed class CollectionEngine : IDisposable
     private readonly Task worker;
     private Task? videoImport;
     private Task? extendedImport;
+    private readonly List<Task> imageImports = [];
     private string[] folders = [];
     private string[] imageFolders = [];
     private string videoFolder = "";
@@ -28,9 +30,9 @@ public sealed class CollectionEngine : IDisposable
     public event Action<string>? Status;
     public static bool Supported(string path) => MediaFiles.IsImage(path) || MediaFiles.IsVideo(path);
     public static string Signature(string path) { var info = new FileInfo(path); return $"{info.Length}:{info.LastWriteTimeUtc.Ticks}"; }
-    public CollectionEngine(LibraryStore store, Func<string, string> imageHash, Func<int> capacity, Func<string, CancellationToken, Task<string>>? videoHash = null)
+    public CollectionEngine(LibraryStore store, Func<string, string> imageHash, Func<int> capacity, Func<string, CancellationToken, Task<string>>? videoHash = null, Func<string, CancellationToken, Task<string>>? imageHashAsync = null)
     {
-        this.store = store; this.imageHash = imageHash; this.capacity = capacity; this.videoHash = videoHash;
+        this.store = store; this.imageHash = imageHash; this.capacity = capacity; this.videoHash = videoHash; this.imageHashAsync = imageHashAsync;
         worker = Task.Run(Work);
     }
     public void Configure(LibrarySettings settings)
@@ -82,7 +84,7 @@ public sealed class CollectionEngine : IDisposable
     }
     private void Queue(string path)
     {
-        lock (watcherGate) if (Allowed(path)) pending.AddOrUpdate(path, (Environment.TickCount64 + 180, 0), (_, old) => (Environment.TickCount64 + 180, old.Retry));
+        lock (watcherGate) if (Allowed(path)) pending.AddOrUpdate(path, (Environment.TickCount64 + 100, 0), (_, old) => (Environment.TickCount64 + 100, old.Retry));
     }
     public void RequestRescan() => Interlocked.Exchange(ref scanRequested, 1);
     private void Rescan()
@@ -108,18 +110,20 @@ public sealed class CollectionEngine : IDisposable
         {
             while (!stop.IsCancellationRequested)
             {
-                await Task.Delay(120, stop.Token);
+                await Task.Delay(80, stop.Token);
                 if (paused) continue;
                 if (Interlocked.Exchange(ref scanRequested, 0) == 1 || Environment.TickCount64 > nextScan) { nextScan = Environment.TickCount64 + 30000; Rescan(); }
                 foreach (var pair in pending.Where(p => p.Value.Due <= Environment.TickCount64).OrderBy(p => MediaFiles.IsVideo(p.Key)).ToArray())
                 {
+                    imageImports.RemoveAll(task => task.IsCompleted);
+                    if (!MediaFiles.IsVideo(pair.Key) && !MediaFiles.IsExtendedImage(pair.Key) && imageImports.Count >= 2) continue;
                     if (MediaFiles.IsVideo(pair.Key) && videoImport is { IsCompleted: false }) continue;
                     if (MediaFiles.IsExtendedImage(pair.Key) && extendedImport is { IsCompleted: false }) continue;
                     if (!pending.TryRemove(pair.Key, out var state)) continue;
                     lock (watcherGate) if (!Allowed(pair.Key)) continue;
                     if (MediaFiles.IsVideo(pair.Key)) videoImport = ProcessPending(pair.Key, state.Retry);
                     else if (MediaFiles.IsExtendedImage(pair.Key)) extendedImport = ProcessPending(pair.Key, state.Retry);
-                    else await ProcessPending(pair.Key, state.Retry);
+                    else imageImports.Add(ProcessPending(pair.Key, state.Retry));
                 }
             }
         }
@@ -145,16 +149,17 @@ public sealed class CollectionEngine : IDisposable
         path = Path.GetFullPath(path);
         if (!Supported(path)) return false;
         string? preparedSignature = null, preparedHash = null;
-        if (MediaFiles.IsVideo(path) || MediaFiles.IsExtendedImage(path))
+        // Decode every format before taking the commit lock: a bad PNG must not stall clipboard writes either.
         {
             if (!File.Exists(path) || (automatic && paused)) return false;
             preparedSignature = Signature(path);
             if (automatic && store.HasObserved(path, preparedSignature)) return false;
-            await Task.Delay(MediaFiles.IsVideo(path) ? 1000 : 180, cancellation).ConfigureAwait(false);
+            await Task.Delay(MediaFiles.IsVideo(path) ? 1000 : 100, cancellation).ConfigureAwait(false);
             if (Signature(path) != preparedSignature) throw new IOException(T("文件仍在写入。"));
             // Optional codecs must not hold the ordinary image/clipboard commit lock.
             preparedHash = MediaFiles.IsVideo(path)
                 ? videoHash is null ? throw new NotSupportedException(T("录像解析不可用。")) : await videoHash(path, cancellation).ConfigureAwait(false)
+                : imageHashAsync is not null ? await imageHashAsync(path, cancellation).ConfigureAwait(false)
                 : await Task.Run(() => imageHash(path), cancellation).ConfigureAwait(false);
         }
         await importLock.WaitAsync(cancellation).ConfigureAwait(false);
@@ -223,6 +228,7 @@ public sealed class CollectionEngine : IDisposable
         worker.GetAwaiter().GetResult();
         videoImport?.GetAwaiter().GetResult();
         extendedImport?.GetAwaiter().GetResult();
+        Task.WhenAll(imageImports).GetAwaiter().GetResult();
         importLock.Wait(); importLock.Release();
         stop.Dispose();
     }

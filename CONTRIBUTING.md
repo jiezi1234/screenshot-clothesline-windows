@@ -1,6 +1,6 @@
 # 贡献说明
 
-项目目前处于阶段 3 录像首尾裁剪和扩展图片格式开发验证阶段；用户本机 v0.5 关键流程反馈正常，完整兼容性矩阵仍有待办。开始实现前请阅读 [需求规格](docs/REQUIREMENTS.md)、[迁移计划](docs/MIGRATION_PLAN.md) 和 [来源说明](THIRD_PARTY_NOTICES.md)。
+项目目前处于阶段 3 兼容性、稳定性与交互收尾阶段；用户本机 v0.5 关键流程反馈正常，完整兼容性矩阵仍有待办。开始实现前请阅读 [需求规格](docs/REQUIREMENTS.md)、[迁移计划](docs/MIGRATION_PLAN.md) 和 [来源说明](THIRD_PARTY_NOTICES.md)。
 
 - 实现参考限定为原版 macOS Tendedero、项目需求与微软官方文档，不参考已有 Windows 移植实现。
 - 原版代码的复制、改写或移植须记录来源并保留许可。
@@ -26,3 +26,7 @@
 脚本支持 `-Dotnet '完整路径\dotnet.exe'`。新增运行时依赖需更新 `licenses/`、`THIRD_PARTY_NOTICES.md` 与打包脚本；不得遗漏自包含运行时的许可证和通知。GitHub Actions 模板暂在 `docs/ci/`，当前未启用云端 CI。
 
 WebP/HEIC 样本是本项目生成的纯色图，说明见 src/Clothesline.App/Fixtures/README.md。正常构建只需要 .NET；可选的 scripts/generate-format-fixtures.py 使用独立 Python 环境重建素材，不将 Python 或编码库加入应用运行时。
+
+新增语言必须补齐 Strings.*.json 的界面键和格式参数，保留文件对话框中的扩展名过滤规则。原版语言清单只作为覆盖范围参考；本批译文独立编写。译文资源通过不等于母语校对通过。
+
+桌面回归增加 `--compatibility-test` 与 `--performance-test`；`./scripts/test.ps1 -Desktop -Soak` 还运行约两分钟的循环稳定性诊断。测量必须包含解码子进程资源，公开证据去掉个人路径；模拟事件和真实设备场景分开记录。

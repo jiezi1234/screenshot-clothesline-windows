@@ -27,7 +27,7 @@ internal class OverlayWindow : Window
     {
         var entering = !IsVisible;
         StopMotion();
-        if (!IsVisible) Show();
+        if (!IsVisible) { DesktopLifecycle.FollowForeground(this); Show(); }
         Native.Place(this, rect);
         if (animate && entering)
         {
@@ -91,7 +91,8 @@ internal sealed class CardWindow : OverlayWindow
 {
     public DemoItem Item { get; }
     public bool Busy { get; private set; }
-    public bool InteractionActive => Busy || down is not null || clickTimer.IsEnabled;
+    public bool InteractionActive => Busy || copying || down is not null || clickTimer.IsEnabled;
+    private bool copying;
     public event Action<string>? Status;
     public event Action<CardWindow>? TakeDown;
     public event Action? DragEnded;
@@ -234,16 +235,21 @@ internal sealed class CardWindow : OverlayWindow
         if (down is null) return;
         down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Start(); e.Handled = true;
     }
-    private void Copy()
+    private async void Copy()
     {
+        if (copying || closed) return;
         if (!File.Exists(Item.Path)) { Report(T("原文件已移走，可在历史中查看失效记录。")); return; }
+        copying = true;
         try
         {
-            Clipboard.SetDataObject(ShellTransfer.CopyData(Item.Path), true);
+            var data = await ShellTransfer.CopyDataAsync(Item.Path);
+            if (closed) return;
+            Clipboard.SetDataObject(data, true);
             Report(Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
         }
         catch (System.Runtime.InteropServices.COMException) { Report(T("剪贴板正在被占用，请稍后再试。")); }
         catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }
+        finally { copying = false; }
     }
     private void Report(string text) { feedback = text; caption.Text = feedback; Status?.Invoke(text); }
 }

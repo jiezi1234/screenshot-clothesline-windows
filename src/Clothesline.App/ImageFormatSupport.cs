@@ -20,7 +20,9 @@ internal static class ImageFormatSupport
     }
     internal static BitmapSource DecodeFixture(string name)
     {
-        using var stream = new MemoryStream(Fixture(name)); return ImageFiles.ReadStream(stream, preserveExtensionPixels: true);
+        var path = Path.Combine(Path.GetTempPath(), "Clothesline-probe-" + Guid.NewGuid().ToString("N") + Path.GetExtension(name));
+        try { File.WriteAllBytes(path, Fixture(name)); return ImageFiles.Read(path); }
+        finally { File.Delete(path); }
     }
     internal static ImageFormatCapability Probe(string name, string fixture, Func<string, BitmapSource>? decode = null)
     {

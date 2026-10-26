@@ -1,0 +1,164 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "native-H264-AAC-metadata",
+      "passed": true,
+      "details": {
+        "VideoCodec": "H264",
+        "AudioCodecs": [
+          "AAC"
+        ],
+        "Seconds": 4.0106458,
+        "Width": 320,
+        "Height": 180
+      }
+    },
+    {
+      "name": "native-H264-without-audio",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "portrait-video-thumbnail-preserves-aspect",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "thumbnail-is-decoded-green-video-frame",
+      "passed": true,
+      "details": "PIwp/w=="
+    },
+    {
+      "name": "metadata-cache-survives-restart",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "replaced-video-invalidates-cache",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "corrupt-file-rejected-with-source-preserved",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-probe-timeout",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "probe-cancellation",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-clipboard-is-file-only",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-clipboard-prefers-copy",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-folder-baseline-skips-old",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "new-recording-watcher-to-shelf",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-setting-persists",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-menu-plays-without-image-editor",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "export-copies-no-overwrite",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-drag-copy-only",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-drag-retains-source-and-card",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-archive-keeps-source",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-restore",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "native-player-opens-generated-video",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "preview-starts-paused",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "playback-position-advances",
+      "passed": true,
+      "details": 0.8152015
+    },
+    {
+      "name": "pause-keeps-position",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "seek-updates-position",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "open-video-holds-history-lease",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "close-stops-timer-and-releases-lease",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "corrupt-player-fails-without-blocking-window",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "video-expiry-forgets-reference-keeps-file",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "recording-folder-control-accessible",
+      "passed": true,
+      "details": null
+    }
+  ],
+  "evidenceGeneratedAt": "2026-10-26T10:17:21.214467+08:00"
+}

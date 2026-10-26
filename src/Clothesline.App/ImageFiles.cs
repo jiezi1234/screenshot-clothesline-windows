@@ -14,9 +14,10 @@ internal static class ImageFiles
     public const long MaxFileBytes = 64L * 1024 * 1024;
     public const long MaxPixels = 40_000_000;
     public static BitmapSource Read(string path, bool thumbnail = false)
+        => ImageDecoder.Read(path, thumbnail).GetAwaiter().GetResult();
+    internal static BitmapSource ReadLocal(Stream stream, string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        try { return ReadStream(stream, thumbnail, Clothesline.Core.MediaFiles.IsExtendedImage(path)); }
+        try { return ReadStream(stream, false, Clothesline.Core.MediaFiles.IsExtendedImage(path)); }
         catch (Exception ex) when (Clothesline.Core.MediaFiles.IsExtendedImage(path) && ex is NotSupportedException or FileFormatException or COMException)
         { throw new IOException(T("无法解码 {0} 图片：文件可能损坏，或系统缺少兼容的图像组件。请查看“格式支持”，也可先转换为 PNG/JPEG。原文件保留。", Path.GetExtension(path).TrimStart('.').ToUpperInvariant()), ex); }
     }
@@ -44,7 +45,7 @@ internal static class ImageFiles
         image.EndInit();
         image.Freeze(); return image;
     }
-    public static string Hash(string path) => Hash(Read(path));
+    public static string Hash(string path) => ImageDecoder.Hash(path).GetAwaiter().GetResult();
     public static string Hash(BitmapSource source)
     {
         if ((long)source.PixelWidth * source.PixelHeight > MaxPixels) throw new IOException(T("图片超过像素限制。"));

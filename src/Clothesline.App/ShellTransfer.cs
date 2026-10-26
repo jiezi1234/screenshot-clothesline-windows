@@ -5,6 +5,8 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using Clothesline.Core;
 
 namespace Clothesline.App;
@@ -12,12 +14,20 @@ namespace Clothesline.App;
 internal static class ShellTransfer
 {
     internal static DataObject CopyData(string path)
+        => BuildData(path, MediaFiles.IsVideo(path) ? null : ImageFiles.Read(path));
+    internal static async Task<DataObject> CopyDataAsync(string path)
+    {
+        var image = MediaFiles.IsVideo(path) ? null : await ImageDecoder.Read(path);
+        var png = image is null ? null : await Task.Run(() => ImageFiles.Png(image));
+        return BuildData(path, image, png);
+    }
+    private static DataObject BuildData(string path, BitmapSource? image, byte[]? png = null)
     {
         if (!File.Exists(path)) throw new FileNotFoundException(T("原文件已移走，可在历史中查看失效记录。"), path);
         var data = new DataObject();
         if (!MediaFiles.IsVideo(path))
         {
-            var original = ImageFiles.Read(path); data.SetImage(original); data.SetData("PNG", new MemoryStream(ImageFiles.Png(original)));
+            data.SetImage(image!); data.SetData("PNG", new MemoryStream(png ?? ImageFiles.Png(image!)));
         }
         data.SetFileDropList(new StringCollection { path });
         data.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes(1)));

@@ -27,6 +27,9 @@ internal sealed class ShelfController : IDisposable
     private double cardScale = 1;
     private long nextPrune;
     private bool presented;
+    private bool suspended, locked, disconnected;
+    internal bool SessionBlocked => suspended || locked || disconnected;
+    public event Action? EnvironmentRecovered;
     private int page;
     private bool sampleMode = true;
     public int DisplayCapacity { get; private set; } = 3;
@@ -52,6 +55,8 @@ internal sealed class ShelfController : IDisposable
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         timer.Tick += (_, _) => Tick();
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
+        SystemEvents.PowerModeChanged += PowerChanged;
+        SystemEvents.SessionSwitch += SessionChanged;
         SystemParameters.StaticPropertyChanged += SystemMotionChanged;
     }
     internal void RefreshMotion()
@@ -115,7 +120,7 @@ internal sealed class ShelfController : IDisposable
     }
     public void Toggle()
     {
-        if (Busy) return;
+        if (Busy || SessionBlocked) return;
         if (presented) { Hide(); return; }
         var monitor = Native.MonitorAt(Native.Cursor);
         if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke(T("当前显示器为全屏窗口，已暂缓显示。")); return; }
@@ -150,6 +155,8 @@ internal sealed class ShelfController : IDisposable
     }
     private void Tick()
     {
+        if (SessionBlocked) return;
+        if (presented && DesktopLifecycle.IsCurrent(rope) == false) { Hide(); activeMonitor = null; return; }
         var now = clock.ElapsedMilliseconds;
         if (now >= nextPrune) { nextPrune = now + 2000; Prune(); }
         var cursor = Native.Cursor;
@@ -192,10 +199,38 @@ internal sealed class ShelfController : IDisposable
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
     private void Dismiss() { rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
-    private void DisplaysChanged(object? sender, EventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { if (disposed) return; Hide(); activeMonitor = null; Status?.Invoke(T("显示器布局已变化，已重置晾衣绳位置。")); }));
+    internal void ResetEnvironment(bool recover)
+    {
+        if (disposed) return;
+        Hide(); activeMonitor = null;
+        if (recover && !SessionBlocked) { Prepare(Native.MonitorAt(Native.Cursor)); EnvironmentRecovered?.Invoke(); }
+    }
+    internal void HandlePower(PowerModes mode)
+    {
+        if (mode == PowerModes.Suspend) suspended = true;
+        else if (mode == PowerModes.Resume) suspended = false;
+        else return;
+        ResetEnvironment(mode == PowerModes.Resume);
+    }
+    internal void HandleSession(SessionSwitchReason reason)
+    {
+        switch (reason)
+        {
+            case SessionSwitchReason.SessionLock: case SessionSwitchReason.SessionLogoff: locked = true; break;
+            case SessionSwitchReason.SessionUnlock: case SessionSwitchReason.SessionLogon: locked = false; break;
+            case SessionSwitchReason.RemoteDisconnect: case SessionSwitchReason.ConsoleDisconnect: disconnected = true; break;
+            case SessionSwitchReason.RemoteConnect: case SessionSwitchReason.ConsoleConnect: disconnected = false; break;
+            default: return;
+        }
+        ResetEnvironment(!SessionBlocked);
+    }
+    private void PowerChanged(object? sender, PowerModeChangedEventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { if (!disposed) HandlePower(e.Mode); }));
+    private void SessionChanged(object? sender, SessionSwitchEventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { if (!disposed) HandleSession(e.Reason); }));
+    private void DisplaysChanged(object? sender, EventArgs e) => timer.Dispatcher.BeginInvoke((Action)(() => { if (disposed) return; ResetEnvironment(true); Status?.Invoke(T("显示器布局已变化，已重置晾衣绳位置。")); }));
     public void Dispose()
     {
         disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
+        SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.SessionSwitch -= SessionChanged;
         CloseRetiring();
         foreach (var card in cards) card.Close(); rope.Close();
     }

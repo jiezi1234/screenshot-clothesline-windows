@@ -62,13 +62,23 @@ internal static class Diagnostics
                 var items = DemoAssets.Create(Path.Combine(directory, "samples"));
                 cards.AddRange(items.Select(item => new CardWindow(item)));
                 var rects = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count);
+                // ContentRendered can precede completion of foreground activation in the helper process.
+                // Establish a stable owned backdrop before comparing focus; record both PIDs on failure.
+                var readyUntil = Environment.TickCount64 + 3000;
+                while (Environment.TickCount64 < readyUntil)
+                {
+                    if (Native.GetForegroundWindow() == backdropHandle) { await Task.Delay(150); if (Native.GetForegroundWindow() == backdropHandle) break; }
+                    else await Task.Delay(50);
+                }
                 var foreground = Native.GetForegroundWindow();
+                Check("backdrop-foreground-ready", foreground == backdropHandle);
                 var show = Stopwatch.StartNew();
                 rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)(70 * scale)), false);
                 for (var i = 0; i < rects.Count; i++) { Native.MoveAndGetScale(cards[i], monitor); cards[i].Present(rects[i], false); }
                 var showMs = show.Elapsed.TotalMilliseconds;
                 await Task.Delay(350);
-                Check("show-does-not-change-foreground", Native.GetForegroundWindow() == foreground);
+                var afterShow = Native.GetForegroundWindow(); Native.GetWindowThreadProcessId(foreground, out var beforePid); Native.GetWindowThreadProcessId(afterShow, out var afterPid);
+                Check("show-does-not-change-foreground", afterShow == foreground, new { beforeHandle = foreground.ToInt64(), afterHandle = afterShow.ToInt64(), beforePid, afterPid, overlayProcessId = Environment.ProcessId, backdropProcessId = backdrop.Id });
                 // Sample the painted line itself, not an already transparent pixel of its window.
                 var lineX = rects.Count >= 2 ? (rects[0].Right + rects[1].X) / 2 : monitor.WorkArea.X + 20;
                 var t = (lineX - monitor.WorkArea.X) / (double)monitor.WorkArea.Width;

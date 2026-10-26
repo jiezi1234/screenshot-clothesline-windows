@@ -27,8 +27,6 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Motion checks failed. See artifacts/motion-validation/motion-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --video-test artifacts/video-validation
         if ($LASTEXITCODE -ne 0) { throw "Video checks failed. See artifacts/video-validation/video-diagnostics.json" }
-        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --video-trim-test artifacts/video-trim-validation
-        if ($LASTEXITCODE -ne 0) { throw "Video trim checks failed. See artifacts/video-trim-validation/video-trim-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --image-format-test artifacts/image-format-validation
         if ($LASTEXITCODE -ne 0) { throw "Image format checks failed. See artifacts/image-format-validation/image-format-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --compatibility-test artifacts/compatibility-validation

@@ -111,9 +111,12 @@ internal static class VideoDiagnostics
                 Check("video-drag-retains-source-and-card", File.Exists(incoming) && runtime.Store.Find(entry.Id)?.State == EntryState.Shelf && shelf.Count == 1);
                 runtime.Archive(entry.Id); Check("video-archive-keeps-source", runtime.Store.Find(entry.Id)?.State == EntryState.History && File.Exists(incoming));
                 runtime.Restore(entry.Id); runtime.RefreshShelf(false); Check("video-restore", runtime.Store.Find(entry.Id)?.State == EntryState.Shelf && shelf.Count == 1);
+                dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.ShowShelfList();
+                Capture(dashboard, Path.Combine(directory, "video-shelf-list.png")); dashboard.Close(); dashboard = null;
                 var released = false; player = new VideoWorkspace(incoming, path => new Lease(runtime.AcquireLease(path), () => released = true)); player.Show();
                 Check("native-player-opens-generated-video", await player.Ready.WaitAsync(TimeSpan.FromSeconds(25)));
                 Check("preview-starts-paused", !player.IsPlaying);
+                Capture(player, Path.Combine(directory, "video-preview.png"));
                 player.TogglePlayback(); await Task.Delay(800); Check("playback-position-advances", player.Position.TotalSeconds > .2, player.Position.TotalSeconds);
                 player.Pause(); var position = player.Position; await Task.Delay(300); Check("pause-keeps-position", Math.Abs((player.Position - position).TotalSeconds) < .15);
                 player.Seek(2); Check("seek-updates-position", Math.Abs(player.Position.TotalSeconds - 2) < .2);
@@ -142,6 +145,17 @@ internal static class VideoDiagnostics
             }
         }));
         return app.Run();
+    }
+    private static void Capture(Window window, string path)
+    {
+        window.UpdateLayout(); var content = (FrameworkElement)window.Content; var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            var bounds = new Rect(0, 0, content.ActualWidth, content.ActualHeight);
+            dc.DrawRectangle(window.Background, null, bounds); dc.DrawRectangle(new VisualBrush(content), null, bounds);
+        }
+        var image = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        image.Render(visual); DemoAssets.Save(image, path);
     }
     private sealed class Lease(IDisposable inner, Action released) : IDisposable { public void Dispose() { inner.Dispose(); released(); } }
     private sealed class EmptyLease : IDisposable { public void Dispose() { } }

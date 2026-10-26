@@ -116,7 +116,7 @@ internal sealed class Dashboard : Window
     {
         var panel = new DockPanel { Margin = new Thickness(16) }; var actions = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) }; DockPanel.SetDock(actions, Dock.Bottom);
         actions.Children.Add(Button(T("预览"), () => Selected(Preview))); actions.Children.Add(Button(T("重新挂上"), () => Selected(e => library?.Restore(e.Id))));
-        var edit = Button(T("编辑…"), () => Selected(e => library?.OpenWorkspace(e.Id, true))); edit.IsEnabled = false;
+        var edit = Button(T("编辑图片…"), () => Selected(e => library?.OpenWorkspace(e.Id, true))); edit.IsEnabled = false;
         history.SelectionChanged += (_, _) => edit.IsEnabled = history.SelectedItem is HistoryRow row && !Clothesline.Core.MediaFiles.IsVideo(row.Entry.Path);
         actions.Children.Add(edit);
         actions.Children.Add(Button(T("导出…"), () => Selected(e => library?.Export(e.Path)))); actions.Children.Add(Button(T("定位"), () => Selected(e => ShellTransfer.Reveal(e.Path))));
@@ -135,7 +135,9 @@ internal sealed class Dashboard : Window
         void SelectedShelf(Action<LibraryEntry> action) { if (shelfList.SelectedItem is LibraryEntry entry) action(entry); }
         actions.Children.Add(Button(T("预览"), () => SelectedShelf(Preview)));
         actions.Children.Add(Button(T("复制"), () => _ = CopySelectedShelf()));
-        actions.Children.Add(Button(T("编辑…"), () => SelectedShelf(e => library?.OpenWorkspace(e.Id, true))));
+        var edit = Button(T("编辑图片…"), () => SelectedShelf(e => library?.OpenWorkspace(e.Id, true))); edit.IsEnabled = false;
+        shelfList.SelectionChanged += (_, _) => edit.IsEnabled = shelfList.SelectedItem is LibraryEntry entry && !Clothesline.Core.MediaFiles.IsVideo(entry.Path);
+        actions.Children.Add(edit);
         actions.Children.Add(Button(T("导出…"), () => SelectedShelf(e => library?.Export(e.Path))));
         actions.Children.Add(Button(T("取下（保留文件）"), () => SelectedShelf(e => library?.Archive(e.Id))));
         AutomationProperties.SetName(shelfList, T("晾衣绳列表")); AutomationProperties.SetHelpText(shelfList, note.Text);

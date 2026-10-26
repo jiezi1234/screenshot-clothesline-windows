@@ -45,15 +45,16 @@ internal sealed class LoginRegistration : ILoginRegistration
     }
 }
 
-internal sealed class DesktopPreferences(HotKey shortcut, ILoginRegistration login, Func<string> launchCommand)
+internal sealed class DesktopPreferences(ShelfHotKeys shortcut, ILoginRegistration login, Func<string> launchCommand)
 {
-    public string ShortcutStatus => shortcut.Gesture.Length == 0 ? T("快捷键已关闭") : shortcut.Registered ? shortcut.Gesture : shortcut.Gesture + T("（注册失败，可换组合或重试）");
+    private static string Status(string gesture, bool registered) => gesture.Length == 0 ? T("快捷键已关闭") : registered ? gesture : gesture + T("（注册失败，可换组合或重试）");
+    public string ShortcutStatus => T("显示 {0}；收回 {1}", Status(shortcut.ShowGesture, shortcut.ShowRegistered), Status(shortcut.HideGesture, shortcut.HideRegistered));
     public bool LoginEnabled => login.Read() is not null;
-    public void RetryShortcut() { if (!shortcut.Retry() && shortcut.Gesture.Length > 0) throw new InvalidOperationException(T("快捷键仍被占用或不可用，请使用其他组合。")); }
+    public void RetryShortcut() { if (!shortcut.Retry()) throw new InvalidOperationException(T("快捷键仍被占用或不可用，请使用其他组合。")); }
     public void Apply(LibrarySettings settings, Action<LibrarySettings> persist)
     {
         LibraryStore.ValidateSettings(settings);
-        using var prepared = shortcut.Prepare(settings.Shortcut);
+        using var prepared = shortcut.Prepare(settings.ShowShortcut, settings.HideShortcut);
         var oldCommand = login.Read(); var desired = settings.RunAtLogin ? launchCommand() : null;
         var changed = !string.Equals(oldCommand, desired, StringComparison.Ordinal);
         try
@@ -72,7 +73,7 @@ internal sealed class DesktopPreferences(HotKey shortcut, ILoginRegistration log
             throw;
         }
     }
-    public static DesktopPreferences Create(HotKey shortcut) => new(shortcut, new LoginRegistration(), () =>
+    public static DesktopPreferences Create(ShelfHotKeys shortcut) => new(shortcut, new LoginRegistration(), () =>
     {
         var executable = Environment.ProcessPath ?? throw new InvalidOperationException(T("无法定位应用程序。"));
         var assembly = Assembly.GetExecutingAssembly().Location;

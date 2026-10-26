@@ -46,6 +46,11 @@ Check(BatchSelection.Select(ordered, "newest", ArchiveScope.Left).Length == 0 &&
 Check(ShortcutGesture.Parse(" alt + ctrl + t ").Display == "Ctrl+Alt+T" && ShortcutGesture.Parse("Ctrl+Alt+T").Modifiers == 3, "shortcut normalizes case order and whitespace");
 Check(ShortcutGesture.Parse("").Key == 0, "empty shortcut disables registration");
 Check(ShortcutGesture.Parse("Ctrl+Shift+F24").Key == 135 && ShortcutGesture.Parse("Alt+0").Key == 48, "function and digit virtual keys map correctly");
+Check(ShortcutGesture.Parse("ctrl + ↓").Key == 0x28 && ShortcutGesture.Parse("ctrl + ↑").Key == 0x26, "arrow shortcuts map to native up and down virtual keys");
+Check(ShortcutGesture.Parse("ctrl + down").Display == "Ctrl+Down" && ShortcutGesture.Parse("ctrl + ↑").Display == "Ctrl+Up", "arrow names and symbols normalize consistently");
+var duplicateShortcut = false; try { ShortcutGesture.ParsePair("Ctrl+↑", "ctrl+up"); } catch (ArgumentException) { duplicateShortcut = true; }
+Check(duplicateShortcut, "equivalent show and hide gestures are rejected");
+Check(ShortcutGesture.ParsePair("", "").Show.Key == 0 && ShortcutGesture.ParsePair("", "Ctrl+Up").Hide.Key == 0x26, "paired shortcuts permit independent disabling");
 foreach (var invalid in new[] { "T", "Shift+T", "Ctrl+Ctrl+T", "Win+T", "Ctrl+F12", "Ctrl+F25", "Ctrl+Alt+", "Ctrl++T" })
 {
     var rejected = false; try { ShortcutGesture.Parse(invalid); } catch (ArgumentException) { rejected = true; }

@@ -27,9 +27,9 @@ internal static class PreferencesDiagnostics
                 {
                     var key = new HotKey(() => { }, "Ctrl+Alt+Shift+F" + f);
                     if (key.Registered) keys.Add(key); else key.Dispose();
-                    if (keys.Count == 2) break;
+                    if (keys.Count == 4) break;
                 }
-                if (keys.Count < 2) throw new InvalidOperationException("No two free diagnostic hotkeys; no existing registration was changed.");
+                if (keys.Count < 4) throw new InvalidOperationException("No four free diagnostic hotkeys; no existing registration was changed.");
                 var active = keys[0]; var blocker = keys[1]; var originalKey = active.Gesture; var candidateKey = blocker.Gesture;
                 var conflict = false; try { using var rejected = active.Prepare(candidateKey); } catch (InvalidOperationException) { conflict = true; }
                 Check("conflict-preserves-active-registration", conflict && active.Registered && active.Gesture == originalKey);
@@ -37,21 +37,52 @@ internal static class PreferencesDiagnostics
                 using (var pending = active.Prepare(candidateKey))
                 using (var probe = new HotKey(() => { }, originalKey)) Check("preparation-keeps-old-key-reserved", !probe.Registered && active.Gesture == originalKey);
                 using (var probe = new HotKey(() => { }, candidateKey)) Check("uncommitted-preparation-releases-candidate", probe.Registered);
+                var originalHide = keys[1].Gesture; var candidateHide = keys[2].Gesture;
+                active.Dispose(); keys.Remove(active); keys[0].Dispose(); keys.RemoveAt(0);
+                using var shelf = new ShelfController(); shelf.SuppressFullscreen = false;
+                var showCalls = 0; var hideCalls = 0;
+                using var pair = new ShelfHotKeys(() => { showCalls++; shelf.Show(); }, () => { hideCalls++; shelf.HideFromShortcut(); }, originalKey, originalHide);
+                Check("both-shortcuts-register", pair.ShowRegistered && pair.HideRegistered);
+                pair.Dispatch(originalKey); pair.Dispatch(originalKey);
+                Check("show-twice-keeps-empty-shelf-visible", shelf.Visible && showCalls == 2 && hideCalls == 0);
+                pair.Dispatch(originalHide); pair.Dispatch(originalHide);
+                Check("hide-twice-keeps-shelf-hidden", !shelf.Visible && hideCalls == 2);
+                shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionLock); pair.Dispatch(originalKey);
+                Check("show-shortcut-respects-locked-session", !shelf.Visible);
+                shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionUnlock);
+                var secondConflict = false;
+                try { using var pending = pair.Prepare(candidateKey, candidateHide); } catch (InvalidOperationException) { secondConflict = true; }
+                Check("second-shortcut-conflict-keeps-both-old-registrations", secondConflict && pair.ShowRegistered && pair.HideRegistered && pair.ShowGesture == originalKey && pair.HideGesture == originalHide);
+                using (var probe = new HotKey(() => { }, candidateKey)) Check("second-conflict-releases-first-prepared-key", probe.Registered);
+                keys[0].Dispose(); keys.Clear();
                 var registration = new FakeLogin();
-                var preferences = new DesktopPreferences(active, registration, () => "\"C:\\Clothesline Test\\Clothesline.exe\" --startup");
-                var settings = new LibrarySettings { Shortcut = candidateKey, RunAtLogin = true };
+                var preferences = new DesktopPreferences(pair, registration, () => "\"C:\\Clothesline Test\\Clothesline.exe\" --startup");
+                var settings = new LibrarySettings { ShowShortcut = candidateKey, HideShortcut = candidateHide, RunAtLogin = true };
                 var persistenceFailed = false;
                 try { preferences.Apply(settings, _ => throw new IOException("fixture database error")); } catch (IOException) { persistenceFailed = true; }
-                Check("database-failure-rolls-back-startup-and-hotkey", persistenceFailed && registration.Value is null && active.Gesture == originalKey && active.Registered);
-                using (var probe = new HotKey(() => { }, candidateKey)) Check("failed-apply-leaves-candidate-available", probe.Registered);
+                Check("database-failure-rolls-back-startup-and-both-hotkeys", persistenceFailed && registration.Value is null && pair.ShowGesture == originalKey && pair.HideGesture == originalHide && pair.Registered);
+                using (var showProbe = new HotKey(() => { }, candidateKey))
+                using (var hideProbe = new HotKey(() => { }, candidateHide)) Check("failed-apply-releases-both-candidates", showProbe.Registered && hideProbe.Registered);
                 registration.FailNextWrite = true; var wroteSettings = false; var writeFailed = false;
                 try { preferences.Apply(settings, _ => wroteSettings = true); } catch (IOException) { writeFailed = true; }
-                Check("startup-write-failure-keeps-database-and-old-hotkey", writeFailed && !wroteSettings && registration.Value is null && active.Gesture == originalKey);
+                Check("startup-write-failure-keeps-database-and-both-old-hotkeys", writeFailed && !wroteSettings && registration.Value is null && pair.ShowGesture == originalKey && pair.HideGesture == originalHide && pair.Registered);
                 preferences.Apply(settings, _ => wroteSettings = true);
-                Check("successful-apply-commits-preferences", wroteSettings && preferences.LoginEnabled && active.Gesture == candidateKey && active.Registered && registration.Value!.EndsWith(" --startup", StringComparison.Ordinal));
-                using (var probe = new HotKey(() => { }, originalKey)) Check("successful-change-releases-old-hotkey", probe.Registered);
-                preferences.Apply(settings with { Shortcut = "", RunAtLogin = false }, _ => { });
-                Check("disable-releases-hotkey-and-login-entry", !active.Registered && active.Gesture.Length == 0 && registration.Value is null);
+                Check("successful-apply-commits-both-shortcuts", wroteSettings && preferences.LoginEnabled && pair.ShowGesture == candidateKey && pair.HideGesture == candidateHide && pair.Registered && registration.Value!.EndsWith(" --startup", StringComparison.Ordinal));
+                using (var showProbe = new HotKey(() => { }, originalKey))
+                using (var hideProbe = new HotKey(() => { }, originalHide)) Check("successful-change-releases-both-old-shortcuts", showProbe.Registered && hideProbe.Registered);
+                preferences.Apply(settings with { ShowShortcut = candidateHide, HideShortcut = candidateKey }, _ => { });
+                pair.Dispatch(candidateHide); Check("swapped-gesture-shows-shelf", shelf.Visible);
+                pair.Dispatch(candidateKey); Check("swapped-gesture-hides-shelf", !shelf.Visible);
+                preferences.Apply(settings with { ShowShortcut = "", RunAtLogin = false }, _ => { });
+                Check("show-can-be-disabled-independently", !pair.ShowRegistered && pair.HideRegistered && registration.Value is null);
+                preferences.Apply(settings with { ShowShortcut = "", HideShortcut = "", RunAtLogin = false }, _ => { });
+                Check("disable-releases-both-hotkeys-and-login-entry", !pair.Registered && pair.ShowGesture.Length == 0 && pair.HideGesture.Length == 0 && registration.Value is null);
+                using (var occupied = new HotKey(() => { }, candidateHide))
+                using (var partial = new ShelfHotKeys(() => { }, () => { }, candidateKey, candidateHide))
+                {
+                    Check("startup-conflict-keeps-available-action-working", partial.ShowRegistered && !partial.HideRegistered && !partial.Retry());
+                    occupied.Dispose(); Check("retry-recovers-only-missing-registration", partial.Retry() && partial.ShowRegistered && partial.HideRegistered);
+                }
                 var command = LoginRegistration.LaunchCommand(@"C:\Program Files\Clothesline\Clothesline.exe", "unused");
                 Check("startup-command-quotes-executable-path", command == "\"C:\\Program Files\\Clothesline\\Clothesline.exe\" --startup");
                 var hosted = LoginRegistration.LaunchCommand(@"C:\Dotnet Runtime\dotnet.exe", @"D:\My App\Clothesline.dll");
@@ -67,8 +98,8 @@ internal static class PreferencesDiagnostics
                 isolated.Write(null);
                 using (var fixture = Registry.CurrentUser.OpenSubKey(registryPath)) Check("disable-removes-only-owned-registry-value", isolated.Read() is null && fixture!.GetValue("Unrelated") as string == "keep");
                 Check("real-login-registration-untouched-by-diagnostics", actual.Read() == before);
-                using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "settings-" + Guid.NewGuid().ToString("N")));
-                runtime.Desktop = preferences; runtime.ApplySettings(runtime.Settings with { Shortcut = candidateKey });
+                using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "settings-" + Guid.NewGuid().ToString("N")));
+                runtime.ApplySettings(runtime.Settings);
                 var dashboard = new Dashboard(shelf, true, () => { }, runtime) { Exiting = true };
                 dashboard.ShowDesktopSettings(); dashboard.UpdateLayout(); Render((FrameworkElement)dashboard.Content, Path.Combine(directory, "preferences.png")); dashboard.Close();
             }

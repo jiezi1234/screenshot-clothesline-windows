@@ -20,7 +20,9 @@ public sealed record LibrarySettings
     public int Capacity { get; init; }
     public int RetentionDays { get; init; }
     public long MaxManagedBytes { get; init; } = 512L * 1024 * 1024;
-    public string Shortcut { get; init; } = "Ctrl+Alt+T";
+    public const string DefaultShowShortcut = "Ctrl+Down", DefaultHideShortcut = "Ctrl+Up";
+    public string ShowShortcut { get; init; } = DefaultShowShortcut;
+    public string HideShortcut { get; init; } = DefaultHideShortcut;
     public bool RunAtLogin { get; init; }
     public int CardSizePercent { get; init; } = 100;
     public bool CaptureSound { get; init; }
@@ -85,7 +87,18 @@ public sealed class LibraryStore : IDisposable
         lock (gate)
         {
             var json = Scalar("SELECT Json FROM Settings WHERE Id=1") as string;
-            return json is null ? new() : JsonSerializer.Deserialize<LibrarySettings>(json) ?? new();
+            if (json is null) return new();
+            var settings = JsonSerializer.Deserialize<LibrarySettings>(json) ?? new();
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            // Only migrate the legacy single shortcut when neither new field is present.
+            if (root.ValueKind == JsonValueKind.Object && !root.TryGetProperty("ShowShortcut", out _) && !root.TryGetProperty("HideShortcut", out _) && root.TryGetProperty("Shortcut", out var legacy))
+            {
+                var gesture = Clothesline.Core.ShortcutGesture.Parse(legacy.GetString() ?? "").Display;
+                if (gesture.Length == 0) settings = settings with { ShowShortcut = "", HideShortcut = "" };
+                else if (gesture != "Ctrl+Alt+T") settings = settings with { ShowShortcut = gesture };
+            }
+            return settings;
         }
     }
     public bool HasSettings { get { lock (gate) return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM Settings")) != 0; } }
@@ -108,7 +121,7 @@ public sealed class LibraryStore : IDisposable
         if (settings.ExtraFolders.Length > 3 || settings.Capacity is not (0 or 25 or 50 or 100) || settings.RetentionDays is not (0 or 7 or 30) || settings.MaxManagedBytes < 1024 * 1024
             || settings.CardSizePercent is not (80 or 100 or 120) || !Clothesline.Core.UiText.IsSupported(settings.Language))
             throw new ArgumentException(T("设置值超出支持范围。"));
-        Clothesline.Core.ShortcutGesture.Parse(settings.Shortcut);
+        Clothesline.Core.ShortcutGesture.ParsePair(settings.ShowShortcut, settings.HideShortcut);
     }
     public IReadOnlyList<LibraryEntry> Entries(EntryState? state = null)
     {

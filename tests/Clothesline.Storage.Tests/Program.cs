@@ -136,12 +136,12 @@ using (var engine = new CollectionEngine(store, _ => "fixture", () => 25))
     var full = false; try { await engine.PreserveOriginal([4, 5], "quota", 3); } catch (IOException) { full = true; }
     Check(full && store.Entries().Count(e => e.Source == LibraryStore.OriginalSource) == 1, "original snapshots share managed quota and rejection adds no orphan record");
     Check(!await engine.ImportClipboard([8, 9], "clip-budget", 4), "clipboard quota includes retained originals");
-    store.SaveSettings(new LibrarySettings { Shortcut = "Ctrl+Shift+F8", RunAtLogin = true });
+    store.SaveSettings(new LibrarySettings { ShowShortcut = "Ctrl+Shift+F8", HideShortcut = "Ctrl+Up", RunAtLogin = true });
 }
 using (var store = new LibraryStore(versions))
 {
     Check(store.OriginalFor(firstCopyId)!.Id == originalId && store.OriginalFor(secondCopyId)!.Id == originalId, "original lineage survives restart");
-    Check(store.LoadSettings().Shortcut == "Ctrl+Shift+F8" && store.LoadSettings().RunAtLogin, "desktop preferences survive restart");
+    Check(store.LoadSettings().ShowShortcut == "Ctrl+Shift+F8" && store.LoadSettings().HideShortcut == "Ctrl+Up" && store.LoadSettings().RunAtLogin, "both desktop shortcuts survive restart");
     store.ForgetExternalOrMissing(firstCopyId, now + 25 * day);
     Check(store.HasOriginalDependents(originalId), "removing one sibling retains original for remaining sibling");
     store.Archive(secondCopyId, now - 8 * day);
@@ -152,6 +152,37 @@ using (var store = new LibraryStore(versions))
     Check(calls == 1 && store.Find(originalId)!.Error.Length > 0 && File.Exists(originalPath), "original recycle failure preserves file and record");
     Check(store.Recycle(originalId, p => { File.Move(p, p + ".test-recycled"); return true; }) && store.Find(originalId) is null, "unreferenced original can be explicitly recycled");
 }
+foreach (var (name, json, show, hide) in new[]
+{
+    ("legacy-default", "{\"Shortcut\":\" alt + ctrl + t \",\"Capacity\":25}", "Ctrl+Down", "Ctrl+Up"),
+    ("legacy-disabled", "{\"Shortcut\":\"\",\"Capacity\":25}", "", ""),
+    ("legacy-custom", "{\"Shortcut\":\"Ctrl+Shift+F8\",\"Capacity\":25}", "Ctrl+Shift+F8", "Ctrl+Up"),
+    ("new-fields-win", "{\"Shortcut\":\"Ctrl+Alt+T\",\"ShowShortcut\":\"\",\"HideShortcut\":\"Alt+Up\",\"Capacity\":25}", "", "Alt+Up")
+})
+{
+    var folder = Path.Combine(root, name);
+    using (var store = new LibraryStore(folder)) { }
+    using (var db = new SqliteConnection($"Data Source={Path.Combine(folder, "library.db")};Pooling=False"))
+    {
+        db.Open(); using var command = db.CreateCommand(); command.CommandText = "INSERT INTO Settings VALUES(1,$json)";
+        command.Parameters.AddWithValue("$json", json); command.ExecuteNonQuery();
+    }
+    using (var store = new LibraryStore(folder))
+    {
+        var settings = store.LoadSettings();
+        Check(settings.ShowShortcut == show && settings.HideShortcut == hide && settings.Capacity == 25, "shortcut migration: " + name);
+        store.SaveSettings(settings);
+        var duplicate = false; try { store.SaveSettings(settings with { ShowShortcut = "Ctrl+Up", HideShortcut = "Ctrl+↑" }); } catch (ArgumentException) { duplicate = true; }
+        Check(duplicate && System.Text.Json.JsonSerializer.Serialize(store.LoadSettings()) == System.Text.Json.JsonSerializer.Serialize(settings), "duplicate gestures cannot overwrite persisted settings: " + name);
+    }
+    using (var store = new LibraryStore(folder)) Check(store.LoadSettings().ShowShortcut == show && store.LoadSettings().HideShortcut == hide, "migrated shortcuts survive reopen: " + name);
+    using (var db = new SqliteConnection($"Data Source={Path.Combine(folder, "library.db")};Pooling=False"))
+    {
+        db.Open(); using var command = db.CreateCommand(); command.CommandText = "SELECT Json FROM Settings WHERE Id=1";
+        using var document = System.Text.Json.JsonDocument.Parse((string)command.ExecuteScalar()!);
+        Check(!document.RootElement.TryGetProperty("Shortcut", out _) && document.RootElement.TryGetProperty("ShowShortcut", out _) && document.RootElement.TryGetProperty("HideShortcut", out _), "saving removes the legacy toggle setting: " + name);
+    }
+}
 var migration = Path.Combine(root, "v1-migration"); string migrationId;
 using (var store = new LibraryStore(migration)) { migrationId = store.Add(Make("v1-image.png"), Ownership.External, "v1", "v1", now, 25).Id; }
 using (var db = new SqliteConnection($"Data Source={Path.Combine(migration, "library.db")};Pooling=False"))
@@ -161,7 +192,7 @@ using (var db = new SqliteConnection($"Data Source={Path.Combine(migration, "lib
 }
 using (var store = new LibraryStore(migration))
 {
-    Check(store.Find(migrationId) is not null && store.LoadSettings().Capacity == 25 && store.LoadSettings().Shortcut == "Ctrl+Alt+T" && !store.LoadSettings().RunAtLogin, "v1 migration preserves entries and supplies conservative preference defaults");
+    Check(store.Find(migrationId) is not null && store.LoadSettings().Capacity == 25 && store.LoadSettings().ShowShortcut == "Ctrl+Down" && store.LoadSettings().HideShortcut == "Ctrl+Up" && !store.LoadSettings().RunAtLogin, "v1 migration preserves entries and supplies directional shortcut defaults");
     Check(Directory.GetFiles(migration, "library-v1-backup-*.db").Length == 1, "v1 migration produces database backup before schema change");
     using var db = new SqliteConnection($"Data Source={Directory.GetFiles(migration, "library-v1-backup-*.db").Single()};Mode=ReadOnly;Pooling=False"); db.Open();
     using var version = db.CreateCommand(); version.CommandText = "PRAGMA user_version";

@@ -127,4 +127,18 @@ Check(UiText.T("暂时没有图片") == "暂时没有图片", "Chinese empty sta
 foreach (var extension in new[] { ".webp", ".WEBP", ".heic", ".HEIF" }) Check(MediaFiles.IsImage("photo" + extension) && MediaFiles.IsExtendedImage("photo" + extension) && !MediaFiles.IsVideo("photo" + extension), "optional image extension classified: " + extension);
 Check(!MediaFiles.IsExtendedImage("photo.png") && MediaFiles.IsImage("photo.png"), "standard images retain existing decoder route");
 Check(!MediaFiles.IsImage("photo.avif") && !MediaFiles.IsImage("photo.webp.exe"), "unverified and disguised extensions are not admitted");
+foreach (var dpi in new[] { 1.0, 1.25, 1.5, 2.0 })
+{
+    var screen = new PixelRect(-1920, -1080, 1920, 1080); var work = new PixelRect(-1920, -1040, 1920, 1040);
+    var activation = ShelfDropGeometry.Activation(screen, work, dpi);
+    Check(activation.X >= work.X && activation.Right <= work.Right && activation.Y == screen.Y && activation.Bottom == work.Y + (int)Math.Round(80 * dpi), "drag activation handles top taskbar and negative origin at " + dpi);
+    foreach (var cardScale in new[] { .8, 1.0, 1.2 })
+    {
+        var slots = DesktopGeometry.Cards(work, dpi, 25, cardScale);
+        Check(ShelfDropGeometry.InsertionSlot(slots, slots.Count, slots[0].X - 20) == 0 && ShelfDropGeometry.InsertionSlot(slots, slots.Count, slots[^1].Right + 20) == slots.Count, $"insert before first and after last at {dpi}/{cardScale}");
+        Check(ShelfDropGeometry.InsertionSlot(slots, 1, slots[^1].Right) == 1 && ShelfDropGeometry.MarkerX(slots, 1, 1, dpi) > slots[0].Right, $"short final page uses only visible cards at {dpi}/{cardScale}");
+        Check(ShelfDropGeometry.InsertionSlot(slots, slots.Count, slots[0].X + slots[0].Width / 2) == 1, $"card midpoint selects following insertion slot at {dpi}/{cardScale}");
+    }
+}
+Check(ShelfDropGeometry.InsertionSlot([], 0, 10) == 0, "empty shelf has first insertion slot");
 Console.WriteLine($"{checks} checks passed.");

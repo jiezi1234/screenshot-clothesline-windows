@@ -188,7 +188,7 @@ using (var store = new LibraryStore(migration)) { migrationId = store.Add(Make("
 using (var db = new SqliteConnection($"Data Source={Path.Combine(migration, "library.db")};Pooling=False"))
 {
     db.Open(); using var command = db.CreateCommand();
-    command.CommandText = "DROP TABLE EditOrigins; PRAGMA user_version=1; INSERT INTO Settings VALUES(1,'{\"Capacity\":25}')"; command.ExecuteNonQuery();
+    command.CommandText = "DROP TABLE ShelfOrder; DROP TABLE EditOrigins; PRAGMA user_version=1; INSERT INTO Settings VALUES(1,'{\"Capacity\":25}')"; command.ExecuteNonQuery();
 }
 using (var store = new LibraryStore(migration))
 {
@@ -198,7 +198,7 @@ using (var store = new LibraryStore(migration))
     using var version = db.CreateCommand(); version.CommandText = "PRAGMA user_version";
     Check(Convert.ToInt32(version.ExecuteScalar()) == 1, "migration backup remains readable as v1");
 }
-using (var store = new LibraryStore(migration)) Check(Directory.GetFiles(migration, "library-v1-backup-*.db").Length == 1, "v2 reopening does not repeat migration or create extra backups");
+using (var store = new LibraryStore(migration)) Check(Directory.GetFiles(migration, "library-v1-backup-*.db").Length == 1, "v3 reopening does not repeat migration or create extra backups");
 using (var store = new LibraryStore(migration))
 {
     var settings = store.LoadSettings();
@@ -286,4 +286,53 @@ using (var store = new LibraryStore(Path.Combine(root, "extended-rules")))
     var alias = Path.Combine(folder, "manual.heif"); File.WriteAllText(alias, "manual HEIF");
     Check(await engine.ImportExternal(alias) && store.Entries().Any(e => e.Path == alias), "HEIF manual import shares image lifecycle");
 }
+var orderingRoot = Path.Combine(root, "ordering");
+using (var store = new LibraryStore(orderingRoot))
+{
+    foreach (var (id, time) in new[] { ("a", 1), ("b", 2), ("c", 3), ("d", 4) })
+        store.Add(Make(id + ".png"), Ownership.External, "order", id, now + time, 25, id: id);
+    string Order() => string.Join(",", store.Entries(EntryState.Shelf).Select(e => e.Id));
+    Check(Order() == "d,c,b,a", "no custom order retains newest-first arrival order");
+    Check(store.MoveShelfItems(["a"], "c") && Order() == "d,a,c,b", "move from end into middle");
+    Check(store.MoveShelfItems(["d"], null) && Order() == "a,c,b,d", "move first item to end");
+    Check(store.MoveShelfItems(["b", "d", "b"], "a") && Order() == "b,d,a,c", "move group preserves input order and deduplicates IDs");
+    Check(store.MoveShelfItems(["a"], "a") && Order() == "b,d,a,c", "dropping immediately before itself is a no-op");
+    Check(!store.MoveShelfItems(["missing", "a"], "b") && !store.MoveShelfItems(["a"], "missing") && Order() == "b,d,a,c", "stale move rejects atomically");
+    Check(store.Find("a")!.AddedAt == now + 1 && store.Find("a")!.Hash == "a" && store.Entries().First().Id == "d", "visual order does not change arrival metadata or all-items chronology");
+    Check(!store.IsDuplicate("other.png", "a", "other", now + 6000), "reordering does not extend deduplication window");
+}
+using (var store = new LibraryStore(orderingRoot))
+{
+    string Order() => string.Join(",", store.Entries(EntryState.Shelf).Select(e => e.Id));
+    Check(Order() == "b,d,a,c", "custom display order survives database reopen");
+    store.Add(Make("e.png"), Ownership.External, "order", "e", now + 5, 25, id: "e");
+    Check(Order() == "e,b,d,a,c", "new capture prepends without scrambling custom order");
+    store.MoveShelfItems(["a"], "e"); store.EnforceCapacity(4, now + 6);
+    Check(store.Find("a")!.State == EntryState.History && Order() == "e,b,d,c", "capacity evicts oldest arrival even when moved to front");
+    store.Archive("d", now + 7); store.Restore("d", 25, now + 8);
+    Check(Order() == "d,e,b,c", "restored card returns to front without stale custom position");
+    store.ForgetExternalOrMissing("b");
+    Check(Order() == "d,e,c" && File.Exists(Path.Combine(root, "b.png")), "forgetting ordered external record keeps original file");
+    using var db = new SqliteConnection($"Data Source={Path.Combine(orderingRoot, "library.db")};Pooling=False"); db.Open();
+    using var command = db.CreateCommand(); command.CommandText = "SELECT COUNT(*) FROM ShelfOrder WHERE EntryId='b'";
+    Check(Convert.ToInt32(command.ExecuteScalar()) == 0, "deleted entries cascade out of stored order");
+}
+var v2Root = Path.Combine(root, "v2-migration");
+using (var store = new LibraryStore(v2Root))
+{
+    store.Add(Make("v2.png"), Ownership.External, "v2", "v2", now, 25, id: "v2");
+    store.SaveSettings(new LibrarySettings { Capacity = 25, RevealProtectionSeconds = 30 });
+}
+using (var db = new SqliteConnection($"Data Source={Path.Combine(v2Root, "library.db")};Pooling=False"))
+{
+    db.Open(); using var command = db.CreateCommand(); command.CommandText = "DROP TABLE ShelfOrder; PRAGMA user_version=2;"; command.ExecuteNonQuery();
+}
+using (var store = new LibraryStore(v2Root))
+{
+    Check(store.Entries(EntryState.Shelf).Single().Id == "v2" && store.LoadSettings().RevealProtectionSeconds == 30, "v2 upgrade preserves records and reveal setting");
+    using var db = new SqliteConnection($"Data Source={Directory.GetFiles(v2Root, "library-v2-backup-*.db").Single()};Mode=ReadOnly;Pooling=False"); db.Open();
+    using var command = db.CreateCommand(); command.CommandText = "PRAGMA user_version";
+    Check(Convert.ToInt32(command.ExecuteScalar()) == 2, "v2 backup is readable before v3 ordering migration");
+}
+using (var store = new LibraryStore(v2Root)) Check(Directory.GetFiles(v2Root, "library-v2-backup-*.db").Length == 1, "v3 reopening makes no additional v2 backup");
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

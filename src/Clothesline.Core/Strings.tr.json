@@ -342,5 +342,14 @@
   "展开保护期": "Görünürlük koruma süresi",
   "{0} 秒": "{0} saniye",
   "{0} 秒（默认）": "{0} saniye (varsayılan)",
-  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Fareyi ipe taşımak için süre tanır; kaydedildiğinde hemen uygulanır ve ip açıksa sayaç yeniden başlar."
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Fareyi ipe taşımak için süre tanır; kaydedildiğinde hemen uygulanır ve ip açıksa sayaç yeniden başlar.",
+  "单击复制 · 拖动排序或拖出": "Kopyalamak için tıkla · Sıralamak veya dışarı kopyalamak için sürükle",
+  "已调整晾衣绳顺序，文件保留。": "İp sırası güncellendi. Dosyalar korundu.",
+  "拖入图片，松手挂上（最多 100 张）": "Asmak için resimleri bırakın (en fazla 100)",
+  "此处只接受本地图片文件。": "Burada yalnızca yerel resim dosyaları kabul edilir.",
+  "松手挂上图片，原文件保留。": "Resimleri asmak için bırakın. Özgün dosyalar korunur.",
+  "拖动调整顺序；在左右边缘停留可翻页。": "Sıralamak için sürükleyin; sayfa değiştirmek için kenarda bekleyin.",
+  "图片已变化，请重试。": "Resimler değişti. Lütfen tekrar deneyin.",
+  "已挂上 {0} 张图片，原文件保留。": "{0} resim asıldı. Özgün dosyalar korundu.",
+  "超出容量的 {0} 张已进入历史。": "Kapasiteyi aşan {0} resim geçmişe taşındı."
 }

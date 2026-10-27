@@ -342,5 +342,14 @@
   "展开保护期": "Görünmə qoruma müddəti",
   "{0} 秒": "{0} saniyə",
   "{0} 秒（默认）": "{0} saniyə (standart)",
-  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Siçanı ipə aparmaq üçün vaxt verir; yadda saxlandıqda dərhal tətbiq olunur və ip açıqdırsa sayğac yenidən başlayır."
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Siçanı ipə aparmaq üçün vaxt verir; yadda saxlandıqda dərhal tətbiq olunur və ip açıqdırsa sayğac yenidən başlayır.",
+  "单击复制 · 拖动排序或拖出": "Kopyalamaq üçün klikləyin · Sıralamaq və ya kənara kopyalamaq üçün sürükləyin",
+  "已调整晾衣绳顺序，文件保留。": "İpdəki sıra yeniləndi. Fayllar saxlanıldı.",
+  "拖入图片，松手挂上（最多 100 张）": "Asmaq üçün şəkilləri buraxın (ən çox 100)",
+  "此处只接受本地图片文件。": "Burada yalnız yerli şəkil faylları qəbul edilir.",
+  "松手挂上图片，原文件保留。": "Şəkilləri asmaq üçün buraxın. Orijinal fayllar saxlanılır.",
+  "拖动调整顺序；在左右边缘停留可翻页。": "Sıralamaq üçün sürükləyin; səhifəni dəyişmək üçün kənarda gözləyin.",
+  "图片已变化，请重试。": "Şəkillər dəyişib. Yenidən cəhd edin.",
+  "已挂上 {0} 张图片，原文件保留。": "{0} şəkil asıldı. Orijinal fayllar saxlanıldı.",
+  "超出容量的 {0} 张已进入历史。": "Tutumu aşan {0} şəkil tarixçəyə köçürüldü."
 }

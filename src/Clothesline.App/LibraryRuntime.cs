@@ -13,7 +13,7 @@ using Clothesline.Storage;
 
 namespace Clothesline.App;
 
-internal sealed class LibraryRuntime : IDisposable
+internal sealed partial class LibraryRuntime : IDisposable
 {
     public static string DefaultRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenshotClothesline", "Library");
     public LibraryStore Store { get; }
@@ -51,7 +51,7 @@ internal sealed class LibraryRuntime : IDisposable
         refresh.Tick += (_, _) => { if (shelf.Busy || fileOperation > 0) return; refresh.Stop(); RefreshShelf(revealPending); revealPending = false; };
         maintenance = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         maintenance.Tick += (_, _) => { if (!shelf.Busy) { Cleanup(); Collector.RequestRescan(); ScheduleRefresh(false); } };
-        Collector.Changed += () => ScheduleRefresh(true);
+        Collector.Changed += () => ScheduleRefresh(!droppingImages);
         Collector.CaptureAdded += CaptureAdded;
         Collector.Status += Report; clipboard.Status += Report;
         shelf.Archived += item => { if (item.EntryId is not null) { Store.Archive(item.EntryId, Now); ScheduleRefresh(false); } };
@@ -61,6 +61,12 @@ internal sealed class LibraryRuntime : IDisposable
         shelf.BatchArchiveRequested += (item, scope) => ArchiveBatch(item.EntryId, scope);
         shelf.FilesChanged += () => ScheduleRefresh(false);
         shelf.EnvironmentRecovered += RecoverEnvironment;
+        shelf.ReorderRequested = (id, before) =>
+        {
+            if (!Store.MoveShelfItems([id], before)) throw new InvalidOperationException(T("图片已变化，请重试。"));
+            ScheduleRefresh(false);
+        };
+        shelf.IncomingDropRequested = ImportDroppedImages;
     }
     private void RecoverEnvironment()
     {
@@ -350,6 +356,7 @@ internal sealed class LibraryRuntime : IDisposable
     }
     public void Dispose()
     {
-        disposed = true; shelf.EnvironmentRecovered -= RecoverEnvironment; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
+        disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
+        shelf.EnvironmentRecovered -= RecoverEnvironment; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

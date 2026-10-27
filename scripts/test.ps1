@@ -13,6 +13,8 @@ try {
     if ($Desktop) {
         # Interactive desktop required. This starts only our own test windows.
         $env:DOTNET_ROOT = Split-Path $executable
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --drag-drop-test artifacts/drag-drop-validation
+        if ($LASTEXITCODE -ne 0) { throw "Drag/drop checks failed. See artifacts/drag-drop-validation/drag-drop-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --dashboard-test artifacts/dashboard-validation
         if ($LASTEXITCODE -ne 0) { throw "Dashboard checks failed. See artifacts/dashboard-validation/dashboard-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --self-test artifacts/validation

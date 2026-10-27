@@ -96,6 +96,7 @@ internal sealed class CardWindow : OverlayWindow
     public event Action<string>? Status;
     public event Action<CardWindow>? TakeDown;
     public event Action? DragEnded;
+    public Func<CardWindow, string>? DragRequested { get; set; }
     public Action<DemoItem>? RecycleRequested { get; set; }
     public Action<DemoItem, bool>? ExportRequested { get; set; }
     public Action<DemoItem, bool>? WorkspaceRequested { get; set; }
@@ -152,8 +153,8 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseLeftButtonUp += Up;
         surface.LostMouseCapture += (_, _) => { down = null; holdTimer.Stop(); };
         MouseEnter += (_, _) => { if (!Retiring) StopMotion(); };
-        surface.MouseEnter += (_, _) => { if (!Busy) caption.Text = T("单击复制 · 双击打开 · 拖出"); };
-        surface.MouseLeave += (_, _) => { if (!Busy) caption.Text = item.Title; };
+        surface.MouseEnter += (_, _) => { if (!Busy) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
+        surface.MouseLeave += (_, _) => { if (!Busy) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
         var menu = new ContextMenu();
         Add(menu, item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
         Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
@@ -226,7 +227,7 @@ internal sealed class CardWindow : OverlayWindow
         var p = e.GetPosition(this); // Keep the drag threshold in window DIPs, independent of the Viewbox size.
         if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
-        try { Report(ShellTransfer.Drag(this, Item)); }
+        try { Report(DragRequested?.Invoke(this) ?? ShellTransfer.Drag(this, Item)); }
         catch (Exception ex) { Report(T("拖拽未完成：") + ex.Message); }
         finally { Busy = false; DragEnded?.Invoke(); }
     }

@@ -11,7 +11,7 @@ using Microsoft.Win32;
 
 namespace Clothesline.App;
 
-internal sealed class ShelfController : IDisposable
+internal sealed partial class ShelfController : IDisposable
 {
     private readonly RopeWindow rope = new();
     private readonly List<CardWindow> cards = new();
@@ -33,7 +33,7 @@ internal sealed class ShelfController : IDisposable
     private int page;
     private bool sampleMode = true;
     public int DisplayCapacity { get; private set; } = 3;
-    public bool Busy => cards.Any(c => c.InteractionActive);
+    public bool Busy => importingDrop || cards.Any(c => c.InteractionActive);
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;
@@ -55,6 +55,7 @@ internal sealed class ShelfController : IDisposable
         this.systemMotion = systemMotion ?? (() => SystemParameters.ClientAreaAnimation);
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         timer.Tick += (_, _) => Tick();
+        InitializeDropTarget();
         SystemEvents.DisplaySettingsChanged += DisplaysChanged;
         SystemEvents.PowerModeChanged += PowerChanged;
         SystemEvents.SessionSwitch += SessionChanged;
@@ -98,6 +99,7 @@ internal sealed class ShelfController : IDisposable
     private void AddCard(DemoItem item)
     {
         var card = new CardWindow(item);
+        card.DragRequested = DragCard; AttachDropTarget(card);
         card.Status += text => Status?.Invoke(text);
         card.TakeDown += Remove;
         card.RecycleRequested = sampleMode ? null : entry => RecycleRequested?.Invoke(entry);
@@ -169,7 +171,8 @@ internal sealed class ShelfController : IDisposable
         if (now >= nextPrune) { nextPrune = now + 2000; Prune(); }
         var cursor = Native.Cursor;
         var monitor = Native.MonitorAt(cursor);
-        // Poll cursor only: hidden overlays have no hit-test surface at the top edge.
+        TrackDropTarget(now, cursor, monitor, Native.GetAsyncKeyState(1) < 0);
+        // The temporary drop target is separate from the normal hover reveal gate.
         if (!presented && activeMonitor?.Handle != monitor.Handle) Prepare(monitor);
         var target = activeMonitor ?? monitor;
         var busy = Busy || Native.GetAsyncKeyState(1) < 0;
@@ -206,7 +209,7 @@ internal sealed class ShelfController : IDisposable
         }
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
-    private void Dismiss() { rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
+    private void Dismiss() { HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
     internal void ResetEnvironment(bool recover)
     {
         if (disposed) return;
@@ -240,6 +243,7 @@ internal sealed class ShelfController : IDisposable
         disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
         SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.SessionSwitch -= SessionChanged;
         CloseRetiring();
+        dropTarget.Close();
         foreach (var card in cards) card.Close(); rope.Close();
     }
 }

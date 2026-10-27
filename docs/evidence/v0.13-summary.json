@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "date": "2026-10-27",
+  "groups": {
+    "motion": 30,
+    "library": 20,
+    "storage": 127,
+    "core": 205,
+    "drag-drop": 33
+  },
+  "total": 415.0,
+  "build": {
+    "errors": 0,
+    "configuration": "Release",
+    "warnings": 0
+  },
+  "scope": "Shelf ordering, image drops, schema migration, library and motion regression. Generated fixtures and isolated databases. Routed events and native Shell data, not end-to-end Explorer gestures."
+}

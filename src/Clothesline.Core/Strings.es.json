@@ -342,5 +342,14 @@
   "展开保护期": "Tiempo de protección",
   "{0} 秒": "{0} segundos",
   "{0} 秒（默认）": "{0} segundos (predeterminado)",
-  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Tiempo para llegar al tendedero con el ratón; se aplica al guardar y reinicia el temporizador si está abierto."
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Tiempo para llegar al tendedero con el ratón; se aplica al guardar y reinicia el temporizador si está abierto.",
+  "单击复制 · 拖动排序或拖出": "Clic para copiar · Arrastra para ordenar o copiar fuera",
+  "已调整晾衣绳顺序，文件保留。": "Orden actualizado. Archivos conservados.",
+  "拖入图片，松手挂上（最多 100 张）": "Suelta imágenes para colgarlas (hasta 100)",
+  "此处只接受本地图片文件。": "Aquí solo se aceptan archivos de imagen locales.",
+  "松手挂上图片，原文件保留。": "Suelta para colgar las imágenes. Se conservan los originales.",
+  "拖动调整顺序；在左右边缘停留可翻页。": "Arrastra para ordenar; detente en los bordes para cambiar de página.",
+  "图片已变化，请重试。": "Las imágenes han cambiado. Inténtalo de nuevo.",
+  "已挂上 {0} 张图片，原文件保留。": "{0} imágenes colgadas. Originales conservados.",
+  "超出容量的 {0} 张已进入历史。": "{0} imágenes que excedían la capacidad pasaron al historial."
 }

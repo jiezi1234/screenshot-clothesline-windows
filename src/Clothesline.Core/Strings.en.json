@@ -342,5 +342,14 @@
   "展开保护期": "Reveal protection",
   "{0} 秒": "{0} seconds",
   "{0} 秒（默认）": "{0} seconds (default)",
-  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Time to reach the clothesline; saving applies immediately and restarts the timer if it is open."
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Time to reach the clothesline; saving applies immediately and restarts the timer if it is open.",
+  "单击复制 · 拖动排序或拖出": "Click to copy · Drag to reorder or copy out",
+  "已调整晾衣绳顺序，文件保留。": "Clothesline order updated. Files kept.",
+  "拖入图片，松手挂上（最多 100 张）": "Drop images to hang them (up to 100)",
+  "此处只接受本地图片文件。": "Only local image files are accepted here.",
+  "松手挂上图片，原文件保留。": "Release to hang images. Original files are kept.",
+  "拖动调整顺序；在左右边缘停留可翻页。": "Drag to reorder; pause at either edge to change pages.",
+  "图片已变化，请重试。": "The images have changed. Please try again.",
+  "已挂上 {0} 张图片，原文件保留。": "{0} images hung. Original files kept.",
+  "超出容量的 {0} 张已进入历史。": "{0} images exceeding capacity were moved to history."
 }

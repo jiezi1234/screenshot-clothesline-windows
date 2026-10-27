@@ -40,7 +40,7 @@ internal static class AppearanceDiagnostics
                 Render((FrameworkElement)dashboard.Content, Path.Combine(directory, "appearance-en.png"));
                 var size = controls.OfType<ComboBox>().Single(c => AutomationProperties.GetName(c) == "Card size");
                 size.SelectedIndex = 2;
-                var sound = controls.OfType<CheckBox>().Single(c => c.Content as string == T("自动收集新图片时播放提示音（默认关闭）")); sound.IsChecked = true;
+                var sound = controls.OfType<CheckBox>().Single(c => c.Content as string == T("自动收集新项目时播放提示音（默认关闭）")); sound.IsChecked = true;
                 var save = controls.OfType<Button>().Single(b => b.Content as string == "Save settings" && b.IsVisible);
                 save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Check("saving-appearance-controls-persists-size-and-sound", runtime.Settings.CardSizePercent == 120 && runtime.Store.LoadSettings().CaptureSound);

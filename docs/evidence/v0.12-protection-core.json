@@ -1,0 +1,661 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "short edge crossing does not reveal",
+      "passed": true
+    },
+    {
+      "name": "350ms dwell reveals",
+      "passed": true
+    },
+    {
+      "name": "10-second show grace permits reaching cards",
+      "passed": true
+    },
+    {
+      "name": "leave grace is not prematurely cut off",
+      "passed": true
+    },
+    {
+      "name": "leave timeout hides after 10-second protection",
+      "passed": true
+    },
+    {
+      "name": "manual hide must leave trigger before reentering",
+      "passed": true
+    },
+    {
+      "name": "leaving trigger rearms reveal",
+      "passed": true
+    },
+    {
+      "name": "active drag prevents fullscreen interruption",
+      "passed": true
+    },
+    {
+      "name": "fullscreen hides after interaction ends",
+      "passed": true
+    },
+    {
+      "name": "repeated show restarts the full 10-second protection",
+      "passed": true
+    },
+    {
+      "name": "repeated show still auto-hides after protection and leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 5-second protection remains active before its boundary",
+      "passed": true
+    },
+    {
+      "name": "selected 5-second protection retains leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 5-second protection expires with leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 10-second protection remains active before its boundary",
+      "passed": true
+    },
+    {
+      "name": "selected 10-second protection retains leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 10-second protection expires with leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 15-second protection remains active before its boundary",
+      "passed": true
+    },
+    {
+      "name": "selected 15-second protection retains leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 15-second protection expires with leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 30-second protection remains active before its boundary",
+      "passed": true
+    },
+    {
+      "name": "selected 30-second protection retains leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 30-second protection expires with leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 60-second protection remains active before its boundary",
+      "passed": true
+    },
+    {
+      "name": "selected 60-second protection retains leave delay",
+      "passed": true
+    },
+    {
+      "name": "selected 60-second protection expires with leave delay",
+      "passed": true
+    },
+    {
+      "name": "changing protection restarts the visible shelf timer immediately",
+      "passed": true
+    },
+    {
+      "name": "saving unchanged protection does not extend the visible shelf timer",
+      "passed": true
+    },
+    {
+      "name": "changing protection does not open a hidden shelf",
+      "passed": true
+    },
+    {
+      "name": "invalid protection preserves the previous duration",
+      "passed": true
+    },
+    {
+      "name": "dragging another application does not reveal shelf",
+      "passed": true
+    },
+    {
+      "name": "negative monitor bounds at 100%",
+      "passed": true
+    },
+    {
+      "name": "cards leave hit-test gaps at 100%",
+      "passed": true
+    },
+    {
+      "name": "physical edge trigger at 100%",
+      "passed": true
+    },
+    {
+      "name": "negative monitor bounds at 125%",
+      "passed": true
+    },
+    {
+      "name": "cards leave hit-test gaps at 125%",
+      "passed": true
+    },
+    {
+      "name": "physical edge trigger at 125%",
+      "passed": true
+    },
+    {
+      "name": "negative monitor bounds at 150%",
+      "passed": true
+    },
+    {
+      "name": "cards leave hit-test gaps at 150%",
+      "passed": true
+    },
+    {
+      "name": "physical edge trigger at 150%",
+      "passed": true
+    },
+    {
+      "name": "negative monitor bounds at 175%",
+      "passed": true
+    },
+    {
+      "name": "cards leave hit-test gaps at 175%",
+      "passed": true
+    },
+    {
+      "name": "physical edge trigger at 175%",
+      "passed": true
+    },
+    {
+      "name": "negative monitor bounds at 200%",
+      "passed": true
+    },
+    {
+      "name": "cards leave hit-test gaps at 200%",
+      "passed": true
+    },
+    {
+      "name": "physical edge trigger at 200%",
+      "passed": true
+    },
+    {
+      "name": "borderless covering monitor is fullscreen",
+      "passed": true
+    },
+    {
+      "name": "framed maximized window excluded",
+      "passed": true
+    },
+    {
+      "name": "fullscreen on another monitor excluded",
+      "passed": true
+    },
+    {
+      "name": "cancel retains source despite stale move result",
+      "passed": true
+    },
+    {
+      "name": "copy retains source",
+      "passed": true
+    },
+    {
+      "name": "missing source is reported instead of pretending a copy remains usable",
+      "passed": true
+    },
+    {
+      "name": "unexpected move result cannot authorize source deletion",
+      "passed": true
+    },
+    {
+      "name": "copy with scroll flag retains source",
+      "passed": true
+    },
+    {
+      "name": "left archive preserves anchor and newer-first ordering",
+      "passed": true
+    },
+    {
+      "name": "right archive includes later pages and excludes anchor",
+      "passed": true
+    },
+    {
+      "name": "all archive includes anchor and every page",
+      "passed": true
+    },
+    {
+      "name": "stale anchor and empty shelf archive nothing",
+      "passed": true
+    },
+    {
+      "name": "batch boundaries do not wrap",
+      "passed": true
+    },
+    {
+      "name": "shortcut normalizes case order and whitespace",
+      "passed": true
+    },
+    {
+      "name": "empty shortcut disables registration",
+      "passed": true
+    },
+    {
+      "name": "function and digit virtual keys map correctly",
+      "passed": true
+    },
+    {
+      "name": "arrow shortcuts map to native up and down virtual keys",
+      "passed": true
+    },
+    {
+      "name": "arrow names and symbols normalize consistently",
+      "passed": true
+    },
+    {
+      "name": "equivalent show and hide gestures are rejected",
+      "passed": true
+    },
+    {
+      "name": "paired shortcuts permit independent disabling",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: T",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Shift+T",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Ctrl+Ctrl+T",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Win+T",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Ctrl+F12",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Ctrl+F25",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Ctrl+Alt+",
+      "passed": true
+    },
+    {
+      "name": "unsafe or invalid shortcut rejected: Ctrl++T",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 at DPI 1 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 scales both dimensions at DPI 1",
+      "passed": true
+    },
+    {
+      "name": "card size 1 at DPI 1 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1 scales both dimensions at DPI 1",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 at DPI 1 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 scales both dimensions at DPI 1",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 at DPI 1.25 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 scales both dimensions at DPI 1.25",
+      "passed": true
+    },
+    {
+      "name": "card size 1 at DPI 1.25 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1 scales both dimensions at DPI 1.25",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 at DPI 1.25 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 scales both dimensions at DPI 1.25",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 at DPI 1.5 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 scales both dimensions at DPI 1.5",
+      "passed": true
+    },
+    {
+      "name": "card size 1 at DPI 1.5 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1 scales both dimensions at DPI 1.5",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 at DPI 1.5 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 scales both dimensions at DPI 1.5",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 at DPI 1.75 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 scales both dimensions at DPI 1.75",
+      "passed": true
+    },
+    {
+      "name": "card size 1 at DPI 1.75 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1 scales both dimensions at DPI 1.75",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 at DPI 1.75 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 scales both dimensions at DPI 1.75",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 at DPI 2 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 0.8 scales both dimensions at DPI 2",
+      "passed": true
+    },
+    {
+      "name": "card size 1 at DPI 2 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1 scales both dimensions at DPI 2",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 at DPI 2 fits with gaps",
+      "passed": true
+    },
+    {
+      "name": "card size 1.2 scales both dimensions at DPI 2",
+      "passed": true
+    },
+    {
+      "name": "tiny work area contains complete card",
+      "passed": true
+    },
+    {
+      "name": "tiny work area contains complete card",
+      "passed": true
+    },
+    {
+      "name": "larger cards lower automatic row capacity",
+      "passed": true
+    },
+    {
+      "name": "empty shelf has no card slots",
+      "passed": true
+    },
+    {
+      "name": "sound disabled by default does not consume throttle",
+      "passed": true
+    },
+    {
+      "name": "first eligible capture sounds immediately",
+      "passed": true
+    },
+    {
+      "name": "capture sound limited to one per two seconds",
+      "passed": true
+    },
+    {
+      "name": "paused and fullscreen captures stay silent without delaying next eligible sound",
+      "passed": true
+    },
+    {
+      "name": "English empty state and formatted status",
+      "passed": true
+    },
+    {
+      "name": "all English resources have translated text",
+      "passed": true
+    },
+    {
+      "name": "translation format arguments match Chinese keys",
+      "passed": true
+    },
+    {
+      "name": "all application translation keys exist in English resource",
+      "passed": true
+    },
+    {
+      "name": "all original-baseline languages are selectable without duplicates",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: en",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: en",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: en",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: en",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: es",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: es",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: es",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: es",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: fr",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: fr",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: fr",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: fr",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: gl",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: gl",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: gl",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: gl",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: pt-BR",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: pt-BR",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: pt-BR",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: pt-BR",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: ja",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: ja",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: ja",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: ja",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: ko",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: ko",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: ko",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: ko",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: tr",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: tr",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: tr",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: tr",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: az",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: az",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: az",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: az",
+      "passed": true
+    },
+    {
+      "name": "complete nonempty catalog: hi",
+      "passed": true
+    },
+    {
+      "name": "format arguments retained: hi",
+      "passed": true
+    },
+    {
+      "name": "file dialog extension filters retained: hi",
+      "passed": true
+    },
+    {
+      "name": "selected language and format rendering: hi",
+      "passed": true
+    },
+    {
+      "name": "Chinese empty state preserves requested wording",
+      "passed": true
+    },
+    {
+      "name": "optional image extension classified: .webp",
+      "passed": true
+    },
+    {
+      "name": "optional image extension classified: .WEBP",
+      "passed": true
+    },
+    {
+      "name": "optional image extension classified: .heic",
+      "passed": true
+    },
+    {
+      "name": "optional image extension classified: .HEIF",
+      "passed": true
+    },
+    {
+      "name": "standard images retain existing decoder route",
+      "passed": true
+    },
+    {
+      "name": "unverified and disguised extensions are not admitted",
+      "passed": true
+    }
+  ]
+}

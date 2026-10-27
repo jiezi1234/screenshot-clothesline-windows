@@ -13,7 +13,7 @@ var external = Make("external.png");
 string restoreId;
 using (var store = new LibraryStore(Path.Combine(root, "library")))
 {
-    Check(store.LoadSettings().RetentionDays == 0 && !store.LoadSettings().ClipboardEnabled, "conservative initial settings");
+    Check(store.LoadSettings().RetentionDays == 0 && !store.LoadSettings().ClipboardEnabled && store.LoadSettings().RevealProtectionSeconds == 10, "conservative initial settings with 10-second reveal protection");
     store.SaveSettings(new LibrarySettings { Capacity = 25, RetentionDays = 7, ExtraFolders = [root] });
     for (var i = 0; i < 100; i++) store.Add(Make($"image-{i}.png", i.ToString()), Ownership.External, "test", i.ToString(), now + i, 3);
     Check(store.Entries(EntryState.Shelf).Count == 3 && store.Entries(EntryState.History).Count == 97, "100 captures spill into history without loss");
@@ -203,15 +203,16 @@ using (var store = new LibraryStore(migration))
 {
     var settings = store.LoadSettings();
     Check(settings.CardSizePercent == 100 && !settings.CaptureSound && settings.Language == "zh-CN", "old JSON settings retain standard size and silent Chinese defaults");
-    store.SaveSettings(settings with { CardSizePercent = 120, CaptureSound = true, Language = "en" });
-    foreach (var invalid in new[] { settings with { CardSizePercent = 0 }, settings with { CardSizePercent = 90 }, settings with { Language = "unknown" } })
+    Check(settings.RevealProtectionSeconds == 10, "old JSON without reveal protection defaults to 10 seconds");
+    store.SaveSettings(settings with { CardSizePercent = 120, CaptureSound = true, Language = "en", RevealProtectionSeconds = 30 });
+    foreach (var invalid in new[] { settings with { CardSizePercent = 0 }, settings with { CardSizePercent = 90 }, settings with { Language = "unknown" }, settings with { RevealProtectionSeconds = 0 }, settings with { RevealProtectionSeconds = 7 } })
     {
         var rejected = false; try { store.SaveSettings(invalid); } catch (ArgumentException) { rejected = true; }
-        Check(rejected && store.LoadSettings().CardSizePercent == 120, "invalid appearance preference leaves persisted settings intact");
+        Check(rejected && store.LoadSettings().CardSizePercent == 120 && store.LoadSettings().RevealProtectionSeconds == 30, "invalid appearance preference leaves persisted settings intact");
     }
 }
 using (var store = new LibraryStore(migration))
-    Check(store.LoadSettings().CardSizePercent == 120 && store.LoadSettings().CaptureSound && store.LoadSettings().Language == "en", "size sound and language survive restart");
+    Check(store.LoadSettings().CardSizePercent == 120 && store.LoadSettings().CaptureSound && store.LoadSettings().Language == "en" && store.LoadSettings().RevealProtectionSeconds == 30, "size sound language and reveal protection survive restart");
 using (var store = new LibraryStore(Path.Combine(root, "video-rules")))
 {
     Check(store.LoadSettings().VideoFolder == "", "video collection stays opt-in for old/default settings");

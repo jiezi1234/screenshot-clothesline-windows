@@ -18,6 +18,7 @@ internal sealed partial class ShelfController
     private PixelRect dropBounds;
     private double dropScale = 1;
     private nint dropMonitor;
+    private int hoverSlot = -1, hoverPage = -1;
     public Action<string, string?>? ReorderRequested { get; set; }
     public Func<string[], string?, Task>? IncomingDropRequested { get; set; }
     internal string[] OrderedIds => cards.Select(c => c.Item.EntryId ?? c.Item.Path).ToArray();
@@ -41,7 +42,6 @@ internal sealed partial class ShelfController
     private bool CanReceive(DragEventArgs e) => !disposed && !SessionBlocked && !importingDrop && (e.AllowedEffects & DragDropEffects.Copy) != 0
         && (!SuppressFullscreen || !Native.IsFullscreen(Native.MonitorAt(Native.Cursor)))
         && (draggedCard is not null || (IncomingDropRequested is not null && ImageDropPaths(e.Data).Length > 0));
-    private string DragCard(CardWindow card) => DragCard(card, null);
     internal string DragCard(CardWindow card, ShellTransfer.DragOperation? perform)
     {
         draggedCard = card; internalDropHandled = false; suppressDropUntilRelease = false;
@@ -54,6 +54,7 @@ internal sealed partial class ShelfController
     }
     internal void TrackDropTarget(long now, PixelPoint cursor, MonitorInfo monitor, bool leftDown)
     {
+        if (localReorder is not null) return;
         if (!leftDown) { suppressDropUntilRelease = false; HideDropTarget(); return; }
         if (Native.GetAsyncKeyState(0x1B) < 0) suppressDropUntilRelease = true;
         if (suppressDropUntilRelease || importingDrop || SessionBlocked || (SuppressFullscreen && Native.IsFullscreen(monitor))) { HideDropTarget(); return; }
@@ -67,9 +68,9 @@ internal sealed partial class ShelfController
         if (!near) { HideDropTarget(); return; }
         dropNearSince ??= now;
         if (now - dropNearSince >= 180 && (!dropTarget.IsVisible || dropMonitor != monitor.Handle))
-            ShowDropTarget(monitor, false, null, T("拖入图片，松手挂上（最多 100 张）"));
+            ShowDropTarget(monitor, false, T("拖入图片，松手挂上（最多 100 张）"));
     }
-    private void ShowDropTarget(MonitorInfo monitor, bool expanded, int? markerX, string text)
+    private void ShowDropTarget(MonitorInfo monitor, bool expanded, string text)
     {
         if (dropMonitor != monitor.Handle || !dropTarget.IsVisible) { dropScale = Native.MoveAndGetScale(dropTarget, monitor); dropMonitor = monitor.Handle; }
         if (expanded)
@@ -79,40 +80,46 @@ internal sealed partial class ShelfController
             dropBounds = new(monitor.WorkArea.X + (int)(8 * dropScale), monitor.WorkArea.Y, Math.Max(1, monitor.WorkArea.Width - (int)(16 * dropScale)), height);
         }
         else dropBounds = ShelfDropGeometry.Activation(monitor.Bounds, monitor.WorkArea, dropScale);
-        dropTarget.Present(dropBounds, false); dropTarget.Feedback(text, dropBounds, dropScale, markerX);
+        dropTarget.Present(dropBounds, false); dropTarget.Feedback(text);
     }
-    private void HideDropTarget() { if (dropTarget.IsVisible) dropTarget.Dismiss(); dropNearSince = null; pageDirection = 0; }
-    private (string? BeforeId, int? MarkerX) DropPosition(PixelPoint cursor)
+    private void HideDropTarget() { CancelLocalReorder(); RestorePreviewCards(); if (dropTarget.IsVisible) dropTarget.Dismiss(); dropNearSince = null; pageDirection = 0; hoverSlot = hoverPage = -1; }
+    private string? DropPosition(PixelPoint cursor)
     {
         var monitor = activeMonitor ?? Native.MonitorAt(cursor);
-        if (cards.Count == 0) return (null, null);
+        if (cards.Count == 0) return null;
         var slots = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count, cardScale);
         var offset = page * slots.Count; var count = Math.Min(slots.Count, cards.Count - offset);
-        var slot = ShelfDropGeometry.InsertionSlot(slots, count, cursor.X);
+        if (hoverPage != page) { hoverPage = page; hoverSlot = -1; }
+        var slot = hoverSlot = ShelfDropGeometry.StableSlot(slots, count, hoverSlot, cursor.X, (int)(8 * scale));
         var next = cards.ElementAtOrDefault(offset + slot)?.Item;
-        return (next?.EntryId ?? next?.Path, ShelfDropGeometry.MarkerX(slots, count, slot, scale));
+        return next?.EntryId ?? next?.Path;
     }
     private void DragOverShelf(object sender, DragEventArgs e)
     {
         e.Handled = true; e.Effects = DragDropEffects.None;
-        if (!CanReceive(e)) { dropTarget.Feedback(T("此处只接受本地图片文件。"), dropBounds, dropScale, null); return; }
+        if (!CanReceive(e)) { RestorePreviewCards(); dropTarget.Feedback(T("此处只接受本地图片文件。")); return; }
         UpdateDropFeedback(Native.Cursor, clock.ElapsedMilliseconds);
         e.Effects = DragDropEffects.Copy;
     }
     internal void UpdateDropFeedback(PixelPoint cursor, long now)
     {
         var monitor = Native.MonitorAt(cursor);
-        if (!presented || activeMonitor?.Handle != monitor.Handle) { Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present(); }
+        if (!presented || activeMonitor?.Handle != monitor.Handle) { RestorePreviewCards(); Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present(); }
+        UpdateDragPage(cursor, monitor, now);
+        DropPosition(cursor);
+        ShowDropTarget(monitor, true, draggedCard is null ? T("松手挂上图片，原文件保留。") : T("拖动调整顺序；在左右边缘停留可翻页。"));
+        RenderIncomingGap();
+    }
+    private void UpdateDragPage(PixelPoint cursor, MonitorInfo monitor, long now)
+    {
         var direction = cursor.X < monitor.WorkArea.X + 48 * scale ? -1 : cursor.X > monitor.WorkArea.Right - 48 * scale ? 1 : 0;
         if (direction != pageDirection) { pageDirection = direction; pageEdgeSince = now; }
         else if (direction != 0 && now - pageEdgeSince >= 650)
         {
             var next = Math.Clamp(page + direction, 0, Math.Max(0, (cards.Count - 1) / DisplayCapacity));
-            if (next != page) { page = next; Present(); }
+            if (next != page) { page = next; Present(); dropTarget.InvalidatePlacement(); }
             pageEdgeSince = now;
         }
-        var position = DropPosition(cursor);
-        ShowDropTarget(monitor, true, position.MarkerX, draggedCard is null ? T("松手挂上图片，原文件保留。") : T("拖动调整顺序；在左右边缘停留可翻页。"));
     }
     private async void DropOnShelf(object sender, DragEventArgs e)
     {
@@ -125,25 +132,25 @@ internal sealed partial class ShelfController
         {
             if (draggedCard is CardWindow source)
             {
-                MoveCardBefore(source, position.BeforeId); internalDropHandled = true;
+                MoveCardBefore(source, position); internalDropHandled = true;
                 e.Effects = DragDropEffects.Copy;
             }
             else if (IncomingDropRequested is not null && paths.Length > 0)
             {
                 e.Effects = DragDropEffects.Copy; importingDrop = true;
-                await IncomingDropRequested(paths, position.BeforeId);
+                await IncomingDropRequested(paths, position);
             }
         }
         catch (Exception ex) { Status?.Invoke(T("操作未完成：") + ex.Message); }
         finally { importingDrop = false; if (!disposed && presented) gate.Show(clock.ElapsedMilliseconds); }
     }
-    internal void MoveCardBefore(CardWindow source, string? beforeId)
+    internal void MoveCardBefore(CardWindow source, string? beforeId, bool present = true)
     {
         if (!cards.Contains(source)) return;
         if ((source.Item.EntryId ?? source.Item.Path) == beforeId) return;
         if (source.Item.EntryId is string id) ReorderRequested?.Invoke(id, beforeId);
         var target = beforeId is null ? null : cards.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == beforeId);
         cards.Remove(source); cards.Insert(target is null ? cards.Count : cards.IndexOf(target), source);
-        if (presented) Present();
+        if (present && presented) Present();
     }
 }

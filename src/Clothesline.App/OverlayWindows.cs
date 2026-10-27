@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Specialized;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -96,7 +97,7 @@ internal sealed class CardWindow : OverlayWindow
     public event Action<string>? Status;
     public event Action<CardWindow>? TakeDown;
     public event Action? DragEnded;
-    public Func<CardWindow, string>? DragRequested { get; set; }
+    public Func<CardWindow, Task<string>>? DragRequested { get; set; }
     public Action<DemoItem>? RecycleRequested { get; set; }
     public Action<DemoItem, bool>? ExportRequested { get; set; }
     public Action<DemoItem, bool>? WorkspaceRequested { get; set; }
@@ -221,15 +222,15 @@ internal sealed class CardWindow : OverlayWindow
         }
         down = e.GetPosition(this); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
     }
-    private void Move(object sender, MouseEventArgs e)
+    private async void Move(object sender, MouseEventArgs e)
     {
         if (down is not Point start || e.LeftButton != MouseButtonState.Pressed || Busy) return;
         var p = e.GetPosition(this); // Keep the drag threshold in window DIPs, independent of the Viewbox size.
         if (Math.Abs(p.X - start.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(p.Y - start.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Stop(); Busy = true;
-        try { Report(DragRequested?.Invoke(this) ?? ShellTransfer.Drag(this, Item)); }
-        catch (Exception ex) { Report(T("拖拽未完成：") + ex.Message); }
-        finally { Busy = false; DragEnded?.Invoke(); }
+        try { var result = DragRequested is null ? ShellTransfer.Drag(this, Item) : await DragRequested(this); if (!closed) Report(result); }
+        catch (Exception ex) { if (!closed) Report(T("拖拽未完成：") + ex.Message); }
+        finally { Busy = false; if (!closed) DragEnded?.Invoke(); }
     }
     private void Up(object sender, MouseButtonEventArgs e)
     {

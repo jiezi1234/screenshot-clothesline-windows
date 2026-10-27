@@ -4,13 +4,13 @@
 
 An independently maintained Windows implementation of a screenshot clothesline, inspired by [Tendedero](https://github.com/alejandrobujan/tendedero).
 
-> 当前状态：**v0.13.0 开发版**。新增[拖动排序与拖入图片](docs/DRAG_AND_DROP.md)，顺序重启后保留。沿用[新版控制面板](docs/DASHBOARD_DESIGN.md)和可选展开保护期（默认 10 秒）。默认 Ctrl + ↓ 显示晾衣绳、Ctrl + ↑ 收回，可分别修改或关闭，详见[快捷键说明](docs/DIRECTIONAL_SHORTCUTS.md)。视频用于挂绳、预览和文件流转，项目不提供视频剪辑；图片标注保留。完整兼容性仍有[待人工验收项目](docs/STAGE3_COMPATIBILITY.md)。
+> 当前状态：**v0.13.1 开发版**。拖动时相邻照片向外倾斜让位，卡片跟随鼠标并平滑归位。支持[拖动排序与拖入图片](docs/DRAG_AND_DROP.md)，顺序重启后保留。沿用[新版控制面板](docs/DASHBOARD_DESIGN.md)和可选展开保护期（默认 10 秒）。默认 Ctrl + ↓ 显示晾衣绳、Ctrl + ↑ 收回，可分别修改或关闭，详见[快捷键说明](docs/DIRECTIONAL_SHORTCUTS.md)。视频用于挂绳、预览和文件流转，项目不提供视频剪辑；图片标注保留。完整兼容性仍有[待人工验收项目](docs/STAGE3_COMPATIBILITY.md)。
 
 ![阶段 0 示例晾衣绳](docs/images/stage0-shelf.png)
 
 ## 运行开发版
 
-面向 Windows 11 x64。将 `Clothesline-0.13.0-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
+面向 Windows 11 x64。将 `Clothesline-0.13.1-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
 
 升级前先保存编辑并从托盘退出旧版。v0.13.0 首次打开 v1/v2 旧库时，先创建 `library-v1-backup-*.db` 或 `library-v2-backup-*.db` 数据库备份，再迁移至 v3，新增独立的显示顺序表；原有记录、设置与初始排列保留。迁移后的库不能直接用 v0.12 或更早版本打开；数据库备份不包含图片文件。详见[升级说明](docs/DRAG_AND_DROP.md#升级)。
 
@@ -20,7 +20,7 @@ An independently maintained Windows implementation of a screenshot clothesline, 
 - 晾衣绳为空时，悬停、快捷键或“显示 / 收起”仍会展开绳线，并显示一行“暂时没有图片”。加入图片后提示消失，取下最后一张后重新显示；离开后照常收起。
 - “外观与语言 → 展开保护期”可选 5、10、15、30、60 秒，默认 10 秒。修改并保存后立即生效，已展开时按新时长重新计时。保护期结束且鼠标未进入晾衣绳时，再经过约 0.55 秒自动收起；鼠标停留或正在拖拽会继续显示。再按 Ctrl + ↓ 重新计时，Ctrl + ↑ 可主动收回。
 - 拖出保存只允许复制副本，保存后原图和卡片继续保留。同盘与跨盘使用相同规则；按住 Shift 不会获得移动权限，目标可能拒绝放置。删除文件请使用右键“将文件移入回收站”。
-- 按住卡片沿晾衣绳左右拖动，出现插入线后松手调整顺序，重启后保留。拖到左右屏幕边缘停留约 0.65 秒可翻页；新收集的图片仍放在最前，超容量仍按加入时间移入历史。
+- 按住卡片沿晾衣绳左右拖动，两侧照片会轻轻向外倾斜让位，松手后平滑归位，重启后保留。拖到左右屏幕边缘停留约 0.65 秒可翻页；新收集的图片仍放在最前，超容量仍按加入时间移入历史。
 - 从资源管理器拖入图片：绳子已展开时拖到卡片附近；收起时拖到屏幕顶部中央，稍停出现投放区，再松手。支持多图（每次最多 100 个文件），同一文件不会重复挂载；历史中的图片可重新挂上。原文件保持原位置，外部拖入仅接收图片，不递归目录。
 - 右键可定位、另存为、保存到桌面、取下或回收文件。取下、超出容量只转入历史；历史页可预览、重新挂上、导出或移除外部引用记录。
 - 右键“预览与缩放”进入图片工作台；右键“编辑图片…”或按住卡片约 650 ms 进入编辑。工作台支持适应窗口、100%、Ctrl + 滚轮缩放、空格拖动、方向键切图，以及画笔、箭头、矩形、文字、马赛克、裁剪。文字工具先在输入框填写内容，再点击图片放置。
@@ -71,7 +71,7 @@ WebP、HEIC/HEIF 可从截图目录、额外目录和手动导入进入同一图
 ./scripts/publish.ps1
 ```
 
-所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.13.0-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.13.0.txt`。
+所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.13.1-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.13.1.txt`。
 
 普通测试包含核心规则、SQLite 生命周期和 100 文件监听突发测试。有交互式 Windows 桌面时，先退出正在运行的应用，再执行 `./scripts/test.ps1 -Desktop`：会短暂显示本程序专用测试窗口，检查跨进程窗口命中、100 张生成的有效 PNG、导出和原生回收站。结果与自身界面渲染位于 `artifacts/validation/` 和 `artifacts/stage1-validation/`。该命令不采集屏幕图像、不修改系统剪贴板；回收站测试仅处理生成的夹具文件。
 
@@ -91,7 +91,7 @@ GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备�
 
 v0.12.0 新增 `--dashboard-test artifacts/dashboard-validation`，使用生成素材与隔离数据库检查页面导航、草稿保存/撤销、历史搜索、下拉框与 11 种语言的小窗口布局，已纳入 `test.ps1 -Desktop`。
 
-v0.13.0 新增 `--drag-drop-test artifacts/drag-drop-validation`，检查拖入、持久排序、分页、容量、原文件保留和原生 Shell 数据与 WPF 事件互通。使用隔离库，不移动用户鼠标；真实 Explorer 手势仍按[人工清单](docs/DRAG_AND_DROP.md#人工验收)验证。
+v0.13.1 新增 `--reorder-motion-test artifacts/reorder-motion-validation`，检查向外倾斜、跟随、归位、快速反向、跨页、取消及动画清理。原有 `--drag-drop-test artifacts/drag-drop-validation`，检查拖入、持久排序、分页、容量、原文件保留和原生 Shell 数据与 WPF 事件互通。使用隔离库，不移动用户鼠标；真实 Explorer 手势仍按[人工清单](docs/DRAG_AND_DROP.md#人工验收)验证。
 
 ## 已确定的方向
 

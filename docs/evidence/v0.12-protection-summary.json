@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "date": "2026-10-27",
+  "groups": {
+    "core": 164,
+    "storage": 110,
+    "dashboard": 41,
+    "appearance": 26
+  },
+  "total": 341,
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Configurable reveal protection: default and old settings, persistence and validation, all five timer boundaries, live application, draft discard, and 11-language layouts."
+}

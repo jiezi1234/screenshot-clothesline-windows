@@ -89,6 +89,7 @@ internal sealed class LibraryRuntime : IDisposable
         if (updateDesktop && Desktop is not null) Desktop.Apply(settings, Store.SaveSettings); else Store.SaveSettings(settings);
         Settings = settings;
         shelf.ReduceMotion = settings.ReduceMotion; shelf.SuppressFullscreen = settings.SuppressFullscreen;
+        shelf.RevealProtectionSeconds = settings.RevealProtectionSeconds;
         shelf.SetCardSize(settings.CardSizePercent);
         Collector.Configure(settings); clipboard.Enable(settings.ClipboardEnabled && !settings.Paused);
         Store.EnforceCapacity(Capacity, Now); ScheduleRefresh(false);

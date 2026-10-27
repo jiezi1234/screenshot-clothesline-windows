@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Markup;
 using Clothesline.Storage;
+using Clothesline.Core;
 
 namespace Clothesline.App;
 
@@ -29,6 +30,8 @@ internal sealed partial class Dashboard : Window
     private readonly CheckBox shortcutEnabled = new() { Content = T("启用全局快捷键") };
     private readonly CheckBox login = new() { Content = T("登录 Windows 时启动到托盘（默认关闭）") };
     private readonly ComboBox cardSize = new() { ItemsSource = new[] { T("小 · 80%"), T("标准 · 100%"), T("大 · 120%") } };
+    private static readonly int[] protectionDurations = RevealGate.ProtectionSecondsOptions.ToArray();
+    private readonly ComboBox protection = new() { ItemsSource = protectionDurations.Select(seconds => seconds == RevealGate.DefaultProtectionSeconds ? T("{0} 秒（默认）", seconds) : T("{0} 秒", seconds)).ToArray() };
     private readonly ComboBox language = new() { ItemsSource = Clothesline.Core.UiText.Languages, DisplayMemberPath = "Name", SelectedValuePath = "Code" };
     private readonly ComboBox capacity = new() { ItemsSource = new[] { T("自动：当前屏幕一排"), T("25 项"), T("50 项"), T("100 项") } };
     private readonly ComboBox retention = new() { ItemsSource = new[] { T("永久保留（不自动清理）"), T("取下 7 天后清理"), T("取下 30 天后清理") } };
@@ -127,6 +130,8 @@ internal sealed partial class Dashboard : Window
     {
         var visual = Stack(); visual.Children.Add(Field(T("卡片大小"), cardSize)); visual.Children.Add(motion); motion.ToolTip = T("关闭卡片入场、摆动、取下及绳线淡入；Windows 关闭动画时也会自动停用。鼠标进入卡片时立即停稳。");
         visual.Children.Add(Text(T("大小立即生效；自动容量会随每排可显示数量调整，超出的图片进入历史。"), 12, true, new Thickness(0, 8, 0, 0)));
+        var timing = Field(T("展开保护期"), protection); timing.Margin = new Thickness(0, 18, 0, 8); visual.Children.Add(timing);
+        visual.Children.Add(Text(T("给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。"), 12, true));
         var audio = Stack(); audio.Children.Add(sound); audio.Children.Add(Text(T("连续收集最多每 2 秒播放一次；暂停或当前屏幕全屏时静音。提示音遵循 Windows 声音方案和音量设置。"), 12, true, new Thickness(0, 8, 0, 0)));
         var locales = Stack(); locales.Children.Add(Field(T("界面语言（重启后生效）"), language)); locales.Children.Add(Text(T("保存后，请先保存编辑内容，再从托盘退出并重新打开应用。"), 12, true));
         return Scroll(Card(T("外观与动效"), visual), Card(T("提示音"), audio), Card(T("界面语言"), locales));

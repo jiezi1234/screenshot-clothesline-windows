@@ -44,6 +44,7 @@ internal sealed class ShelfController : IDisposable
     internal bool MotionAllowed => !ReduceMotion && systemMotion();
     internal int RetiringCount => retiring.Count;
     public bool SuppressFullscreen { get; set; } = true;
+    public int RevealProtectionSeconds { get => gate.ProtectionSeconds; set => gate.ConfigureProtection(value, clock.ElapsedMilliseconds); }
     public bool Visible => presented;
     public int Count => cards.Count;
     public double LastShowMilliseconds { get; private set; }

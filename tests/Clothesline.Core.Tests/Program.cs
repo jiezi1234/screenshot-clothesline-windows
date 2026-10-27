@@ -22,6 +22,27 @@ repeatedShowGate.Tick(10550, false, false, false, false); repeatedShowGate.Tick(
 Check(repeatedShowGate.Visible, "repeated show restarts the full 10-second protection");
 repeatedShowGate.Tick(19000, false, false, false, false); repeatedShowGate.Tick(19550, false, false, false, false);
 Check(!repeatedShowGate.Visible, "repeated show still auto-hides after protection and leave delay");
+foreach (var seconds in RevealGate.ProtectionSecondsOptions)
+{
+    var configured = new RevealGate(); configured.ConfigureProtection(seconds, 0); configured.Show(100);
+    configured.Tick(100 + seconds * 1000 - 1, false, false, false, false);
+    Check(configured.Visible, $"selected {seconds}-second protection remains active before its boundary");
+    configured.Tick(100 + seconds * 1000, false, false, false, false);
+    configured.Tick(100 + seconds * 1000 + 549, false, false, false, false);
+    Check(configured.Visible, $"selected {seconds}-second protection retains leave delay");
+    configured.Tick(100 + seconds * 1000 + 550, false, false, false, false);
+    Check(!configured.Visible, $"selected {seconds}-second protection expires with leave delay");
+}
+var changedProtection = new RevealGate(); changedProtection.Show(0); changedProtection.ConfigureProtection(5, 9000);
+changedProtection.Tick(10550, false, false, false, false); changedProtection.Tick(13999, false, false, false, false);
+Check(changedProtection.Visible, "changing protection restarts the visible shelf timer immediately");
+changedProtection.ConfigureProtection(5, 13999); changedProtection.Tick(14000, false, false, false, false); changedProtection.Tick(14550, false, false, false, false);
+Check(!changedProtection.Visible, "saving unchanged protection does not extend the visible shelf timer");
+changedProtection.ConfigureProtection(30, 15000);
+Check(!changedProtection.Visible, "changing protection does not open a hidden shelf");
+var invalidProtectionRejected = false;
+try { changedProtection.ConfigureProtection(7, 16000); } catch (ArgumentOutOfRangeException) { invalidProtectionRejected = true; }
+Check(invalidProtectionRejected && changedProtection.ProtectionSeconds == 30, "invalid protection preserves the previous duration");
 var dragGate = new RevealGate();
 dragGate.Tick(0, true, false, true, false); dragGate.Tick(1000, true, false, true, false);
 Check(!dragGate.Visible, "dragging another application does not reveal shelf");

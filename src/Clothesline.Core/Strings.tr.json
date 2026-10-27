@@ -338,5 +338,9 @@
   "选择收集位置，安排保留方式。": "Kaynakları ve saklama süresini seçin.",
   "让常用操作更顺手。": "Sık kullanılan işlemler elinizin altında olsun.",
   "按你的习惯，调整晾衣绳。": "Askıyı alışkanlıklarınıza göre ayarlayın.",
-  "查看这台电脑的图片格式支持。": "Bu bilgisayardaki görüntü biçimlerini denetleyin."
+  "查看这台电脑的图片格式支持。": "Bu bilgisayardaki görüntü biçimlerini denetleyin.",
+  "展开保护期": "Görünürlük koruma süresi",
+  "{0} 秒": "{0} saniye",
+  "{0} 秒（默认）": "{0} saniye (varsayılan)",
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Fareyi ipe taşımak için süre tanır; kaydedildiğinde hemen uygulanır ve ip açıksa sayaç yeniden başlar."
 }

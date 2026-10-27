@@ -338,5 +338,9 @@
   "选择收集位置，安排保留方式。": "Escolle as fontes e o tempo de conservación.",
   "让常用操作更顺手。": "Ten á man as accións habituais.",
   "按你的习惯，调整晾衣绳。": "Adapta o tendedeiro aos teus hábitos.",
-  "查看这台电脑的图片格式支持。": "Comproba os formatos de imaxe deste equipo."
+  "查看这台电脑的图片格式支持。": "Comproba os formatos de imaxe deste equipo.",
+  "展开保护期": "Tempo de protección",
+  "{0} 秒": "{0} segundos",
+  "{0} 秒（默认）": "{0} segundos (predeterminado)",
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Tempo para chegar ao tendal co rato; aplícase ao gardar e reinicia o temporizador se está aberto."
 }

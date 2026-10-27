@@ -51,6 +51,7 @@ internal sealed partial class Dashboard
         capacity.SelectedIndex = Array.IndexOf(new[] { 0, 25, 50, 100 }, settings.Capacity); retention.SelectedIndex = Array.IndexOf(new[] { 0, 7, 30 }, settings.RetentionDays);
         storage.SelectedIndex = settings.MaxManagedBytes >= 2L * 1024 * 1024 * 1024 ? 2 : settings.MaxManagedBytes >= 1024L * 1024 * 1024 ? 1 : 0;
         cardSize.SelectedIndex = Array.IndexOf(new[] { 80, 100, 120 }, settings.CardSizePercent); sound.IsChecked = settings.CaptureSound;
+        protection.SelectedIndex = Array.IndexOf(protectionDurations, settings.RevealProtectionSeconds);
         language.SelectedValue = settings.Language;
         shortcutEnabled.IsChecked = settings.ShowShortcut.Length > 0 || settings.HideShortcut.Length > 0;
         showShortcut.Text = shortcutEnabled.IsChecked == true ? settings.ShowShortcut : LibrarySettings.DefaultShowShortcut;
@@ -65,7 +66,8 @@ internal sealed partial class Dashboard
         library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), VideoFolder = videoFolder.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = library.Settings.Paused, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
             Capacity = new[] { 0, 25, 50, 100 }[Math.Max(0, capacity.SelectedIndex)], RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024,
             ShowShortcut = shortcutEnabled.IsChecked == true ? showShortcut.Text : "", HideShortcut = shortcutEnabled.IsChecked == true ? hideShortcut.Text : "", RunAtLogin = login.IsChecked == true,
-            CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], CaptureSound = sound.IsChecked == true, Language = language.SelectedValue as string ?? "zh-CN" });
+            CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], RevealProtectionSeconds = protection.SelectedIndex >= 0 ? protectionDurations[protection.SelectedIndex] : Clothesline.Core.RevealGate.DefaultProtectionSeconds,
+            CaptureSound = sound.IsChecked == true, Language = language.SelectedValue as string ?? "zh-CN" });
         FillSettings();
     }
     private async void Import()
@@ -79,13 +81,13 @@ internal sealed partial class Dashboard
         Clipboard = clipboard.IsChecked, Popup = popup.IsChecked, Full = full.IsChecked, Motion = motion.IsChecked,
         Capacity = capacity.SelectedIndex, Retention = retention.SelectedIndex, Storage = storage.SelectedIndex,
         ShortcutEnabled = shortcutEnabled.IsChecked, Show = showShortcut.Text, Hide = hideShortcut.Text, Login = login.IsChecked,
-        Size = cardSize.SelectedIndex, Sound = sound.IsChecked, Language = language.SelectedValue
+        Size = cardSize.SelectedIndex, Protection = protection.SelectedIndex, Sound = sound.IsChecked, Language = language.SelectedValue
     });
     private void AttachDraftTracking()
     {
         foreach (var text in new[] { screenshot, videoFolder, showShortcut, hideShortcut }.Concat(extras)) text.TextChanged += (_, _) => UpdateDraftState();
         foreach (var check in new[] { clipboard, popup, full, motion, shortcutEnabled, login, sound }) { check.Checked += (_, _) => UpdateDraftState(); check.Unchecked += (_, _) => UpdateDraftState(); }
-        foreach (var choice in new[] { capacity, retention, storage, cardSize, language }) choice.SelectionChanged += (_, _) => UpdateDraftState();
+        foreach (var choice in new[] { capacity, retention, storage, cardSize, protection, language }) choice.SelectionChanged += (_, _) => UpdateDraftState();
     }
     private void UpdateDraftState()
     {

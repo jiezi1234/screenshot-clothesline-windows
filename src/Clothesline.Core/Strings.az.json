@@ -338,5 +338,9 @@
   "选择收集位置，安排保留方式。": "Mənbələri və saxlanma müddətini seçin.",
   "让常用操作更顺手。": "Gündəlik əməliyyatlar əlinizin altında olsun.",
   "按你的习惯，调整晾衣绳。": "İpi vərdişlərinizə uyğunlaşdırın.",
-  "查看这台电脑的图片格式支持。": "Bu kompüterin şəkil formatlarını yoxlayın."
+  "查看这台电脑的图片格式支持。": "Bu kompüterin şəkil formatlarını yoxlayın.",
+  "展开保护期": "Görünmə qoruma müddəti",
+  "{0} 秒": "{0} saniyə",
+  "{0} 秒（默认）": "{0} saniyə (standart)",
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Siçanı ipə aparmaq üçün vaxt verir; yadda saxlandıqda dərhal tətbiq olunur və ip açıqdırsa sayğac yenidən başlayır."
 }

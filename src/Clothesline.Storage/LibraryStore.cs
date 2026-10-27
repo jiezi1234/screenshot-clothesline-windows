@@ -25,6 +25,7 @@ public sealed record LibrarySettings
     public string HideShortcut { get; init; } = DefaultHideShortcut;
     public bool RunAtLogin { get; init; }
     public int CardSizePercent { get; init; } = 100;
+    public int RevealProtectionSeconds { get; init; } = Clothesline.Core.RevealGate.DefaultProtectionSeconds;
     public bool CaptureSound { get; init; }
     public string Language { get; init; } = "zh-CN";
 }
@@ -119,7 +120,8 @@ public sealed class LibraryStore : IDisposable
     public static void ValidateSettings(LibrarySettings settings)
     {
         if (settings.ExtraFolders.Length > 3 || settings.Capacity is not (0 or 25 or 50 or 100) || settings.RetentionDays is not (0 or 7 or 30) || settings.MaxManagedBytes < 1024 * 1024
-            || settings.CardSizePercent is not (80 or 100 or 120) || !Clothesline.Core.UiText.IsSupported(settings.Language))
+            || settings.CardSizePercent is not (80 or 100 or 120) || !Clothesline.Core.RevealGate.ProtectionSecondsOptions.Contains(settings.RevealProtectionSeconds)
+            || !Clothesline.Core.UiText.IsSupported(settings.Language))
             throw new ArgumentException(T("设置值超出支持范围。"));
         Clothesline.Core.ShortcutGesture.ParsePair(settings.ShowShortcut, settings.HideShortcut);
     }

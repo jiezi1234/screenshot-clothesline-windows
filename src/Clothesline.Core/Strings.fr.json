@@ -338,5 +338,9 @@
   "选择收集位置，安排保留方式。": "Choisissez les sources et la durée de conservation.",
   "让常用操作更顺手。": "Gardez vos actions courantes à portée de main.",
   "按你的习惯，调整晾衣绳。": "Adaptez le fil à vos habitudes.",
-  "查看这台电脑的图片格式支持。": "Vérifiez les formats d’image de cet ordinateur."
+  "查看这台电脑的图片格式支持。": "Vérifiez les formats d’image de cet ordinateur.",
+  "展开保护期": "Délai de protection",
+  "{0} 秒": "{0} secondes",
+  "{0} 秒（默认）": "{0} secondes (par défaut)",
+  "给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。": "Temps pour atteindre le fil avec la souris ; la sauvegarde applique le délai et relance le minuteur si le fil est ouvert."
 }

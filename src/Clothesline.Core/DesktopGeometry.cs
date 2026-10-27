@@ -43,12 +43,22 @@ public static class DesktopGeometry
 /// Uses monotonic elapsed time, independent of UI timers and wall-clock changes.
 public sealed class RevealGate
 {
+    public const int DefaultProtectionSeconds = 10;
+    public static IReadOnlyList<int> ProtectionSecondsOptions { get; } = Array.AsReadOnly(new[] { 5, 10, 15, 30, 60 });
+    public int ProtectionSeconds { get; private set; } = DefaultProtectionSeconds;
     private long? entered;
     private long? left;
     private long graceUntil;
     private bool mustLeaveTrigger;
     public bool Visible { get; private set; }
-    public void Show(long now) { Visible = true; graceUntil = now + 10000; entered = left = null; }
+    public void ConfigureProtection(int seconds, long now)
+    {
+        if (!ProtectionSecondsOptions.Contains(seconds)) throw new ArgumentOutOfRangeException(nameof(seconds));
+        if (ProtectionSeconds == seconds) return;
+        ProtectionSeconds = seconds;
+        if (Visible) Show(now);
+    }
+    public void Show(long now) { Visible = true; graceUntil = now + ProtectionSeconds * 1000L; entered = left = null; }
     public void Hide() { Visible = false; entered = left = null; mustLeaveTrigger = true; }
     public void Tick(long now, bool inTrigger, bool inShelf, bool busy, bool blocked)
     {

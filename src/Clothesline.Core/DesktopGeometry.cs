@@ -48,7 +48,7 @@ public sealed class RevealGate
     private long graceUntil;
     private bool mustLeaveTrigger;
     public bool Visible { get; private set; }
-    public void Show(long now) { Visible = true; graceUntil = now + 2500; entered = left = null; }
+    public void Show(long now) { Visible = true; graceUntil = now + 10000; entered = left = null; }
     public void Hide() { Visible = false; entered = left = null; mustLeaveTrigger = true; }
     public void Tick(long now, bool inTrigger, bool inShelf, bool busy, bool blocked)
     {

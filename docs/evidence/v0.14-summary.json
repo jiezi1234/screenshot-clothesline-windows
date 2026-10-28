@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "date": "2026-10-28",
+  "version": "0.14.0",
+  "groups": {
+    "core": 235,
+    "hover-preview": 30,
+    "reorder-motion": 29,
+    "drag-drop": 33,
+    "motion": 30,
+    "image-format": 33,
+    "library": 20
+  },
+  "total": 410,
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Generated fixtures and isolated test windows/databases. Controller-driven hover, native hit testing and isolated preview decoding. Real pointer gestures and mixed-DPI devices still require manual validation; storage suite not rerun for this change."
+}

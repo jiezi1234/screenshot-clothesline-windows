@@ -14,12 +14,13 @@ public static class ShelfDropGeometry
         for (var i = 0; i < count; i++) if (cursorX < slots[i].X + slots[i].Width / 2) return i;
         return count;
     }
-    public static int MarkerX(IReadOnlyList<PixelRect> slots, int visibleCount, int slot, double scale)
+    public static int StableSlot(IReadOnlyList<PixelRect> slots, int visibleCount, int previous, int cursorX, int hysteresis)
     {
         var count = Math.Clamp(visibleCount, 0, slots.Count);
-        if (count == 0) throw new ArgumentException("A marker requires a visible slot.");
-        if (slot <= 0) return slots[0].X - (int)(8 * scale);
-        if (slot >= count) return slots[count - 1].Right + (int)(8 * scale);
-        return (slots[slot - 1].Right + slots[slot].X) / 2;
+        if (previous < 0) return InsertionSlot(slots, count, cursorX);
+        var slot = Math.Clamp(previous, 0, count);
+        while (slot < count && cursorX > slots[slot].X + slots[slot].Width / 2 + hysteresis) slot++;
+        while (slot > 0 && cursorX < slots[slot - 1].X + slots[slot - 1].Width / 2 - hysteresis) slot--;
+        return slot;
     }
 }

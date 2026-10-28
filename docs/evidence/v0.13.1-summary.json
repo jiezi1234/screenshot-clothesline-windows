@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "date": "2026-10-27",
+  "version": "0.13.1",
+  "groups": {
+    "core": 211,
+    "storage": 127,
+    "drag-drop": 33,
+    "library": 20,
+    "motion": 30,
+    "reorder-motion": 29
+  },
+  "total": 450,
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Generated fixtures and isolated databases. Controller-driven motion, WPF routed events and native Shell data; actual Explorer gestures and mixed-DPI devices remain manual checks."
+}

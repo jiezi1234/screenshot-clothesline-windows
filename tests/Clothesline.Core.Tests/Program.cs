@@ -136,9 +136,16 @@ foreach (var dpi in new[] { 1.0, 1.25, 1.5, 2.0 })
     {
         var slots = DesktopGeometry.Cards(work, dpi, 25, cardScale);
         Check(ShelfDropGeometry.InsertionSlot(slots, slots.Count, slots[0].X - 20) == 0 && ShelfDropGeometry.InsertionSlot(slots, slots.Count, slots[^1].Right + 20) == slots.Count, $"insert before first and after last at {dpi}/{cardScale}");
-        Check(ShelfDropGeometry.InsertionSlot(slots, 1, slots[^1].Right) == 1 && ShelfDropGeometry.MarkerX(slots, 1, 1, dpi) > slots[0].Right, $"short final page uses only visible cards at {dpi}/{cardScale}");
+        Check(ShelfDropGeometry.InsertionSlot(slots, 1, slots[^1].Right) == 1 && ShelfDropGeometry.StableSlot(slots, 1, 0, slots[^1].Right, (int)(8 * dpi)) == 1, $"short final page uses only visible cards at {dpi}/{cardScale}");
         Check(ShelfDropGeometry.InsertionSlot(slots, slots.Count, slots[0].X + slots[0].Width / 2) == 1, $"card midpoint selects following insertion slot at {dpi}/{cardScale}");
     }
 }
 Check(ShelfDropGeometry.InsertionSlot([], 0, 10) == 0, "empty shelf has first insertion slot");
+var stableSlots = new[] { new PixelRect(-300, 20, 200, 180), new PixelRect(-60, 20, 200, 180), new PixelRect(180, 20, 200, 180) };
+Check(ShelfDropGeometry.StableSlot(stableSlots, 3, -1, 0, 8) == 1, "initial gap uses cursor position");
+Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 1, 47, 8) == 1, "small pointer jitter does not push next card");
+Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 1, 49, 8) == 2, "crossing hysteresis opens next gap");
+Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 2, 33, 8) == 2 && ShelfDropGeometry.StableSlot(stableSlots, 3, 2, 31, 8) == 1, "return crossing has a separate stable boundary");
+Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 0, 500, 8) == 3 && ShelfDropGeometry.StableSlot(stableSlots, 3, 3, -500, 8) == 0, "fast drags can cross several slots in one frame");
+Check(ShelfDropGeometry.StableSlot(stableSlots, 1, 3, 500, 8) == 1 && ShelfDropGeometry.StableSlot([], 0, 2, 500, 8) == 0, "page shrink and empty shelf clamp a stale gap");
 Console.WriteLine($"{checks} checks passed.");

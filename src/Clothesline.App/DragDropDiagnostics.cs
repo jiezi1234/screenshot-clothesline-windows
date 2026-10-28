@@ -135,8 +135,7 @@ internal static class DragDropDiagnostics
                     for (var i = 0; i < 40; i++) shelf.UpdateDropFeedback(right, 2000 + i * 650);
                     Check("drag-page-clamps-at-short-final-page", app.Windows.OfType<CardWindow>().Count(c => c.IsVisible) == (25 - 1) % shelf.DisplayCapacity + 1);
                     var target = app.Windows.OfType<ShelfDropWindow>().Single();
-                    var marker = ((System.Windows.Controls.Canvas)((System.Windows.Controls.Grid)target.Content).Children[2]).Children[0];
-                    Check("drag-feedback-renders-insertion-marker", marker.Visibility == Visibility.Visible);
+                    Check("drag-feedback-renders-cards-making-room", target.PreviewCount == app.Windows.OfType<CardWindow>().Count(c => c.IsVisible));
                     shelf.Hide(); Check("manual-hide-dismisses-drop-target", !target.IsVisible);
                 }
             }

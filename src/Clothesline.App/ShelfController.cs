@@ -33,7 +33,7 @@ internal sealed partial class ShelfController : IDisposable
     private int page;
     private bool sampleMode = true;
     public int DisplayCapacity { get; private set; } = 3;
-    public bool Busy => importingDrop || cards.Any(c => c.InteractionActive);
+    public bool Busy => localReorder is not null || previewCards.Count > 0 || importingDrop || cards.Any(c => c.InteractionActive);
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;
@@ -65,6 +65,8 @@ internal sealed partial class ShelfController : IDisposable
     {
         if (disposed || MotionAllowed) return;
         rope.StopMotion(); foreach (var card in cards) card.StopMotion(); CloseRetiring();
+        if (localReorder is not null) RenderLocalReorder(localReorder, localReorder.Cursor, localReorder.Ending);
+        else if (previewCards.Count > 0) RenderIncomingGap();
     }
     private void SystemMotionChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -99,7 +101,7 @@ internal sealed partial class ShelfController : IDisposable
     private void AddCard(DemoItem item)
     {
         var card = new CardWindow(item);
-        card.DragRequested = DragCard; AttachDropTarget(card);
+        card.DragRequested = DragCardWithPreview; AttachDropTarget(card);
         card.Status += text => Status?.Invoke(text);
         card.TakeDown += Remove;
         card.RecycleRequested = sampleMode ? null : entry => RecycleRequested?.Invoke(entry);
@@ -159,8 +161,10 @@ internal sealed partial class ShelfController : IDisposable
     }
     private void Prepare(MonitorInfo monitor)
     {
+        scale = activeMonitor?.Handle == monitor.Handle && rope.IsVisible
+            ? Math.Max(1, Native.GetDpiForWindow(new System.Windows.Interop.WindowInteropHelper(rope).EnsureHandle()) / 96.0)
+            : Native.MoveAndGetScale(rope, monitor);
         activeMonitor = monitor;
-        scale = Native.MoveAndGetScale(rope, monitor);
         DisplayCapacity = DesktopGeometry.Cards(monitor.WorkArea, scale, 100, cardScale).Count;
     }
     private void Tick()
@@ -171,6 +175,7 @@ internal sealed partial class ShelfController : IDisposable
         if (now >= nextPrune) { nextPrune = now + 2000; Prune(); }
         var cursor = Native.Cursor;
         var monitor = Native.MonitorAt(cursor);
+        if (localReorder?.PollInput == true) PollLocalReorder();
         TrackDropTarget(now, cursor, monitor, Native.GetAsyncKeyState(1) < 0);
         // The temporary drop target is separate from the normal hover reveal gate.
         if (!presented && activeMonitor?.Handle != monitor.Handle) Prepare(monitor);
@@ -243,7 +248,7 @@ internal sealed partial class ShelfController : IDisposable
         disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
         SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.SessionSwitch -= SessionChanged;
         CloseRetiring();
-        dropTarget.Close();
+        CancelLocalReorder(); dropTarget.Close();
         foreach (var card in cards) card.Close(); rope.Close();
     }
 }

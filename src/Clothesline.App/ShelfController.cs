@@ -4,6 +4,9 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows;
 using Clothesline.Core;
@@ -50,9 +53,10 @@ internal sealed partial class ShelfController : IDisposable
     public double LastShowMilliseconds { get; private set; }
     public event Action<string>? Status;
 
-    public ShelfController(Func<bool>? systemMotion = null)
+    public ShelfController(Func<bool>? systemMotion = null, Func<string, CancellationToken, Task<BitmapSource>>? previewLoader = null)
     {
         this.systemMotion = systemMotion ?? (() => SystemParameters.ClientAreaAnimation);
+        hoverPreview = new ShelfHoverPreview(previewLoader);
         timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         timer.Tick += (_, _) => Tick();
         InitializeDropTarget();
@@ -64,6 +68,7 @@ internal sealed partial class ShelfController : IDisposable
     internal void RefreshMotion()
     {
         if (disposed || MotionAllowed) return;
+        hoverPreview.StopMotion();
         rope.StopMotion(); foreach (var card in cards) card.StopMotion(); CloseRetiring();
         if (localReorder is not null) RenderLocalReorder(localReorder, localReorder.Cursor, localReorder.Ending);
         else if (previewCards.Count > 0) RenderIncomingGap();
@@ -84,6 +89,7 @@ internal sealed partial class ShelfController : IDisposable
     {
         var desired = items.ToArray();
         if (cards.Select(c => c.Item).SequenceEqual(desired)) { if (reveal && !presented) Toggle(); return; }
+        hoverPreview.Reset();
         var wasVisible = presented;
         var previous = cards.ToDictionary(c => c.Item.EntryId ?? c.Item.Path);
         foreach (var card in cards)
@@ -101,6 +107,10 @@ internal sealed partial class ShelfController : IDisposable
     private void AddCard(DemoItem item)
     {
         var card = new CardWindow(item);
+        card.MouseLeave += (_, _) => hoverPreview.ClearFor(card);
+        card.PreviewMouseDown += (_, _) => hoverPreview.ClearFor(card);
+        card.ContextMenuOpening += (_, _) => hoverPreview.ClearFor(card);
+        card.Closed += (_, _) => hoverPreview.ClearFor(card);
         card.DragRequested = DragCardWithPreview; AttachDropTarget(card);
         card.Status += text => Status?.Invoke(text);
         card.TakeDown += Remove;
@@ -185,9 +195,11 @@ internal sealed partial class ShelfController : IDisposable
             presented && shelfArea.Contains(cursor), busy, SuppressFullscreen && Native.IsFullscreen(target));
         if (gate.Visible && !presented) Present();
         else if (!gate.Visible && presented) Dismiss();
+        TrackHoverPreview(now, cursor, Native.GetAsyncKeyState(1) < 0 || Native.GetAsyncKeyState(2) < 0 || Native.GetAsyncKeyState(4) < 0, Native.GetAsyncKeyState(0x1B) < 0);
     }
     private void Present()
     {
+        hoverPreview.Reset();
         var watch = Stopwatch.StartNew();
         var monitor = activeMonitor ?? Native.MonitorAt(Native.Cursor);
         Prepare(monitor);
@@ -214,7 +226,7 @@ internal sealed partial class ShelfController : IDisposable
         }
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
-    private void Dismiss() { HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
+    private void Dismiss() { hoverPreview.Reset(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
     internal void ResetEnvironment(bool recover)
     {
         if (disposed) return;
@@ -248,6 +260,7 @@ internal sealed partial class ShelfController : IDisposable
         disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
         SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.SessionSwitch -= SessionChanged;
         CloseRetiring();
+        hoverPreview.Dispose();
         CancelLocalReorder(); dropTarget.Close();
         foreach (var card in cards) card.Close(); rope.Close();
     }

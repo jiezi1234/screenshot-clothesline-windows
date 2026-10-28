@@ -31,6 +31,7 @@ internal sealed partial class ShelfController
     }
     internal Task<ReorderExit> BeginLocalReorder(CardWindow source, PixelPoint cursor, bool pollInput = true)
     {
+        hoverPreview.Reset();
         if (localReorder is not null || !presented || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
         var slots = DesktopGeometry.Cards(activeMonitor!.WorkArea, scale, cards.Count, cardScale);
         var slot = cards.IndexOf(source) - page * slots.Count;

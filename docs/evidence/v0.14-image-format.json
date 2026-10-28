@@ -1,0 +1,137 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "capability-probe-completes-for-both-formats",
+      "passed": true
+    },
+    {
+      "name": "missing-codec-reported-as-unavailable",
+      "passed": true
+    },
+    {
+      "name": "metadata-only-success-does-not-pass-probe",
+      "passed": true
+    },
+    {
+      "name": "WebP-real-file-decodes",
+      "passed": true
+    },
+    {
+      "name": "WebP-manual-import",
+      "passed": true
+    },
+    {
+      "name": "WebP-copy-has-PNG-bitmap-and-original-file",
+      "passed": true
+    },
+    {
+      "name": "WebP-original-format-export-preserves-bytes-and-no-overwrite",
+      "passed": true
+    },
+    {
+      "name": "WebP-edited-PNG-keeps-original-snapshot",
+      "passed": true
+    },
+    {
+      "name": "WebP-history-restores-original-reference",
+      "passed": true
+    },
+    {
+      "name": "HEIC / HEIF-real-file-decodes",
+      "passed": true
+    },
+    {
+      "name": "HEIC / HEIF-manual-import",
+      "passed": true
+    },
+    {
+      "name": "HEIC / HEIF-copy-has-PNG-bitmap-and-original-file",
+      "passed": true
+    },
+    {
+      "name": "HEIC / HEIF-original-format-export-preserves-bytes-and-no-overwrite",
+      "passed": true
+    },
+    {
+      "name": "HEIC / HEIF-edited-PNG-keeps-original-snapshot",
+      "passed": true
+    },
+    {
+      "name": "HEIC / HEIF-history-restores-original-reference",
+      "passed": true
+    },
+    {
+      "name": "lossless-WebP-matches-PNG-pixels",
+      "passed": true
+    },
+    {
+      "name": "WebP-alpha-preserved",
+      "passed": true
+    },
+    {
+      "name": "WebP-copy-PNG-keeps-alpha-pixels",
+      "passed": true
+    },
+    {
+      "name": "optional-thumbnail-bounded-with-alpha",
+      "passed": true
+    },
+    {
+      "name": "optional-image-pixel-limit-before-render",
+      "passed": true
+    },
+    {
+      "name": "animated-WebP-is-first-frame-only",
+      "passed": true
+    },
+    {
+      "name": "WebP-opens-image-editor",
+      "passed": true
+    },
+    {
+      "name": "native-optional-image-baseline-skips-existing",
+      "passed": true
+    },
+    {
+      "name": "native-WebP-watcher-to-card",
+      "passed": true
+    },
+    {
+      "name": "optional-image-drag-is-copy-only",
+      "passed": true
+    },
+    {
+      "name": "optional-image-drag-retains-source-and-card",
+      "passed": true
+    },
+    {
+      "name": "HEIF-alias-decodes-same-pixels",
+      "passed": true
+    },
+    {
+      "name": "failed-manual-import-keeps-error-in-final-summary",
+      "passed": true
+    },
+    {
+      "name": "optional-image-byte-limit-before-decode",
+      "passed": true
+    },
+    {
+      "name": "format-panel-exposes-actual-capabilities",
+      "passed": true
+    },
+    {
+      "name": "format-status-has-accessible-name",
+      "passed": true
+    },
+    {
+      "name": "English-panel-distinguishes-available-and-unavailable",
+      "passed": true
+    },
+    {
+      "name": "optional-image-records-and-lineage-survive-reopen",
+      "passed": true
+    }
+  ]
+}

@@ -148,4 +148,22 @@ Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 1, 49, 8) == 2, "crossing hys
 Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 2, 33, 8) == 2 && ShelfDropGeometry.StableSlot(stableSlots, 3, 2, 31, 8) == 1, "return crossing has a separate stable boundary");
 Check(ShelfDropGeometry.StableSlot(stableSlots, 3, 0, 500, 8) == 3 && ShelfDropGeometry.StableSlot(stableSlots, 3, 3, -500, 8) == 0, "fast drags can cross several slots in one frame");
 Check(ShelfDropGeometry.StableSlot(stableSlots, 1, 3, 500, 8) == 1 && ShelfDropGeometry.StableSlot([], 0, 2, 500, 8) == 0, "page shrink and empty shelf clamp a stale gap");
+foreach (var dpi in new[] { 1.0, 1.25, 1.5, 2.0, 2.5 })
+{
+    var work = new PixelRect(-2560, -1440, 2560, 1400);
+    var row = DesktopGeometry.Cards(work, dpi, 25);
+    foreach (var (width, height) in new[] { (4000, 2200), (1000, 4000), (6000, 100), (1, 1) })
+    {
+        var result = HoverPreviewGeometry.Place(row[row.Count / 2], work, dpi, width, height, row);
+        Check(result is PixelRect p && p.X >= work.X && p.Right <= work.Right && p.Y >= work.Y && p.Bottom <= work.Bottom && row.All(r => !HoverPreviewGeometry.Overlaps(p, r)), $"hover fits negative monitor and avoids whole row at {dpi}, {width}x{height}");
+    }
+}
+var previewWork = new PixelRect(0, 0, 1920, 1080);
+var leftAnchor = new PixelRect(20, 20, 212, 190);
+var rightAnchor = leftAnchor with { X = 1688 };
+Check(HoverPreviewGeometry.Place(leftAnchor, previewWork, 1, 1600, 900, [leftAnchor]) is PixelRect rightPreview && rightPreview.X > leftAnchor.Right, "hover prefers free space beside card");
+Check(HoverPreviewGeometry.Place(rightAnchor, previewWork, 1, 1600, 900, [rightAnchor]) is PixelRect leftPreview && leftPreview.Right < rightAnchor.X, "hover near right edge flips left");
+var narrowWork = new PixelRect(-400, 0, 400, 500); var wideCard = new PixelRect(-390, 20, 380, 190);
+Check(HoverPreviewGeometry.Place(wideCard, narrowWork, 1, 1600, 900, [wideCard]) is PixelRect downPreview && downPreview.Y > wideCard.Bottom && downPreview.Bottom <= narrowWork.Bottom, "hover shrinks below row on narrow work area");
+Check(HoverPreviewGeometry.Place(new PixelRect(0, 0, 50, 50), new PixelRect(0, 0, 50, 50), 2, 1600, 900, []) is null, "no room does not cover source or leave screen");
 Console.WriteLine($"{checks} checks passed.");

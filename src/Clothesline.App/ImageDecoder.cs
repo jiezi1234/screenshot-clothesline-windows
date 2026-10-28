@@ -110,26 +110,43 @@ internal static class ImageDecoder
         }
         finally { workers.Release(); }
     }
-    internal static BitmapSource Thumbnail(BitmapSource image)
+    internal const int PreviewMaximumDimension = 1600;
+    internal static async Task<BitmapSource> ReadPreview(string path, CancellationToken cancellation = default)
     {
-        var ratio = 420.0 / Math.Max(image.PixelWidth, image.PixelHeight);
+        path = Path.GetFullPath(path);
+        if (new FileInfo(path).Length > ImageFiles.MaxFileBytes) throw new IOException(T("图片超过 64 MiB 限制。"));
+        var key = Key(path);
+        await workers.WaitAsync(cancellation).ConfigureAwait(false);
+        try
+        {
+            var result = await Decode(path, false, cancellation, true).ConfigureAwait(false);
+            if (key != Key(path)) throw new IOException(T("文件在读取期间发生变化。"));
+            return result.Image;
+        }
+        finally { workers.Release(); }
+    }
+    internal static BitmapSource Thumbnail(BitmapSource image) => Resize(image, 420);
+    private static BitmapSource Resize(BitmapSource image, int maximumDimension)
+    {
+        var ratio = (double)maximumDimension / Math.Max(image.PixelWidth, image.PixelHeight);
         if (ratio >= 1) return image;
         var scaled = new TransformedBitmap(image, new ScaleTransform(ratio, ratio));
         // Detach from the full bitmap so a thumbnail cannot retain 160 MB through its transform.
         var stride = scaled.PixelWidth * 4; var bytes = new byte[stride * scaled.PixelHeight]; scaled.CopyPixels(bytes, stride, 0);
         var result = BitmapSource.Create(scaled.PixelWidth, scaled.PixelHeight, 96, 96, PixelFormats.Bgra32, null, bytes, stride); result.Freeze(); return result;
     }
-    private static async Task<(BitmapSource Image, Metadata Info)> Decode(string path, bool thumbnail, CancellationToken cancellation)
+    private static async Task<(BitmapSource Image, Metadata Info)> Decode(string path, bool thumbnail, CancellationToken cancellation, bool preview = false)
     {
         var directory = Path.Combine(Path.GetTempPath(), "Clothesline-decode-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
         try
         {
-            await DecodeOnServer(new Job(path, directory, thumbnail ? "thumbnail" : "full", UiText.Language), cancellation).ConfigureAwait(false);
+            await DecodeOnServer(new Job(path, directory, preview ? "preview" : thumbnail ? "thumbnail" : "full", UiText.Language), cancellation).ConfigureAwait(false);
             var metadataFile = Path.Combine(directory, "result.json");
             if (!File.Exists(metadataFile) || new FileInfo(metadataFile).Length > 8192) throw new IOException(T("图片解析未返回有效结果，原文件保留。"));
             var info = JsonSerializer.Deserialize<Metadata>(await File.ReadAllTextAsync(metadataFile, cancellation).ConfigureAwait(false)) ?? throw new IOException(T("图片解析未返回有效结果，原文件保留。"));
             var file = Path.Combine(directory, "pixels.bgra");
             Validate(info, new FileInfo(file).Length, thumbnail);
+            if (preview && Math.Max(info.Width, info.Height) > PreviewMaximumDimension) throw new IOException(T("图片解析未返回有效结果，原文件保留。"));
             var pixels = await File.ReadAllBytesAsync(file, cancellation).ConfigureAwait(false);
             var image = BitmapSource.Create(info.Width, info.Height, info.DpiX, info.DpiY, PixelFormats.Bgra32, null, pixels, checked(info.Width * 4)); image.Freeze(); return (image, info);
         }
@@ -232,6 +249,7 @@ internal static class ImageDecoder
             var hash = ImageFiles.Hash(decoded);
             BitmapSource image = new FormatConvertedBitmap(decoded, PixelFormats.Bgra32, null, 0); image.Freeze();
             if (mode == "thumbnail") image = Thumbnail(image);
+            else if (mode == "preview") image = Resize(image, PreviewMaximumDimension);
             var stride = checked(image.PixelWidth * 4); var pixels = new byte[checked(stride * image.PixelHeight)]; image.CopyPixels(pixels, stride, 0);
             File.WriteAllBytes(Path.Combine(directory, "pixels.bgra"), pixels);
             File.WriteAllText(Path.Combine(directory, "result.json"), JsonSerializer.Serialize(new Metadata(image.PixelWidth, image.PixelHeight, image.DpiX, image.DpiY, hash)));

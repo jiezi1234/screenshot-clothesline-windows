@@ -44,6 +44,7 @@ internal sealed partial class ShelfController
         && (draggedCard is not null || (IncomingDropRequested is not null && ImageDropPaths(e.Data).Length > 0));
     internal string DragCard(CardWindow card, ShellTransfer.DragOperation? perform)
     {
+        hoverPreview.Reset();
         draggedCard = card; internalDropHandled = false; suppressDropUntilRelease = false;
         try
         {
@@ -72,6 +73,7 @@ internal sealed partial class ShelfController
     }
     private void ShowDropTarget(MonitorInfo monitor, bool expanded, string text)
     {
+        hoverPreview.Reset();
         if (dropMonitor != monitor.Handle || !dropTarget.IsVisible) { dropScale = Native.MoveAndGetScale(dropTarget, monitor); dropMonitor = monitor.Handle; }
         if (expanded)
         {

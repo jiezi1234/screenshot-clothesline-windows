@@ -183,6 +183,13 @@ internal sealed class CardWindow : OverlayWindow
         if (entering && animate && !InteractionActive && !IsMouseOver) motion.Enter();
     }
     public override void StopMotion() { base.StopMotion(); motion.Stop(); }
+    internal void SetStackEmphasis(PixelRect bounds, bool emphasized, bool animate)
+    {
+        StopMotion();
+        surface.BorderBrush = DemoAssets.Brush(emphasized ? "#709780" : "#D6DED6");
+        Native.Place(this, bounds, emphasized);
+        if (emphasized && animate) motion.Emphasize();
+    }
     public override void Dismiss()
     {
         if (closed) return;

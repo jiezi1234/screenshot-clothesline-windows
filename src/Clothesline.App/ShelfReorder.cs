@@ -31,12 +31,14 @@ internal sealed partial class ShelfController
     }
     internal Task<ReorderExit> BeginLocalReorder(CardWindow source, PixelPoint cursor, bool pollInput = true)
     {
-        hoverPreview.Reset();
         if (localReorder is not null || !presented || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
         var slots = DesktopGeometry.Cards(activeMonitor!.WorkArea, scale, cards.Count, cardScale);
         var slot = cards.IndexOf(source) - page * slots.Count;
         if (slot < 0 || slot >= slots.Count) return Task.FromResult(ReorderExit.Cancelled);
-        var gesture = new ReorderGesture(source, cursor, cursor.X - slots[slot].X, pollInput);
+        Native.GetWindowRect(new System.Windows.Interop.WindowInteropHelper(source).Handle, out var sourceBounds);
+        var grip = (int)System.Math.Round((cursor.X - sourceBounds.Left) * slots[slot].Width / (double)System.Math.Max(1, sourceBounds.Right - sourceBounds.Left));
+        ResetShelfHover();
+        var gesture = new ReorderGesture(source, cursor, grip, pollInput);
         localReorder = gesture; pageDirection = 0;
         try
         {

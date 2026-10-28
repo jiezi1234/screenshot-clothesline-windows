@@ -1,0 +1,147 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "sparse-row-keeps-normal-card-bounds",
+      "passed": true
+    },
+    {
+      "name": "overflow-uses-overlap-with-visible-neighbor-strips",
+      "passed": true
+    },
+    {
+      "name": "normal-layer-order-exposes-each-card",
+      "passed": true
+    },
+    {
+      "name": "hover-expands-and-lifts-only-the-hit-card",
+      "passed": true
+    },
+    {
+      "name": "hovered-card-comes-in-front-of-overlapping-neighbor",
+      "passed": true
+    },
+    {
+      "name": "hover-does-not-activate-or-reorder",
+      "passed": true
+    },
+    {
+      "name": "pop-precedes-large-preview",
+      "passed": true
+    },
+    {
+      "name": "same-pointer-does-not-switch-card-or-restart-pop",
+      "passed": true
+    },
+    {
+      "name": "continued-hover-retains-second-stage-preview",
+      "passed": true
+    },
+    {
+      "name": "large-preview-avoids-expanded-card-and-entire-row",
+      "passed": true
+    },
+    {
+      "name": "escape-dismisses-large-preview-but-keeps-card-accessible",
+      "passed": true
+    },
+    {
+      "name": "pressed-card-does-not-shift-before-click-or-drag",
+      "passed": true
+    },
+    {
+      "name": "right-neighbor-still-has-a-native-hit-region",
+      "passed": true
+    },
+    {
+      "name": "moving-to-right-neighbor-restores-previous-card",
+      "passed": true
+    },
+    {
+      "name": "moving-back-left-is-stable",
+      "passed": true
+    },
+    {
+      "name": "rapid-hover-switches-leave-one-pop-and-no-loads",
+      "passed": true
+    },
+    {
+      "name": "leaving-restores-bounds-and-original-layer-order",
+      "passed": true
+    },
+    {
+      "name": "covered-card-resets-without-raising-row-over-occluder",
+      "passed": true
+    },
+    {
+      "name": "drag-from-pop-restores-normal-size-and-preserves-grip",
+      "passed": true
+    },
+    {
+      "name": "held-snapshot-is-above-all-stacked-neighbors",
+      "passed": true
+    },
+    {
+      "name": "cancel-from-pop-preserves-order-and-opacity",
+      "passed": true
+    },
+    {
+      "name": "incoming-image-preview-clears-pop-before-snapshot",
+      "passed": true
+    },
+    {
+      "name": "pop-has-finite-animation-when-motion-enabled",
+      "passed": true
+    },
+    {
+      "name": "pop-releases-animation-clocks",
+      "passed": true
+    },
+    {
+      "name": "reduce-motion-stops-current-pop-with-emphasis-retained",
+      "passed": true
+    },
+    {
+      "name": "size-change-clears-emphasis-and-preview",
+      "passed": true
+    },
+    {
+      "name": "single-card-last-page-does-not-use-stack-pop",
+      "passed": true
+    },
+    {
+      "name": "first-card-pop-stays-inside-work-area",
+      "passed": true
+    },
+    {
+      "name": "last-visible-card-pop-stays-inside-work-area",
+      "passed": true
+    },
+    {
+      "name": "video-card-is-accessible-in-stack-without-image-decoding",
+      "passed": true
+    },
+    {
+      "name": "removing-popped-item-clears-state",
+      "passed": true
+    },
+    {
+      "name": "lock-clears-pop-and-all-card-windows",
+      "passed": true
+    },
+    {
+      "name": "dispose-closes-all-overlay-windows",
+      "passed": true
+    },
+    {
+      "name": "stacking-and-hover-preserve-all-original-files",
+      "passed": true
+    }
+  ],
+  "metrics": [
+    {
+      "name": "240-hover-switches",
+      "meanMs": 15.109714166666667
+    }
+  ]
+}

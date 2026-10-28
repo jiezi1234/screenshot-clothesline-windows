@@ -83,10 +83,15 @@ internal static class Native
         SetWindowLongPtrW(hwnd, -20, (nint)(GetWindowLongPtrW(hwnd, -20).ToInt64() | 0x20));
         return (GetWindowLongPtrW(hwnd, -20).ToInt64() & 0x20) != 0;
     }
-    public static void Place(Window window, PixelRect rect)
+    public static void Place(Window window, PixelRect rect, bool raise = true)
     {
         var hwnd = new WindowInteropHelper(window).EnsureHandle();
-        if (!SetWindowPos(hwnd, -1, rect.X, rect.Y, rect.Width, rect.Height, 0x10))
+        if (!SetWindowPos(hwnd, -1, rect.X, rect.Y, rect.Width, rect.Height, raise ? 0x10u : 0x14u))
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+    public static void PutBehind(Window window, Window next)
+    {
+        if (!SetWindowPos(new WindowInteropHelper(window).EnsureHandle(), new WindowInteropHelper(next).EnsureHandle(), 0, 0, 0, 0, 0x13))
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
     }
     public static bool IsFullscreen(MonitorInfo monitor)

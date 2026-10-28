@@ -16,6 +16,7 @@ internal sealed class ShelfDropWindow : OverlayWindow
     private readonly Canvas previews = new() { IsHitTestVisible = false };
     private readonly Dictionary<string, Sprite> sprites = new();
     private PixelRect? placement;
+    private int previewLayer;
     internal int PlacementCount { get; private set; }
     internal int SnapshotCount { get; private set; }
     internal int PreviewCount => sprites.Values.Count(s => s.Image.Visibility == Visibility.Visible);
@@ -43,7 +44,7 @@ internal sealed class ShelfDropWindow : OverlayWindow
     {
         if (hint.Text != text) hint.Text = text;
     }
-    internal void BeginPreviewFrame() { foreach (var sprite in sprites.Values) sprite.Used = false; }
+    internal void BeginPreviewFrame() { previewLayer = 0; foreach (var sprite in sprites.Values) sprite.Used = false; }
     internal void Preview(CardWindow card, PixelRect origin, PixelRect destination, PixelRect bounds, double scale, double angle, bool animate, bool held = false)
     {
         var key = card.Item.EntryId ?? card.Item.Path;
@@ -56,7 +57,7 @@ internal sealed class ShelfDropWindow : OverlayWindow
             sprites.Add(key, sprite); previews.Children.Add(sprite.Image);
         }
         sprite.Used = true; sprite.Image.Visibility = Visibility.Visible;
-        sprite.Image.Opacity = held ? .96 : 1; Panel.SetZIndex(sprite.Image, held ? 1 : 0);
+        sprite.Image.Opacity = held ? .96 : 1; Panel.SetZIndex(sprite.Image, held ? int.MaxValue : previewLayer++);
         sprite.Move((destination.X - bounds.X) / scale, (destination.Y - bounds.Y) / scale, angle, animate);
     }
     internal void EndPreviewFrame()

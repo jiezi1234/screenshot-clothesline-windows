@@ -89,7 +89,7 @@ internal sealed partial class ShelfController : IDisposable
     {
         var desired = items.ToArray();
         if (cards.Select(c => c.Item).SequenceEqual(desired)) { if (reveal && !presented) Toggle(); return; }
-        hoverPreview.Reset();
+        ResetShelfHover();
         var wasVisible = presented;
         var previous = cards.ToDictionary(c => c.Item.EntryId ?? c.Item.Path);
         foreach (var card in cards)
@@ -151,6 +151,7 @@ internal sealed partial class ShelfController : IDisposable
     public void HideFromShortcut() { if (!Busy) Hide(); }
     private void Remove(CardWindow card)
     {
+        ResetShelfHover();
         if (!sampleMode) Archived?.Invoke(card.Item);
         cards.Remove(card); Retire(card, true);
         Status?.Invoke(File.Exists(card.Item.Path) ? T("已从晾衣绳取下；文件仍在本地。") : T("文件已移走，已取下对应卡片。"));
@@ -199,7 +200,7 @@ internal sealed partial class ShelfController : IDisposable
     }
     private void Present()
     {
-        hoverPreview.Reset();
+        ResetShelfHover();
         var watch = Stopwatch.StartNew();
         var monitor = activeMonitor ?? Native.MonitorAt(Native.Cursor);
         Prepare(monitor);
@@ -226,7 +227,7 @@ internal sealed partial class ShelfController : IDisposable
         }
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
-    private void Dismiss() { hoverPreview.Reset(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
+    private void Dismiss() { ResetShelfHover(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
     internal void ResetEnvironment(bool recover)
     {
         if (disposed) return;
@@ -259,7 +260,7 @@ internal sealed partial class ShelfController : IDisposable
     {
         disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
         SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.SessionSwitch -= SessionChanged;
-        CloseRetiring();
+        ResetShelfHover(); CloseRetiring();
         hoverPreview.Dispose();
         CancelLocalReorder(); dropTarget.Close();
         foreach (var card in cards) card.Close(); rope.Close();

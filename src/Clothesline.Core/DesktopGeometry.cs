@@ -28,11 +28,25 @@ public static class DesktopGeometry
         var effective = Math.Min(scale * cardScale, Math.Min(workArea.Width / CardWidth, (workArea.Height - top) / CardHeight));
         var width = Math.Max(1, (int)Math.Round(CardWidth * effective));
         var height = Math.Max(1, (int)Math.Round(CardHeight * effective));
-        var step = width + Math.Max(1, (int)Math.Round(28 * scale * cardScale));
-        var visible = Math.Min(count, Math.Max(1, (workArea.Width - (int)(32 * scale)) / step));
+        var normalStep = width + Math.Max(1, (int)Math.Round(28 * scale * cardScale));
+        var available = Math.Max(width, workArea.Width - (int)(32 * scale));
+        // Normal overlap is at most 40%; a popped card still leaves both neighbors reachable.
+        var minimumStep = Math.Max(1, (int)Math.Ceiling(width * .6));
+        var visible = Math.Min(count, 1 + (available - width) / minimumStep);
+        var step = visible <= 1 ? normalStep : Math.Min(normalStep, (available - width) / (visible - 1));
         var start = workArea.X + (workArea.Width - (visible * step - (step - width))) / 2;
         return Enumerable.Range(0, visible)
             .Select(i => new PixelRect(start + i * step, workArea.Y + top, width, height)).ToArray();
+    }
+
+    public static bool Stacked(IReadOnlyList<PixelRect> slots) => slots.Count > 1 && slots[1].X < slots[0].Right;
+
+    public static PixelRect EmphasizedCard(PixelRect card, PixelRect workArea)
+    {
+        var width = Math.Min(workArea.Width, (int)Math.Round(card.Width * 1.06));
+        var height = Math.Min(workArea.Height, (int)Math.Round(card.Height * 1.06));
+        return new(Math.Clamp(card.X - (width - card.Width) / 2, workArea.X, workArea.Right - width),
+            Math.Clamp(card.Y - (int)Math.Round(card.Height * .04), workArea.Y, workArea.Bottom - height), width, height);
     }
 
     public static bool CoversMonitor(PixelRect window, PixelRect monitor, bool hasStandardFrame)

@@ -39,6 +39,15 @@ internal sealed class CardMotion
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, Ease(1, .96, 140));
         translation.BeginAnimation(TranslateTransform.YProperty, Ease(0, 3, 140));
     }
+    public void Emphasize()
+    {
+        Stop(); var current = generation;
+        var pop = Ease(.96, 1, 150);
+        pop.Completed += (_, _) => { if (generation == current) Stop(); };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, Ease(.96, 1, 150));
+        translation.BeginAnimation(TranslateTransform.YProperty, Ease(2, 0, 150));
+    }
     private static DoubleAnimation Ease(double from, double to, int milliseconds) => new(from, to, TimeSpan.FromMilliseconds(milliseconds))
     { FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
     public void Stop()

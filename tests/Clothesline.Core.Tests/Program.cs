@@ -49,7 +49,7 @@ Check(!dragGate.Visible, "dragging another application does not reveal shelf");
 foreach (var scale in new[] { 1.0, 1.25, 1.5, 1.75, 2.0 })
 {
     var area = new PixelRect(-2560, -700, 2560, 1440);
-    var cards = DesktopGeometry.Cards(area, scale, 8);
+    var cards = DesktopGeometry.Cards(area, scale, 3);
     Check(cards.All(r => r.X >= area.X && r.Right <= area.Right && r.Y >= area.Y && r.Bottom <= area.Bottom), $"negative monitor bounds at {scale * 100}%");
     Check(cards.Zip(cards.Skip(1)).All(pair => pair.First.Right < pair.Second.X), $"cards leave hit-test gaps at {scale * 100}%");
     var trigger = DesktopGeometry.Trigger(area, scale);
@@ -88,7 +88,7 @@ foreach (var size in new[] { .8, 1.0, 1.2 })
 {
     var area = new PixelRect(-1920, -223, 1920, 1080);
     var cards = DesktopGeometry.Cards(area, dpi, 100, size);
-    Check(cards.All(r => r.X >= area.X && r.Right <= area.Right && r.Bottom <= area.Bottom) && cards.Zip(cards.Skip(1)).All(p => p.First.Right < p.Second.X), $"card size {size} at DPI {dpi} fits with gaps");
+    Check(cards.All(r => r.X >= area.X && r.Right <= area.Right && r.Bottom <= area.Bottom) && cards.Zip(cards.Skip(1)).All(p => p.Second.X - p.First.X >= p.First.Width * .6), $"card size {size} at DPI {dpi} keeps at least 60% exposed");
     Check(cards[0].Width == (int)Math.Round(DesktopGeometry.CardWidth * dpi * size) && cards[0].Height == (int)Math.Round(DesktopGeometry.CardHeight * dpi * size), $"card size {size} scales both dimensions at DPI {dpi}");
 }
 foreach (var area in new[] { new PixelRect(-20, -10, 120, 100), new PixelRect(0, 0, 1, 1) })
@@ -99,6 +99,32 @@ foreach (var area in new[] { new PixelRect(-20, -10, 120, 100), new PixelRect(0,
 var normalArea = new PixelRect(0, 0, 1920, 1080);
 Check(DesktopGeometry.Cards(normalArea, 1.5, 100, .8).Count > DesktopGeometry.Cards(normalArea, 1.5, 100, 1.2).Count, "larger cards lower automatic row capacity");
 Check(DesktopGeometry.Cards(normalArea, 1.5, 0, 1.2).Count == 0, "empty shelf has no card slots");
+foreach (var dpi in new[] { 1.0, 1.25, 1.5, 1.75, 2.0, 2.5 })
+foreach (var size in new[] { .8, 1.0, 1.2 })
+{
+    var work = new PixelRect(-2560, -400, 2560, 1440);
+    var sparse = DesktopGeometry.Cards(work, dpi, 2, size);
+    var full = DesktopGeometry.Cards(work, dpi, 100, size);
+    Check(!DesktopGeometry.Stacked(sparse) && sparse[0].Right < sparse[1].X, $"sparse cards retain normal gaps at {dpi}/{size}");
+    Check(DesktopGeometry.Stacked(full) && full.Count > 2, $"crowded row overlaps before paging at {dpi}/{size}");
+    var progressivelyTighter = true; var previousStep = int.MaxValue;
+    for (var count = 2; count <= full.Count; count++)
+    {
+        var row = DesktopGeometry.Cards(work, dpi, count, size); var step = row[1].X - row[0].X;
+        progressivelyTighter &= row.Count == count && step <= previousStep && step >= row[0].Width * .6;
+        previousStep = step;
+    }
+    Check(progressivelyTighter, $"density increases gradually without losing items at {dpi}/{size}");
+    var pop = DesktopGeometry.EmphasizedCard(full[1], work);
+    Check(pop.Width > full[1].Width && pop.Y < full[1].Y && pop.X >= work.X && pop.Right <= work.Right && pop.Bottom <= work.Bottom, $"hover pop remains within negative-coordinate work area at {dpi}/{size}");
+    Check(pop.Right < full[2].X + (full[3].X - full[2].X) && pop.X > full[0].X, $"both neighboring exposed strips remain reachable after pop at {dpi}/{size}");
+    Check(DesktopGeometry.Cards(work, dpi, 1000, size).SequenceEqual(full), $"overflow keeps fixed page stride at {dpi}/{size}");
+}
+foreach (var work in new[] { new PixelRect(-10, -10, 120, 100), new PixelRect(0, 0, 1, 1) })
+{
+    var card = DesktopGeometry.Cards(work, 2, 100)[0]; var pop = DesktopGeometry.EmphasizedCard(card, work);
+    Check(pop.Width > 0 && pop.Height > 0 && pop.X >= work.X && pop.Y >= work.Y && pop.Right <= work.Right && pop.Bottom <= work.Bottom, "tiny hover geometry stays in work area");
+}
 var sound = new CaptureSoundGate();
 Check(!sound.ShouldPlay(0, false, false, false), "sound disabled by default does not consume throttle");
 Check(sound.ShouldPlay(0, true, false, false), "first eligible capture sounds immediately");

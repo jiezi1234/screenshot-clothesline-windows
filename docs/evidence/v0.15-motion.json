@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "separate-process-backdrop-covers-test-location",
+      "passed": true
+    },
+    {
+      "name": "entry-starts-finite-motion",
+      "passed": true
+    },
+    {
+      "name": "swing-painted-elements-stay-inside-hwnd",
+      "passed": true
+    },
+    {
+      "name": "entry-releases-animation-clocks-after-settling",
+      "passed": true
+    },
+    {
+      "name": "entry-keeps-foreground",
+      "passed": true
+    },
+    {
+      "name": "pointer-enter-immediately-stops-motion",
+      "passed": true
+    },
+    {
+      "name": "steady-card-remains-interactive",
+      "passed": true
+    },
+    {
+      "name": "retirement-visible-but-immediately-pass-through",
+      "passed": true
+    },
+    {
+      "name": "retirement-closes-window-and-stops-clocks",
+      "passed": true
+    },
+    {
+      "name": "retirement-keeps-source-file",
+      "passed": true
+    },
+    {
+      "name": "entry-to-exit-race-does-not-leave-retiring-window",
+      "passed": true
+    },
+    {
+      "name": "hide-during-entry-is-immediate-and-clock-free",
+      "passed": true
+    },
+    {
+      "name": "disabled-motion-has-no-clocks",
+      "passed": true
+    },
+    {
+      "name": "disabled-removal-closes-immediately",
+      "passed": true
+    },
+    {
+      "name": "failed-history-write-keeps-card-visible-and-interactive",
+      "passed": true
+    },
+    {
+      "name": "visible-shelf-animates-new-card-without-restarting-existing",
+      "passed": true
+    },
+    {
+      "name": "removed-card-exits-outside-active-list",
+      "passed": true
+    },
+    {
+      "name": "reduce-motion-stops-active-and-retiring-animations",
+      "passed": true
+    },
+    {
+      "name": "reduce-motion-prevents-new-entry",
+      "passed": true
+    },
+    {
+      "name": "reduce-motion-removal-leaves-no-retiring-window",
+      "passed": true
+    },
+    {
+      "name": "system-animation-off-stops-current-motion",
+      "passed": true
+    },
+    {
+      "name": "system-animation-off-prevents-new-motion",
+      "passed": true
+    },
+    {
+      "name": "hide-closes-exiting-windows-and-hides-active-windows",
+      "passed": true
+    },
+    {
+      "name": "rapid-list-updates-bound-retiring-window-count",
+      "passed": true
+    },
+    {
+      "name": "rapid-hide-leaves-no-animation-clocks",
+      "passed": true
+    },
+    {
+      "name": "controller-disposal-leaves-no-overlay-windows",
+      "passed": true
+    },
+    {
+      "name": "archive-commits-history-before-visual-exit",
+      "passed": true
+    },
+    {
+      "name": "last-removal-shows-empty-message-during-exit",
+      "passed": true
+    },
+    {
+      "name": "workspace-navigation-does-not-consume-slider-arrow",
+      "passed": true
+    },
+    {
+      "name": "workspace-navigation-preserves-text-caret-arrows",
+      "passed": true
+    }
+  ]
+}

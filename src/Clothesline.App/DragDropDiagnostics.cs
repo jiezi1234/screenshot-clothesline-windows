@@ -42,7 +42,7 @@ internal static class DragDropDiagnostics
                 using (var shelf = new ShelfController { SuppressFullscreen = false, ReduceMotion = true })
                 using (var runtime = new LibraryRuntime(shelf, Path.Combine(root, "library")))
                 {
-                    runtime.ApplySettings(new LibrarySettings { Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true });
+                    runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true });
                     shelf.Start(false);
                     var target = app.Windows.OfType<ShelfDropWindow>().Single();
                     var monitor = Native.MonitorAt(Native.Cursor);
@@ -115,7 +115,7 @@ internal static class DragDropDiagnostics
                 using (var shelf = new ShelfController { SuppressFullscreen = false, ReduceMotion = true })
                 using (var runtime = new LibraryRuntime(shelf, Path.Combine(root, "overflow")))
                 {
-                    runtime.ApplySettings(new LibrarySettings { Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true }); shelf.Start(false);
+                    runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true }); shelf.Start(false);
                     var batch = Enumerable.Range(0, 27).Select(i => Path.Combine(root, $"batch-{i:D2}.png")).ToArray();
                     foreach (var path in batch) File.Copy(paths[0], path);
                     await runtime.ImportDroppedImages(batch, null);

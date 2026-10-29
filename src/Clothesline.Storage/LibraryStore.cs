@@ -12,7 +12,7 @@ public sealed record LibrarySettings
     public string ScreenshotFolder { get; init; } = "";
     public string VideoFolder { get; init; } = "";
     public string[] ExtraFolders { get; init; } = [];
-    public bool ClipboardEnabled { get; init; }
+    public bool ClipboardEnabled { get; init; } = true;
     public bool Paused { get; init; }
     public bool ShowNew { get; init; } = true;
     public bool SuppressFullscreen { get; init; } = true;

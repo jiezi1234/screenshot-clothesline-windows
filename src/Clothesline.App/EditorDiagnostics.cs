@@ -82,7 +82,7 @@ internal static class EditorDiagnostics
                 var archived = runtime.Store.Add(source, Storage.Ownership.External, "test", hash, LibraryRuntime.Now, 100);
                 runtime.Store.Archive(archived.Id, LibraryRuntime.Now - (long)TimeSpan.FromDays(8).TotalMilliseconds);
                 var first = runtime.AcquireLease(source); var second = runtime.AcquireLease(source); first.Dispose(); first.Dispose();
-                runtime.ApplySettings(new Storage.LibrarySettings { RetentionDays = 7 }); runtime.Cleanup();
+                runtime.ApplySettings(new Storage.LibrarySettings { ClipboardEnabled = false, RetentionDays = 7 }); runtime.Cleanup();
                 Check("multiple-workspace-leases-protect-until-last-close", runtime.Store.Find(archived.Id) is not null);
                 second.Dispose(); runtime.Cleanup(); Check("last-lease-release-restores-cleanup", runtime.Store.Find(archived.Id) is null && File.Exists(source));
                 var lineageDirectory = Path.Combine(directory, "lineage-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(lineageDirectory);

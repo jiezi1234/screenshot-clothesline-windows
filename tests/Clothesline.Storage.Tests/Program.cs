@@ -13,7 +13,7 @@ var external = Make("external.png");
 string restoreId;
 using (var store = new LibraryStore(Path.Combine(root, "library")))
 {
-    Check(store.LoadSettings().RetentionDays == 0 && !store.LoadSettings().ClipboardEnabled && store.LoadSettings().RevealProtectionSeconds == 10, "conservative initial settings with 10-second reveal protection");
+    Check(store.LoadSettings().RetentionDays == 0 && store.LoadSettings().ClipboardEnabled && store.LoadSettings().RevealProtectionSeconds == 10, "clipboard collection defaults on with permanent history and 10-second reveal protection");
     store.SaveSettings(new LibrarySettings { Capacity = 25, RetentionDays = 7, ExtraFolders = [root] });
     for (var i = 0; i < 100; i++) store.Add(Make($"image-{i}.png", i.ToString()), Ownership.External, "test", i.ToString(), now + i, 3);
     Check(store.Entries(EntryState.Shelf).Count == 3 && store.Entries(EntryState.History).Count == 97, "100 captures spill into history without loss");
@@ -337,4 +337,5 @@ using (var store = new LibraryStore(v2Root))
 using (var store = new LibraryStore(v2Root)) Check(Directory.GetFiles(v2Root, "library-v2-backup-*.db").Length == 1, "v3 reopening makes no additional v2 backup");
 await TextChecks.Run(root, Check);
 PartitionChecks.Run(root, Check);
+ClipboardDefaultsChecks.Run(root, Check);
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

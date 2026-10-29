@@ -81,7 +81,7 @@ internal static class ImageFormatDiagnostics
                     Check("WebP-opens-image-editor", workspace.Document is not null && ImageFiles.Hash(workspace.Document.Original) == ImageFiles.Hash(png)); workspace.Close(); workspace = null;
                     var watched = Path.Combine(run, "watched"); Directory.CreateDirectory(watched); File.Copy(webp, Path.Combine(watched, "old.webp"));
                     using var watchedShelf = new ShelfController(); using var watcher = new LibraryRuntime(watchedShelf, Path.Combine(run, "watch-library"));
-                    watcher.ApplySettings(new LibrarySettings { ScreenshotFolder = watched, Capacity = 25, ShowNew = false, ReduceMotion = true }); watcher.Start();
+                    watcher.ApplySettings(new LibrarySettings { ClipboardEnabled = false, ScreenshotFolder = watched, Capacity = 25, ShowNew = false, ReduceMotion = true }); watcher.Start();
                     await Task.Delay(300); Check("native-optional-image-baseline-skips-existing", watcher.Store.Entries().Count == 0);
                     var fresh = Path.Combine(watched, "new.webp"); File.Copy(alpha, fresh);
                     until = DateTime.UtcNow.AddSeconds(8); while (watcher.Store.Entries().Count == 0 && DateTime.UtcNow < until) await Task.Delay(80);

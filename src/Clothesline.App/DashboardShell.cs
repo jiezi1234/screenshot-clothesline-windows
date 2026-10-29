@@ -22,7 +22,7 @@ internal sealed partial class Dashboard : Window
     private readonly TextBlock pageTitle = new(), pageDescription = new(), collectionState = new(), status = new(), draftStatus = new();
     private readonly TextBox screenshot = new(), videoFolder = new(), showShortcut = new(), hideShortcut = new(), historySearch = new();
     private readonly TextBox[] extras = [new(), new(), new()];
-    private readonly CheckBox clipboard = new() { Content = T("收集剪贴板图片和文字（默认关闭）") };
+    private readonly CheckBox clipboard = new() { Content = T("收集剪贴板图片和文字（默认开启）") };
     private readonly CheckBox popup = new() { Content = T("新项目加入时短暂展开") };
     private readonly CheckBox full = new() { Content = T("全屏时自动收起") };
     private readonly CheckBox motion = new() { Content = T("减少动画") };

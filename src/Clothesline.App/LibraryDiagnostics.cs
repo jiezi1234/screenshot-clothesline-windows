@@ -32,7 +32,7 @@ internal static class LibraryDiagnostics
                 var original = DemoAssets.Create(Path.Combine(fixtures, "original"))[0];
                 using var shelf = new ShelfController();
                 using var runtime = new LibraryRuntime(shelf, Path.Combine(fixtures, "library"));
-                runtime.ApplySettings(new LibrarySettings { ScreenshotFolder = watched, Capacity = 25, ShowNew = false });
+                runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, ScreenshotFolder = watched, Capacity = 25, ShowNew = false });
                 runtime.Start();
                 for (var i = 0; i < 100; i++)
                 {
@@ -95,7 +95,7 @@ internal static class LibraryDiagnostics
                 dashboard.Show(); await Task.Delay(200); Render((FrameworkElement)dashboard.Content, Path.Combine(output, "stage1-settings.png"));
                 dashboard.ShowHistory(); await Task.Delay(100); Render((FrameworkElement)dashboard.Content, Path.Combine(output, "stage1-history.png"));
                 dashboard.Close();
-                Check("clipboard-privacy-default-off", !runtime.Settings.ClipboardEnabled);
+                Check("diagnostics-keep-system-clipboard-listener-disabled", !runtime.Settings.ClipboardEnabled);
             }
             catch (Exception ex) { Check("diagnostics-completed", false, ex.ToString()); }
             finally

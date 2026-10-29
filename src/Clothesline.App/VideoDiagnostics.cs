@@ -88,7 +88,7 @@ internal static class VideoDiagnostics
                 var root = Path.Combine(fixtures, "library"); var watched = Path.Combine(fixtures, "watched"); Directory.CreateDirectory(watched);
                 File.Copy(audio, Path.Combine(watched, "old.mp4"));
                 using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, root);
-                runtime.ApplySettings(new LibrarySettings { VideoFolder = watched, Capacity = 25, ShowNew = false, ReduceMotion = true }); runtime.Start();
+                runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, VideoFolder = watched, Capacity = 25, ShowNew = false, ReduceMotion = true }); runtime.Start();
                 await Task.Delay(300); Check("video-folder-baseline-skips-old", runtime.Store.Entries().Count == 0);
                 var incoming = Path.Combine(watched, "new.mp4"); File.Copy(silent, incoming);
                 var until = DateTime.UtcNow.AddSeconds(20);

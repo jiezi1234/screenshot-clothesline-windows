@@ -29,7 +29,7 @@ internal static class AppearanceDiagnostics
             try
             {
                 var root = Path.Combine(directory, "library-" + Guid.NewGuid().ToString("N"));
-                using (var store = new LibraryStore(root)) store.SaveSettings(new LibrarySettings { Language = "en", Capacity = 100 });
+                using (var store = new LibraryStore(root)) store.SaveSettings(new LibrarySettings { ClipboardEnabled = false, Language = "en", Capacity = 100 });
                 using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, root);
                 Check("persisted-English-applied-before-dashboard", UiText.Language == "en");
                 dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true };

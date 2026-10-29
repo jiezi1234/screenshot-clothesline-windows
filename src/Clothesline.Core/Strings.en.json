@@ -377,5 +377,7 @@
   "自管内容空间不足，请增加上限或清理历史后重试。": "Not enough space for managed content. Increase the limit or clean up history and retry.",
   "这张卡片不能直接编辑。": "This card cannot be edited in place.",
   "自管内容上限": "Managed content limit",
-  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Items taken down or over capacity enter history. External originals are kept when history expires; app-saved content is only moved to the Recycle Bin, and records are retained on failure."
+  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Items taken down or over capacity enter history. External originals are kept when history expires; app-saved content is only moved to the Recycle Bin, and records are retained on failure.",
+  "图片和录像在左，文字在右；各最多占总容量的一半，单数向下取整。超出仅将该类最旧项目转入历史。": "Images and videos stay on the left, text on the right. Each uses at most half the total capacity, rounded down. Overflow moves only that type’s oldest items to history.",
+  "拖动调整区内顺序；在分区边缘停留可翻页。": "Drag to reorder within this section; pause at its edges to change pages."
 }

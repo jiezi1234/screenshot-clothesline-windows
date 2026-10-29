@@ -22,11 +22,20 @@ internal static class TextCardImage
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            dc.DrawRectangle(DemoAssets.Brush("#F5F1E7"), null, new Rect(0, 0, 400, 270));
+            dc.DrawRectangle(DemoAssets.Brush("#FFF9EB"), null, new Rect(0, 0, 400, 270));
+            var rule = new Pen(DemoAssets.Brush("#C9DAD9"), 1);
+            for (var y = 48; y < 270; y += 32) dc.DrawLine(rule, new Point(42, y), new Point(390, y));
+            dc.DrawLine(new Pen(DemoAssets.Brush("#D59A92"), 1.5), new Point(64, 0), new Point(64, 270));
+            dc.DrawRectangle(DemoAssets.Brush("#F0E6CF"), null, new Rect(0, 0, 34, 270));
+            for (var y = 20; y < 270; y += 34)
+            {
+                dc.DrawEllipse(DemoAssets.Brush("#CEBDA0"), null, new Point(24, y), 4, 5);
+                dc.DrawRoundedRectangle(DemoAssets.Brush("#EEE9DD"), new Pen(DemoAssets.Brush("#8E968D"), 2), new Rect(3, y - 4, 24, 8), 4, 4);
+            }
             var formatted = new FormattedText(excerpt, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI, Microsoft YaHei UI"), 25, DemoAssets.Brush("#294535"), 1)
-            { MaxTextWidth = 364, MaxTextHeight = 232, Trimming = TextTrimming.CharacterEllipsis };
-            dc.DrawText(formatted, new Point(18, 16));
+                new Typeface("Segoe UI, Microsoft YaHei UI"), 24, DemoAssets.Brush("#394B42"), 1)
+            { MaxTextWidth = 308, MaxTextHeight = 248, LineHeight = 32, Trimming = TextTrimming.CharacterEllipsis };
+            dc.DrawText(formatted, new Point(76, 15));
         }
         var image = new RenderTargetBitmap(400, 270, 96, 96, PixelFormats.Pbgra32); image.Render(visual); image.Freeze(); return image;
     }

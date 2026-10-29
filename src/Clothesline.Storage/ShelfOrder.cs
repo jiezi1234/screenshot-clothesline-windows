@@ -10,6 +10,9 @@ public sealed partial class LibraryStore
             var moving = ids.Distinct().ToArray();
             var current = Entries(EntryState.Shelf).Select(e => e.Id).ToList();
             if (moving.Length == 0 || moving.Any(id => !current.Contains(id)) || (beforeId is not null && !current.Contains(beforeId))) return false;
+            var text = Clothesline.Core.MediaFiles.IsText(Find(moving[0])!.Path);
+            if (moving.Any(id => Clothesline.Core.MediaFiles.IsText(Find(id)!.Path) != text)
+                || (beforeId is not null && Clothesline.Core.MediaFiles.IsText(Find(beforeId)!.Path) != text)) return false;
             if (beforeId is not null && moving.Contains(beforeId))
                 beforeId = current.Skip(current.IndexOf(beforeId)).FirstOrDefault(id => !moving.Contains(id));
             var ordered = current.Where(id => !moving.Contains(id)).ToList();

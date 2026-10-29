@@ -377,5 +377,7 @@
   "自管内容空间不足，请增加上限或清理历史后重试。": "Não há espaço suficiente para o conteúdo gerenciado. Aumente o limite ou limpe o histórico e tente novamente.",
   "这张卡片不能直接编辑。": "Este cartão não pode ser editado diretamente.",
   "自管内容上限": "Limite de conteúdo gerenciado",
-  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Itens retirados ou acima da capacidade vão para o histórico. Ao expirar, os originais externos são mantidos; o conteúdo salvo pelo aplicativo só é enviado à Lixeira, e os registros são preservados em caso de falha."
+  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Itens retirados ou acima da capacidade vão para o histórico. Ao expirar, os originais externos são mantidos; o conteúdo salvo pelo aplicativo só é enviado à Lixeira, e os registros são preservados em caso de falha.",
+  "图片和录像在左，文字在右；各最多占总容量的一半，单数向下取整。超出仅将该类最旧项目转入历史。": "Imagens e vídeos ficam à esquerda, textos à direita. Cada grupo ocupa no máximo metade da capacidade total, arredondada para baixo. O excesso move apenas os itens mais antigos desse grupo para o histórico.",
+  "拖动调整区内顺序；在分区边缘停留可翻页。": "Arraste para ordenar nesta seção; pare nas bordas dela para mudar de página."
 }

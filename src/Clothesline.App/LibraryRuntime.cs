@@ -62,6 +62,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         shelf.BatchArchiveRequested += (item, scope) => ArchiveBatch(item.EntryId, scope);
         shelf.FilesChanged += () => ScheduleRefresh(false);
         shelf.EnvironmentRecovered += RecoverEnvironment;
+        shelf.DisplayCapacityChanged += RefreshCapacity;
         shelf.ReorderRequested = (id, before) =>
         {
             if (!Store.MoveShelfItems([id], before)) throw new InvalidOperationException(T("图片已变化，请重试。"));
@@ -74,6 +75,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (disposed) return;
         Collector.RequestRescan(); Desktop?.RetryShortcut(); ScheduleRefresh(false);
     }
+    private void RefreshCapacity() { if (Settings.Capacity == 0) ScheduleRefresh(false); }
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     public void Start() { shelf.Start(false); ApplySettings(Settings, false); RefreshShelf(false); maintenance.Start(); _ = WarmDecoder(); }
     private async Task WarmDecoder()
@@ -215,7 +217,9 @@ internal sealed partial class LibraryRuntime : IDisposable
     public void Archive(string id) { Store.Archive(id, Now); ScheduleRefresh(false); }
     public void ArchiveBatch(string? anchor = null, ArchiveScope scope = ArchiveScope.All)
     {
-        var ordered = Store.Entries(EntryState.Shelf).Select(e => e.Id).ToArray();
+        var entries = Store.Entries(EntryState.Shelf);
+        var anchorEntry = entries.FirstOrDefault(e => e.Id == anchor);
+        var ordered = entries.Where(e => scope == ArchiveScope.All || anchorEntry is null || MediaFiles.IsText(e.Path) == MediaFiles.IsText(anchorEntry.Path)).Select(e => e.Id).ToArray();
         var ids = anchor is null && scope == ArchiveScope.All ? ordered : BatchSelection.Select(ordered, anchor ?? "", scope);
         var count = Store.ArchiveMany(ids, Now);
         Report(T("已取下 {0} 个项目到本地历史，原文件保留。", count)); ScheduleRefresh(false);
@@ -365,6 +369,6 @@ internal sealed partial class LibraryRuntime : IDisposable
     {
         if (disposed) return;
         disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
-        shelf.EnvironmentRecovered -= RecoverEnvironment; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
+        shelf.EnvironmentRecovered -= RecoverEnvironment; shelf.DisplayCapacityChanged -= RefreshCapacity; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Clothesline.Core;
@@ -125,9 +126,21 @@ internal static class TextCardDiagnostics
                 library.Dispose(); shelf.Dispose();
                 using (var mixed = new ShelfController(() => false) { SuppressFullscreen = false, ReduceMotion = true })
                 {
-                    mixed.SetItems(Enumerable.Range(0, 25).Select(i => shortCard.Item with { EntryId = "mixed-" + i, Path = i % 2 == 0 ? first.Path : Path.ChangeExtension(first.Path, ".png"), Text = i % 2 == 0 ? saved : null }), true);
+                    var photo = DemoAssets.Create(Path.Combine(directory, "mixed-fixtures"))[0];
+                    mixed.SetItems(Enumerable.Range(0, 25).Select(i => i % 2 == 0
+                        ? shortCard.Item with { EntryId = "mixed-" + i, Title = TextContent.Title(saved), Text = saved, Image = TextCardImage.Create(saved) }
+                        : photo with { EntryId = "mixed-" + i }), true);
                     var target = app.Windows.OfType<CardWindow>().Single(c => c.Item.EntryId == "mixed-0");
                     await Until(() => target.IsVisible);
+                    CardWindow[] Visible(bool text) => app.Windows.OfType<CardWindow>().Where(c => c.IsVisible && c.Item.IsText == text).OrderBy(c => Bounds(c).X).ToArray();
+                    var work = Native.MonitorAt(Center(target)).WorkArea;
+                    Check("media-left-text-right-with-equal-page-limits", Visible(false).Length == mixed.ZoneDisplayCapacity && Visible(true).Length == mixed.ZoneDisplayCapacity
+                        && Visible(false).All(c => Bounds(c).Right <= work.X + work.Width / 2) && Visible(true).All(c => Bounds(c).X >= work.X + work.Width / 2));
+                    await Task.Delay(50); CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "partitioned-shelf.png"));
+                    var mediaPage = Visible(false).Select(c => c.Item.EntryId).ToArray(); var notesPage = Visible(true).Select(c => c.Item.EntryId).ToArray();
+                    target.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                    Check("text-paging-keeps-media-page-still", Visible(false).Select(c => c.Item.EntryId).SequenceEqual(mediaPage) && !Visible(true).Select(c => c.Item.EntryId).SequenceEqual(notesPage));
+                    Visible(true)[0].RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, 120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
                     var targetBounds = Bounds(target); var exposed = new PixelPoint(targetBounds.X + 20, targetBounds.Y + targetBounds.Height / 2);
                     mixed.TrackHoverPreview(30000, exposed, false, false);
                     Check("mixed-stack-pops-text-card-without-changing-order", mixed.EmphasizedCard == target && mixed.Count == 25);
@@ -136,6 +149,18 @@ internal static class TextCardDiagnostics
                     Check("stacked-text-keeps-second-stage-complete-preview", mixedPopup.IsVisible && mixedPopup.PreviewText == saved);
                     mixed.TrackHoverPreview(30500, Center(mixedPopup), false, false);
                     Check("reading-stacked-text-keeps-card-emphasized", mixedPopup.IsVisible && mixed.EmphasizedCard == target);
+                    var gestureText = mixed.BeginLocalReorder(target, Center(target), false);
+                    mixed.UpdateLocalReorder(new PixelPoint(work.X + 100, Center(target).Y), true, false, 31000);
+                    var drop = app.Windows.OfType<ShelfDropWindow>().Single(); var dropDpi = Native.GetDpiForWindow(new WindowInteropHelper(drop).Handle) / 96.0;
+                    Check("text-drag-stays-in-right-zone-and-keeps-media-visible", drop.PreviewState(target.Item.EntryId!).X * dropDpi + Bounds(drop).X >= work.X + work.Width / 2
+                        && mediaPage.All(id => drop.PreviewState(id!).TargetAngle == 0) && drop.PreviewCount > mixed.ZoneDisplayCapacity);
+                    mixed.UpdateLocalReorder(Center(target), true, true, 31100); await gestureText;
+                    mixed.MoveCardBefore(target, null);
+                    Check("text-reorder-never-mixes-with-media-order", mixed.OrderedIds.Take(12).All(id => int.Parse(id[6..]) % 2 == 1) && mixed.OrderedIds[^1] == "mixed-0");
+                    mixed.SetItems([target.Item], true);
+                    mixed.UpdateDropFeedback(new PixelPoint(work.X + 100, work.Y + 70), 32000);
+                    Check("incoming-image-into-empty-left-zone-preserves-right-preview", drop.PreviewCount == 1 && drop.PreviewState(target.Item.EntryId!).TargetAngle == 0);
+                    mixed.Hide();
                 }
                 Check("text-disposal-releases-all-windows", !app.Windows.OfType<OverlayWindow>().Any() && !app.Windows.OfType<TextWorkspace>().Any());
                 ImageDecoder.StopIdleWorkers();
@@ -156,5 +181,19 @@ internal static class TextCardDiagnostics
         var visual = new DrawingVisual(); using (var dc = visual.RenderOpen()) { dc.DrawRectangle(window.Background, null, rect); dc.DrawRectangle(new VisualBrush(content), null, rect); }
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(rect.Width), (int)Math.Ceiling(rect.Height), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(visual); DemoAssets.Save(bitmap, path);
+    }
+    private static void CaptureRow(CardWindow[] cards, string path)
+    {
+        PixelRect Bounds(CardWindow c) { Native.GetWindowRect(new WindowInteropHelper(c).Handle, out var r); return r.Pixels; }
+        var left = cards.Min(c => Bounds(c).X); var top = cards.Min(c => Bounds(c).Y);
+        var width = cards.Max(c => Bounds(c).Right) - left; var height = cards.Max(c => Bounds(c).Bottom) - top;
+        var drawing = new DrawingVisual();
+        using (var dc = drawing.RenderOpen())
+        {
+            dc.DrawRectangle(DemoAssets.Brush("#E9EFE9"), null, new Rect(0, 0, width, height));
+            dc.DrawLine(new Pen(DemoAssets.Brush("#7A9687"), 2), new Point(0, 12), new Point(width, 12));
+            foreach (var card in cards) { card.UpdateLayout(); var r = Bounds(card); dc.DrawRectangle(new VisualBrush((FrameworkElement)card.Content), null, new Rect(r.X - left, r.Y - top, r.Width, r.Height)); }
+        }
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32); bitmap.Render(drawing); DemoAssets.Save(bitmap, path);
     }
 }

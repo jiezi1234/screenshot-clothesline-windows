@@ -192,4 +192,17 @@ Check(HoverPreviewGeometry.Place(rightAnchor, previewWork, 1, 1600, 900, [rightA
 var narrowWork = new PixelRect(-400, 0, 400, 500); var wideCard = new PixelRect(-390, 20, 380, 190);
 Check(HoverPreviewGeometry.Place(wideCard, narrowWork, 1, 1600, 900, [wideCard]) is PixelRect downPreview && downPreview.Y > wideCard.Bottom && downPreview.Bottom <= narrowWork.Bottom, "hover shrinks below row on narrow work area");
 Check(HoverPreviewGeometry.Place(new PixelRect(0, 0, 50, 50), new PixelRect(0, 0, 50, 50), 2, 1600, 900, []) is null, "no room does not cover source or leave screen");
+Check(ShelfZones.Limit(25) == 12 && ShelfZones.Limit(50) == 25 && ShelfZones.Limit(100) == 50, "split quota rounds odd totals down without borrowing");
+foreach (var dpi in new[] { 1.0, 1.25, 1.5, 2.0, 2.5 })
+foreach (var size in new[] { .8, 1.0, 1.2 })
+foreach (var width in new[] { 400, 1920, 3840 })
+{
+    var work = new PixelRect(-1920, -100, width, 1040);
+    var total = ShelfZones.DisplayCapacity(work, dpi, size);
+    var media = ShelfZones.Cards(work, dpi, 100, false, size); var notes = ShelfZones.Cards(work, dpi, 100, true, size);
+    Check(total % 2 == 0 && media.Count == notes.Count && media.Count == total / 2
+        && media.All(r => r.X >= work.X && r.Right <= work.X + width / 2 && r.Bottom <= work.Bottom)
+        && notes.All(r => r.X >= work.X + width / 2 && r.Right <= work.Right && r.Bottom <= work.Bottom)
+        && media.All(m => notes.All(n => !HoverPreviewGeometry.Overlaps(m, n))), $"equal bounded zones at {width}px, DPI {dpi}, card {size}");
+}
 Console.WriteLine($"{checks} checks passed.");

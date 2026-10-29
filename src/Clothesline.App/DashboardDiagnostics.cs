@@ -29,6 +29,7 @@ internal static class DashboardDiagnostics
             {
                 using var shelf = new ShelfController();
                 using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "library-" + Guid.NewGuid().ToString("N")));
+                runtime.ApplySettings(runtime.Settings with { Capacity = 25 }, false);
                 dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.Show(); dashboard.UpdateLayout();
                 TControl Named<TControl>(string name) where TControl : FrameworkElement { dashboard.UpdateLayout(); return UiAccessibility.Descendants(dashboard).OfType<TControl>().Single(c => AutomationProperties.GetName(c) == T(name)); }
                 Button Action(string title) { dashboard.UpdateLayout(); return UiAccessibility.Descendants(dashboard).OfType<Button>().Single(b => b.Content as string == T(title) && b.IsVisible); }

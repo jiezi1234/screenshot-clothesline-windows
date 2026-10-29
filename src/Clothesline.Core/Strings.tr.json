@@ -377,5 +377,7 @@
   "自管内容空间不足，请增加上限或清理历史后重试。": "Yönetilen içerik için yeterli alan yok. Sınırı artırın veya geçmişi temizleyip yeniden deneyin.",
   "这张卡片不能直接编辑。": "Bu kart doğrudan düzenlenemez.",
   "自管内容上限": "Yönetilen içerik sınırı",
-  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Kaldırılan veya kapasiteyi aşan öğeler geçmişe gider. Süre dolunca harici asıllar korunur; uygulamanın kaydettiği içerik yalnızca Geri Dönüşüm Kutusu'na taşınır ve başarısızlık durumunda kayıtlar saklanır."
+  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Kaldırılan veya kapasiteyi aşan öğeler geçmişe gider. Süre dolunca harici asıllar korunur; uygulamanın kaydettiği içerik yalnızca Geri Dönüşüm Kutusu'na taşınır ve başarısızlık durumunda kayıtlar saklanır.",
+  "图片和录像在左，文字在右；各最多占总容量的一半，单数向下取整。超出仅将该类最旧项目转入历史。": "Resimler ve videolar solda, metinler sağda yer alır. Her grup toplam kapasitenin aşağı yuvarlanmış yarısını kullanabilir. Sınır aşılınca yalnızca o grubun en eski öğeleri geçmişe taşınır.",
+  "拖动调整区内顺序；在分区边缘停留可翻页。": "Bu bölümde sıralamak için sürükleyin; sayfa değiştirmek için bölümün kenarlarında bekleyin."
 }

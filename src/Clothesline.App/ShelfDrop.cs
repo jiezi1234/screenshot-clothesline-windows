@@ -77,7 +77,7 @@ internal sealed partial class ShelfController
         if (dropMonitor != monitor.Handle || !dropTarget.IsVisible) { dropScale = Native.MoveAndGetScale(dropTarget, monitor); dropMonitor = monitor.Handle; }
         if (expanded)
         {
-            var slots = DesktopGeometry.Cards(monitor.WorkArea, dropScale, Math.Max(1, cards.Count), cardScale);
+            var slots = ShelfZones.Cards(monitor.WorkArea, dropScale, 1, false, cardScale);
             var height = Math.Min(monitor.WorkArea.Height, slots[0].Bottom - monitor.WorkArea.Y + (int)(24 * dropScale));
             dropBounds = new(monitor.WorkArea.X + (int)(8 * dropScale), monitor.WorkArea.Y, Math.Max(1, monitor.WorkArea.Width - (int)(16 * dropScale)), height);
         }
@@ -88,12 +88,12 @@ internal sealed partial class ShelfController
     private string? DropPosition(PixelPoint cursor)
     {
         var monitor = activeMonitor ?? Native.MonitorAt(cursor);
-        if (cards.Count == 0) return null;
-        var slots = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count, cardScale);
-        var offset = page * slots.Count; var count = Math.Min(slots.Count, cards.Count - offset);
+        if (DragCards.Count == 0) { hoverSlot = 0; return null; }
+        var slots = DragSlots;
+        var offset = page * slots.Count; var count = Math.Min(slots.Count, DragCards.Count - offset);
         if (hoverPage != page) { hoverPage = page; hoverSlot = -1; }
         var slot = hoverSlot = ShelfDropGeometry.StableSlot(slots, count, hoverSlot, cursor.X, (int)(8 * scale));
-        var next = cards.ElementAtOrDefault(offset + slot)?.Item;
+        var next = DragCards.ElementAtOrDefault(offset + slot)?.Item;
         return next?.EntryId ?? next?.Path;
     }
     private void DragOverShelf(object sender, DragEventArgs e)
@@ -109,16 +109,17 @@ internal sealed partial class ShelfController
         if (!presented || activeMonitor?.Handle != monitor.Handle) { RestorePreviewCards(); Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present(); }
         UpdateDragPage(cursor, monitor, now);
         DropPosition(cursor);
-        ShowDropTarget(monitor, true, draggedCard is null ? T("松手挂上图片，原文件保留。") : T("拖动调整顺序；在左右边缘停留可翻页。"));
+        ShowDropTarget(monitor, true, draggedCard is null ? T("松手挂上图片，原文件保留。") : T("拖动调整区内顺序；在分区边缘停留可翻页。"));
         RenderIncomingGap();
     }
     private void UpdateDragPage(PixelPoint cursor, MonitorInfo monitor, long now)
     {
-        var direction = cursor.X < monitor.WorkArea.X + 48 * scale ? -1 : cursor.X > monitor.WorkArea.Right - 48 * scale ? 1 : 0;
+        var zone = ZoneArea(DragText);
+        var direction = cursor.X < zone.X || cursor.X >= zone.Right ? 0 : cursor.X < zone.X + 48 * scale ? -1 : cursor.X > zone.Right - 48 * scale ? 1 : 0;
         if (direction != pageDirection) { pageDirection = direction; pageEdgeSince = now; }
         else if (direction != 0 && now - pageEdgeSince >= 650)
         {
-            var next = Math.Clamp(page + direction, 0, Math.Max(0, (cards.Count - 1) / DisplayCapacity));
+            var next = Math.Clamp(page + direction, 0, Math.Max(0, (DragCards.Count - 1) / ZoneDisplayCapacity));
             if (next != page) { page = next; Present(); dropTarget.InvalidatePlacement(); }
             pageEdgeSince = now;
         }
@@ -150,9 +151,10 @@ internal sealed partial class ShelfController
     {
         if (!cards.Contains(source)) return;
         if ((source.Item.EntryId ?? source.Item.Path) == beforeId) return;
+        var target = beforeId is null ? null : cards.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == beforeId && c.Item.IsText == source.Item.IsText);
+        beforeId = target?.Item.EntryId ?? target?.Item.Path;
         if (source.Item.EntryId is string id) ReorderRequested?.Invoke(id, beforeId);
-        var target = beforeId is null ? null : cards.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == beforeId);
-        cards.Remove(source); cards.Insert(target is null ? cards.Count : cards.IndexOf(target), source);
+        cards.Remove(source); cards.Insert(target is null ? cards.Count : cards.IndexOf(target), source); NormalizeZones();
         if (present && presented) Present();
     }
 }

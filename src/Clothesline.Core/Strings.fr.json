@@ -377,5 +377,7 @@
   "自管内容空间不足，请增加上限或清理历史后重试。": "Espace insuffisant pour le contenu géré. Augmentez la limite ou nettoyez l’historique, puis réessayez.",
   "这张卡片不能直接编辑。": "Cette carte ne peut pas être modifiée directement.",
   "自管内容上限": "Limite du contenu géré",
-  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Les éléments retirés ou dépassant la capacité vont dans l’historique. À expiration, les originaux externes sont conservés ; le contenu enregistré par l’application est seulement envoyé à la corbeille, et les entrées sont conservées en cas d’échec."
+  "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Les éléments retirés ou dépassant la capacité vont dans l’historique. À expiration, les originaux externes sont conservés ; le contenu enregistré par l’application est seulement envoyé à la corbeille, et les entrées sont conservées en cas d’échec.",
+  "图片和录像在左，文字在右；各最多占总容量的一半，单数向下取整。超出仅将该类最旧项目转入历史。": "Les images et vidéos sont à gauche, le texte à droite. Chaque groupe utilise au plus la moitié de la capacité totale, arrondie à l’entier inférieur. Seuls les éléments les plus anciens du groupe plein passent dans l’historique.",
+  "拖动调整区内顺序；在分区边缘停留可翻页。": "Faites glisser pour réorganiser cette section ; restez près de ses bords pour changer de page."
 }

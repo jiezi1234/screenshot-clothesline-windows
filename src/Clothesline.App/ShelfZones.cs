@@ -1,0 +1,33 @@
+using System.Collections.Generic;
+using System.Linq;
+using Clothesline.Core;
+
+namespace Clothesline.App;
+
+internal sealed partial class ShelfController
+{
+    private int mediaPage, textPage;
+    private bool DragText => (localReorder?.Source ?? draggedCard)?.Item.IsText == true;
+    private int page { get => ZonePage(DragText); set => SetZonePage(DragText, value); }
+    internal int ZoneDisplayCapacity => DisplayCapacity / 2;
+    private List<CardWindow> ZoneCards(bool text) => cards.Where(c => c.Item.IsText == text).ToList();
+    private int ZonePage(bool text) => text ? textPage : mediaPage;
+    private void SetZonePage(bool text, int value) { if (text) textPage = value; else mediaPage = value; }
+    private PixelRect ZoneArea(bool text) => ShelfZones.Area(activeMonitor!.WorkArea, scale, text);
+    private IReadOnlyList<PixelRect> ZoneSlots(bool text)
+        => ShelfZones.Cards(activeMonitor!.WorkArea, scale, ZoneCards(text).Count, text, cardScale);
+    private List<CardWindow> DragCards => ZoneCards(DragText);
+    private IReadOnlyList<PixelRect> DragSlots => ZoneSlots(DragText);
+    private IEnumerable<(CardWindow Card, PixelRect Rect)> ZoneRow(bool text)
+    {
+        var group = ZoneCards(text); var slots = ZoneSlots(text);
+        if (slots.Count == 0) yield break;
+        var offset = ZonePage(text) * slots.Count;
+        for (var i = 0; i < slots.Count && offset + i < group.Count; i++) yield return (group[offset + i], slots[i]);
+    }
+    private void PreviewOtherZone(bool text)
+    {
+        foreach (var (card, rect) in ZoneRow(!text)) dropTarget.Preview(card, rect, rect, dropBounds, scale, 0, false);
+    }
+    private void NormalizeZones() { var ordered = cards.OrderBy(c => c.Item.IsText).ToArray(); cards.Clear(); cards.AddRange(ordered); }
+}

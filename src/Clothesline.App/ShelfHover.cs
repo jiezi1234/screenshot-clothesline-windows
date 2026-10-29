@@ -27,7 +27,7 @@ internal sealed partial class ShelfController
     }
     internal void TrackHoverPreview(long now, PixelPoint cursor, bool buttonsDown, bool escape)
     {
-        if (disposed || !presented || SessionBlocked || dropTarget.IsVisible)
+        if (disposed || !presented || activeMonitor is null || SessionBlocked || dropTarget.IsVisible)
         { ResetShelfHover(); return; }
         var hit = Native.WindowFromPoint(new Native.Point { X = cursor.X, Y = cursor.Y });
         var card = cards.FirstOrDefault(c => c.IsVisible && !c.Retiring && c.Opacity > 0 && new WindowInteropHelper(c).Handle == hit);
@@ -37,18 +37,18 @@ internal sealed partial class ShelfController
             // Keep the pressed card still until its click/menu/long press finishes.
             hoverPreview.Reset(); textHover.Reset(); return;
         }
-        var slots = DesktopGeometry.Cards(activeMonitor!.WorkArea, scale, cards.Count, cardScale);
-        if (!DesktopGeometry.Stacked(slots) || cards.Count - page * slots.Count < 2) ResetStackEmphasis();
+        var text = card?.Item.IsText ?? false; var group = ZoneCards(text); var slots = ZoneSlots(text);
+        if (!DesktopGeometry.Stacked(slots) || group.Count - ZonePage(text) * slots.Count < 2) ResetStackEmphasis();
         else if (card != emphasizedCard)
         {
             ResetStackEmphasis();
             if (card is not null)
             {
-                var slot = cards.IndexOf(card) - page * slots.Count;
+                var slot = group.IndexOf(card) - ZonePage(text) * slots.Count;
                 if (slot >= 0 && slot < slots.Count)
                 {
                     emphasizedHome = slots[slot]; emphasizedCard = card;
-                    card.SetStackEmphasis(DesktopGeometry.EmphasizedCard(emphasizedHome, activeMonitor.WorkArea), true, MotionAllowed);
+                    card.SetStackEmphasis(DesktopGeometry.EmphasizedCard(emphasizedHome, ZoneArea(text)), true, MotionAllowed);
                 }
             }
         }

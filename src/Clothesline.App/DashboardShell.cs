@@ -112,6 +112,7 @@ internal sealed partial class Dashboard : Window
         var video = Stack(); video.Children.Add(FolderRow(videoFolder)); video.Children.Add(Text(T("支持 H.264 视频与 AAC 音频或无音轨，最高 4K、单文件 2 GiB。首次选择不导入旧录像；留空关闭。"), 12, true, new Thickness(0, 10, 0, 0)));
         var behavior = Stack(); foreach (var check in new[] { clipboard, popup, full }) behavior.Children.Add(check);
         var limits = Stack(); limits.Children.Add(Field(T("晾衣绳容量"), capacity)); limits.Children.Add(Field(T("历史期限"), retention)); limits.Children.Add(Field(T("自管内容上限"), storage));
+        limits.Children.Add(Text(T("图片和录像在左，文字在右；各最多占总容量的一半，单数向下取整。超出仅将该类最旧项目转入历史。"), 12, true));
         limits.Children.Add(Text(T("取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。"), 12, true));
         return Scroll(Card(T("截图目录"), capture), Card(T("录像目录"), video), Card(T("收集行为"), behavior), Card(T("容量与历史"), limits));
     }

@@ -33,9 +33,9 @@ internal sealed partial class ShelfController : IDisposable
     private bool suspended, locked, disconnected;
     internal bool SessionBlocked => suspended || locked || disconnected;
     public event Action? EnvironmentRecovered;
-    private int page;
+    public event Action? DisplayCapacityChanged;
     private bool sampleMode = true;
-    public int DisplayCapacity { get; private set; } = 3;
+    public int DisplayCapacity { get; private set; } = 2;
     public bool Busy => localReorder is not null || previewCards.Count > 0 || importingDrop || cards.Any(c => c.InteractionActive);
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
@@ -87,14 +87,14 @@ internal sealed partial class ShelfController : IDisposable
     }
     public void SetItems(System.Collections.Generic.IEnumerable<DemoItem> items, bool reveal)
     {
-        var desired = items.ToArray();
+        var desired = items.OrderBy(item => item.IsText).ToArray();
         if (cards.Select(c => c.Item).SequenceEqual(desired)) { if (reveal && !presented) Toggle(); return; }
         ResetShelfHover();
         var wasVisible = presented;
         var previous = cards.ToDictionary(c => c.Item.EntryId ?? c.Item.Path);
         foreach (var card in cards)
             if (!desired.Contains(card.Item)) Retire(card, !desired.Any(item => (item.EntryId ?? item.Path) == (card.Item.EntryId ?? card.Item.Path)));
-        cards.Clear(); if (reveal) page = 0;
+        cards.Clear(); if (reveal) mediaPage = textPage = 0;
         foreach (var item in desired)
         {
             if (previous.TryGetValue(item.EntryId ?? item.Path, out var existing) && existing.Item == item) cards.Add(existing);
@@ -119,7 +119,7 @@ internal sealed partial class ShelfController : IDisposable
         card.WorkspaceRequested = (entry, edit) => WorkspaceRequested?.Invoke(entry, edit);
         card.BatchArchiveRequested = (entry, scope) => BatchArchiveRequested?.Invoke(entry, scope);
         card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)(() => { Prune(); FilesChanged?.Invoke(); }));
-        card.PreviewMouseWheel += (_, e) => { if (!Busy) { var count = Math.Max(1, (cards.Count + DisplayCapacity - 1) / DisplayCapacity); page = (page + (e.Delta < 0 ? 1 : count - 1)) % count; Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
+        card.PreviewMouseWheel += (_, e) => { if (!Busy) { var text = card.Item.IsText; var count = Math.Max(1, (ZoneCards(text).Count + ZoneDisplayCapacity - 1) / ZoneDisplayCapacity); SetZonePage(text, (ZonePage(text) + (e.Delta < 0 ? 1 : count - 1)) % count); Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
         cards.Add(card);
     }
     public void ResetSamples()
@@ -176,7 +176,8 @@ internal sealed partial class ShelfController : IDisposable
             ? Math.Max(1, Native.GetDpiForWindow(new System.Windows.Interop.WindowInteropHelper(rope).EnsureHandle()) / 96.0)
             : Native.MoveAndGetScale(rope, monitor);
         activeMonitor = monitor;
-        DisplayCapacity = DesktopGeometry.Cards(monitor.WorkArea, scale, 100, cardScale).Count;
+        var capacity = ShelfZones.DisplayCapacity(monitor.WorkArea, scale, cardScale);
+        if (capacity != DisplayCapacity) { DisplayCapacity = capacity; DisplayCapacityChanged?.Invoke(); }
     }
     private void Tick()
     {
@@ -208,22 +209,23 @@ internal sealed partial class ShelfController : IDisposable
         rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)((cards.Count == 0 ? 100 : 70) * scale)), MotionAllowed);
         if (cards.Count == 0)
         {
-            page = 0;
+            mediaPage = textPage = 0;
             var width = Math.Min(monitor.WorkArea.Width, (int)(360 * scale));
             shelfArea = new PixelRect(monitor.WorkArea.X + (monitor.WorkArea.Width - width) / 2, monitor.WorkArea.Y, width, (int)(100 * scale));
         }
         else
         {
-            var rects = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count, cardScale);
-            for (var i = 0; i < cards.Count; i++)
+            foreach (var text in new[] { false, true })
+                SetZonePage(text, Math.Clamp(ZonePage(text), 0, Math.Max(0, (ZoneCards(text).Count - 1) / ZoneDisplayCapacity)));
+            var row = ZoneRow(false).Concat(ZoneRow(true)).ToArray();
+            var positions = row.ToDictionary(pair => pair.Card, pair => pair.Rect);
+            foreach (var card in cards)
             {
-                page = Math.Min(page, (cards.Count - 1) / rects.Count);
-                var slot = i - page * rects.Count;
-                if (slot >= 0 && slot < rects.Count) { if (!cards[i].IsVisible) Native.MoveAndGetScale(cards[i], monitor); cards[i].Present(rects[slot], MotionAllowed); }
-                else cards[i].Dismiss();
+                if (positions.TryGetValue(card, out var rect)) { if (!card.IsVisible) Native.MoveAndGetScale(card, monitor); card.Present(rect, MotionAllowed); }
+                else card.Dismiss();
             }
-            shelfArea = new PixelRect(rects[0].X - (int)(16 * scale), monitor.WorkArea.Y,
-                rects[^1].Right - rects[0].X + (int)(32 * scale), rects[0].Bottom - monitor.WorkArea.Y + (int)(14 * scale));
+            shelfArea = new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width,
+                row.Max(pair => pair.Rect.Bottom) - monitor.WorkArea.Y + (int)(14 * scale));
         }
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }

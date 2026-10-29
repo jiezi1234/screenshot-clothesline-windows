@@ -121,6 +121,7 @@ internal sealed class CardWindow : OverlayWindow
         var root = new Grid { Margin = new Thickness(5, 1, 5, 5) };
         motion = new CardMotion(root);
         surface = new Border { Background = DemoAssets.Brush("#F9FAF7"), BorderBrush = DemoAssets.Brush("#D6DED6"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 19, 0, 0), Padding = new Thickness(8) };
+        if (item.IsText) { surface.Background = DemoAssets.Brush("#FFF9EB"); surface.BorderBrush = DemoAssets.Brush("#D3C4A5"); surface.CornerRadius = new CornerRadius(3, 8, 8, 3); }
         var inside = new Grid();
         inside.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });

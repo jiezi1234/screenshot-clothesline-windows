@@ -146,7 +146,7 @@ public sealed partial class LibraryStore : IDisposable
         {
             using var command = Command("SELECT Id,Path,Title,Ownership,Source,Hash,State,AddedAt,ArchivedAt,Missing,Error FROM Items" +
                 (state is null ? "" : " WHERE State=$state") + (state == EntryState.Shelf
-                    ? " ORDER BY (SELECT Position FROM ShelfOrder WHERE EntryId=Items.Id) IS NOT NULL, (SELECT Position FROM ShelfOrder WHERE EntryId=Items.Id), AddedAt DESC, rowid DESC"
+                    ? " ORDER BY CASE WHEN lower(substr(Path,-4))='.txt' THEN 1 ELSE 0 END, (SELECT Position FROM ShelfOrder WHERE EntryId=Items.Id) IS NOT NULL, (SELECT Position FROM ShelfOrder WHERE EntryId=Items.Id), AddedAt DESC, rowid DESC"
                     : " ORDER BY AddedAt DESC, rowid DESC"), state is null ? [] : ["$state", (int)state]);
             using var reader = command.ExecuteReader(); var rows = new List<LibraryEntry>();
             while (reader.Read()) rows.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2), (Ownership)reader.GetInt32(3), reader.GetString(4), reader.GetString(5), (EntryState)reader.GetInt32(6), reader.GetInt64(7), reader.IsDBNull(8) ? null : reader.GetInt64(8), reader.GetBoolean(9), reader.GetString(10)));
@@ -210,7 +210,13 @@ public sealed partial class LibraryStore : IDisposable
     }
     public void EnforceCapacity(int capacity, long now)
     {
-        lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (SELECT Id FROM Items WHERE State=0 ORDER BY AddedAt DESC,rowid DESC LIMIT -1 OFFSET $capacity)", "$now", now, "$capacity", Math.Clamp(capacity, 1, 100));
+        lock (gate)
+        {
+            // Each type owns half the quota. Empty space is not borrowed by the other type.
+            foreach (var text in new[] { false, true })
+                Execute("UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (SELECT Id FROM Items WHERE State=0 AND (lower(substr(Path,-4))='.txt')=$text ORDER BY AddedAt DESC,rowid DESC LIMIT -1 OFFSET $capacity)",
+                    "$now", now, "$text", text, "$capacity", Clothesline.Core.ShelfZones.Limit(capacity));
+        }
     }
     public void Archive(string id, long now)
     { lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$time WHERE Id=$id AND State=0", "$id", id, "$time", now); }

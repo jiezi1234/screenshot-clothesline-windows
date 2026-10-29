@@ -43,8 +43,8 @@ public sealed partial class LibraryStore : IDisposable
         db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, "library.db"), Pooling = false }.ToString());
         db.Open(); Execute("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
         var version = Convert.ToInt32(Scalar("PRAGMA user_version;"));
-        if (version > 3) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
-        if (version is 1 or 2)
+        if (version > 4) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
+        if (version is 1 or 2 or 3)
         {
             using var backup = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, $"library-v{version}-backup-" + Guid.NewGuid().ToString("N") + ".db"), Pooling = false }.ToString());
             backup.Open(); db.BackupDatabase(backup);
@@ -80,7 +80,15 @@ public sealed partial class LibraryStore : IDisposable
                 PRAGMA user_version=3;
                 COMMIT;
                 """);
-        Recover();
+        if (version < 4)
+            Execute("""
+                BEGIN IMMEDIATE;
+                CREATE TABLE IF NOT EXISTS TextEdits(EntryId TEXT PRIMARY KEY REFERENCES Items(Id) ON DELETE CASCADE,
+                    StagePath TEXT NOT NULL, OldHash TEXT NOT NULL, NewHash TEXT NOT NULL, Title TEXT NOT NULL);
+                PRAGMA user_version=4;
+                COMMIT;
+                """);
+        RecoverTextEdits(); Recover();
     }
     private SqliteCommand Command(string sql, params object?[] pairs)
     {

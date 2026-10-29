@@ -14,12 +14,18 @@ namespace Clothesline.App;
 internal static class ShellTransfer
 {
     internal static DataObject CopyData(string path)
-        => BuildData(path, MediaFiles.IsVideo(path) ? null : ImageFiles.Read(path));
+        => MediaFiles.IsText(path) ? TextData(TextContent.Read(path)) : BuildData(path, MediaFiles.IsVideo(path) ? null : ImageFiles.Read(path));
     internal static async Task<DataObject> CopyDataAsync(string path)
     {
+        if (MediaFiles.IsText(path)) return TextData(await Task.Run(() => TextContent.Read(path)));
         var image = MediaFiles.IsVideo(path) ? null : await ImageDecoder.Read(path);
         var png = image is null ? null : await Task.Run(() => ImageFiles.Png(image));
         return BuildData(path, image, png);
+    }
+    internal static DataObject TextData(string text)
+    {
+        var data = new DataObject(); data.SetText(text, TextDataFormat.UnicodeText);
+        data.SetData("ScreenshotClothesline.OwnCopy", "1", false); return data;
     }
     private static DataObject BuildData(string path, BitmapSource? image, byte[]? png = null)
     {

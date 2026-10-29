@@ -68,7 +68,7 @@ internal sealed partial class ShelfController : IDisposable
     internal void RefreshMotion()
     {
         if (disposed || MotionAllowed) return;
-        hoverPreview.StopMotion();
+        hoverPreview.StopMotion(); textHover.StopMotion();
         rope.StopMotion(); foreach (var card in cards) card.StopMotion(); CloseRetiring();
         if (localReorder is not null) RenderLocalReorder(localReorder, localReorder.Cursor, localReorder.Ending);
         else if (previewCards.Count > 0) RenderIncomingGap();
@@ -108,9 +108,9 @@ internal sealed partial class ShelfController : IDisposable
     {
         var card = new CardWindow(item);
         card.MouseLeave += (_, _) => hoverPreview.ClearFor(card);
-        card.PreviewMouseDown += (_, _) => hoverPreview.ClearFor(card);
-        card.ContextMenuOpening += (_, _) => hoverPreview.ClearFor(card);
-        card.Closed += (_, _) => hoverPreview.ClearFor(card);
+        card.PreviewMouseDown += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
+        card.ContextMenuOpening += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
+        card.Closed += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
         card.DragRequested = DragCardWithPreview; AttachDropTarget(card);
         card.Status += text => Status?.Invoke(text);
         card.TakeDown += Remove;
@@ -193,7 +193,7 @@ internal sealed partial class ShelfController : IDisposable
         var target = activeMonitor ?? monitor;
         var busy = Busy || Native.GetAsyncKeyState(1) < 0;
         gate.Tick(now, DesktopGeometry.Trigger(target.Bounds, scale).Contains(cursor),
-            presented && shelfArea.Contains(cursor), busy, SuppressFullscreen && Native.IsFullscreen(target));
+            presented && (shelfArea.Contains(cursor) || textHover.KeepsShelfOpen(now, cursor)), busy, SuppressFullscreen && Native.IsFullscreen(target));
         if (gate.Visible && !presented) Present();
         else if (!gate.Visible && presented) Dismiss();
         TrackHoverPreview(now, cursor, Native.GetAsyncKeyState(1) < 0 || Native.GetAsyncKeyState(2) < 0 || Native.GetAsyncKeyState(4) < 0, Native.GetAsyncKeyState(0x1B) < 0);
@@ -261,7 +261,7 @@ internal sealed partial class ShelfController : IDisposable
         disposed = true; timer.Stop(); SystemEvents.DisplaySettingsChanged -= DisplaysChanged; SystemParameters.StaticPropertyChanged -= SystemMotionChanged;
         SystemEvents.PowerModeChanged -= PowerChanged; SystemEvents.SessionSwitch -= SessionChanged;
         ResetShelfHover(); CloseRetiring();
-        hoverPreview.Dispose();
+        hoverPreview.Dispose(); textHover.Dispose();
         CancelLocalReorder(); dropTarget.Close();
         foreach (var card in cards) card.Close(); rope.Close();
     }

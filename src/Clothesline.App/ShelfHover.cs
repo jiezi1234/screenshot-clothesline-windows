@@ -8,11 +8,12 @@ namespace Clothesline.App;
 internal sealed partial class ShelfController
 {
     private readonly ShelfHoverPreview hoverPreview;
+    private readonly ShelfTextHover textHover = new();
     private CardWindow? emphasizedCard;
     private PixelRect emphasizedHome;
     internal CardWindow? EmphasizedCard => emphasizedCard;
 
-    private void ResetShelfHover() { hoverPreview.Reset(); ResetStackEmphasis(); }
+    private void ResetShelfHover() { hoverPreview.Reset(); textHover.Reset(); ResetStackEmphasis(); }
     private void ResetStackEmphasis()
     {
         if (emphasizedCard is not { } previous) return;
@@ -28,13 +29,14 @@ internal sealed partial class ShelfController
     {
         if (disposed || !presented || SessionBlocked || dropTarget.IsVisible)
         { ResetShelfHover(); return; }
+        var hit = Native.WindowFromPoint(new Native.Point { X = cursor.X, Y = cursor.Y });
+        var card = cards.FirstOrDefault(c => c.IsVisible && !c.Retiring && c.Opacity > 0 && new WindowInteropHelper(c).Handle == hit);
+        if (!Busy && textHover.Hold(now, cursor, escape, card is not null)) { hoverPreview.Reset(); return; }
         if (Busy || buttonsDown || Mouse.Captured is not null)
         {
             // Keep the pressed card still until its click/menu/long press finishes.
-            hoverPreview.Reset(); return;
+            hoverPreview.Reset(); textHover.Reset(); return;
         }
-        var hit = Native.WindowFromPoint(new Native.Point { X = cursor.X, Y = cursor.Y });
-        var card = cards.FirstOrDefault(c => c.IsVisible && !c.Retiring && c.Opacity > 0 && new WindowInteropHelper(c).Handle == hit);
         var slots = DesktopGeometry.Cards(activeMonitor!.WorkArea, scale, cards.Count, cardScale);
         if (!DesktopGeometry.Stacked(slots) || cards.Count - page * slots.Count < 2) ResetStackEmphasis();
         else if (card != emphasizedCard)
@@ -55,6 +57,7 @@ internal sealed partial class ShelfController
         {
             Native.GetWindowRect(new WindowInteropHelper(c).Handle, out var rect); return rect.Pixels;
         }).ToArray();
-        hoverPreview.Track(card is { Item.IsVideo: false } ? card : null, activeMonitor, occupied, now, escape, MotionAllowed);
+        textHover.Track(card, activeMonitor, occupied, now, escape, MotionAllowed);
+        hoverPreview.Track(card is { Item.IsVideo: false, Item.IsText: false } ? card : null, activeMonitor, occupied, now, escape, MotionAllowed);
     }
 }

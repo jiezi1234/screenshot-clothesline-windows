@@ -46,7 +46,8 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (!Store.HasSettings && root is null) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; Store.SaveSettings(Settings); }
         Videos = new VideoCatalog(Store.Root);
         Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash, ImageDecoder.Hash);
-        clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); });
+        clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); },
+            async text => { if (!disposed && !Settings.Paused) await Collector.ImportText(text, Settings.MaxManagedBytes, closing.Token); });
         refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         refresh.Tick += (_, _) => { if (shelf.Busy || fileOperation > 0) return; refresh.Stop(); RefreshShelf(revealPending); revealPending = false; };
         maintenance = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -147,7 +148,12 @@ internal sealed partial class LibraryRuntime : IDisposable
                 if (cache.TryGetValue(entry.Id, out var loading) && loading.Signature == "loading:" + signature && (videoLoads.Contains(entry.Id) || imageLoads.Contains(entry.Id))) { items.Add(loading.Item); continue; }
                 if (!cache.TryGetValue(entry.Id, out var cached) || cached.Signature != signature)
                 {
-                    if (MediaFiles.IsVideo(entry.Path))
+                    if (MediaFiles.IsText(entry.Path))
+                    {
+                        cache[entry.Id] = ("loading:" + signature, new DemoItem(entry.Title, T("正在读取文字…"), entry.Path, ImagePlaceholder(), entry.Id));
+                        if (imageLoads.Add(entry.Id)) _ = LoadText(entry, signature);
+                    }
+                    else if (MediaFiles.IsVideo(entry.Path))
                     {
                         if (Videos.TryGet(entry.Path, out var video))
                             cache[entry.Id] = (signature, new DemoItem(entry.Title, T("录像") + " · " + video!.Duration + " · MP4", entry.Path, video.Image(), entry.Id));
@@ -228,12 +234,13 @@ internal sealed partial class LibraryRuntime : IDisposable
     public void OpenWorkspace(string id, bool edit)
     {
         var entry = Store.Find(id); if (entry is null) return;
+        if (MediaFiles.IsText(entry.Path)) { OpenTextWorkspace(entry); return; }
         if (MediaFiles.IsVideo(entry.Path))
         {
             var video = new VideoWorkspace(entry.Path, AcquireLease);
             workspaces.Add(video); video.Closed += (_, _) => workspaces.Remove(video); video.Show(); video.Activate(); return;
         }
-        var gallery = Store.Entries(entry.State).Where(e => !MediaFiles.IsVideo(e.Path) && !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
+        var gallery = Store.Entries(entry.State).Where(e => MediaFiles.IsImage(e.Path) && !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
         var index = Array.FindIndex(gallery, e => e.Id == id);
         if (index < 0) { Report(T("原文件已失效，无法打开。请在历史中检查路径。")); return; }
         var window = new ImageWorkspace(gallery, index, edit, SaveEditedCopy, AcquireLease, ResolveOriginal);
@@ -356,6 +363,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     }
     public void Dispose()
     {
+        if (disposed) return;
         disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
         shelf.EnvironmentRecovered -= RecoverEnvironment; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }

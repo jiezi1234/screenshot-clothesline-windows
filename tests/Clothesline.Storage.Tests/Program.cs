@@ -335,4 +335,5 @@ using (var store = new LibraryStore(v2Root))
     Check(Convert.ToInt32(command.ExecuteScalar()) == 2, "v2 backup is readable before v3 ordering migration");
 }
 using (var store = new LibraryStore(v2Root)) Check(Directory.GetFiles(v2Root, "library-v2-backup-*.db").Length == 1, "v3 reopening makes no additional v2 backup");
+await TextChecks.Run(root, Check);
 Console.WriteLine($"{count} storage and collection checks passed. Fixtures: {root}");

@@ -13,6 +13,8 @@ try {
     if ($Desktop) {
         # Interactive desktop required. This starts only our own test windows.
         $env:DOTNET_ROOT = Split-Path $executable
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --text-card-test artifacts/text-card-validation
+        if ($LASTEXITCODE -ne 0) { throw "Text card checks failed. See artifacts/text-card-validation/text-card-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --stacked-shelf-test artifacts/stacked-shelf-validation
         if ($LASTEXITCODE -ne 0) { throw "Stacked shelf checks failed. See artifacts/stacked-shelf-validation/stacked-shelf-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --hover-preview-test artifacts/hover-preview-validation

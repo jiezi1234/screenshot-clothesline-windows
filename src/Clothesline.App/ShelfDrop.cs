@@ -58,7 +58,7 @@ internal sealed partial class ShelfController
         if (localReorder is not null) return;
         if (!leftDown) { suppressDropUntilRelease = false; HideDropTarget(); return; }
         if (Native.GetAsyncKeyState(0x1B) < 0) suppressDropUntilRelease = true;
-        if (suppressDropUntilRelease || importingDrop || SessionBlocked || (SuppressFullscreen && Native.IsFullscreen(monitor))) { HideDropTarget(); return; }
+        if (textHover.Contains(cursor) || suppressDropUntilRelease || importingDrop || SessionBlocked || (SuppressFullscreen && Native.IsFullscreen(monitor))) { HideDropTarget(); return; }
         // Do not show a target for a click, long press or menu on one of our cards.
         if (draggedCard is null && cards.Any(c => c.InteractionActive)) { HideDropTarget(); return; }
         if (IncomingDropRequested is null && draggedCard is null) return;

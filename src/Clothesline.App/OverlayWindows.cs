@@ -125,7 +125,7 @@ internal sealed class CardWindow : OverlayWindow
         inside.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        var image = new Image { Source = item.Image, Stretch = Stretch.UniformToFill, ClipToBounds = true };
+        var image = new Image { Source = item.Image, Stretch = item.IsText ? Stretch.Uniform : Stretch.UniformToFill, ClipToBounds = true };
         inside.Children.Add(image);
         if (item.IsVideo)
             inside.Children.Add(new TextBlock { Text = "▶", FontSize = 28, Foreground = Brushes.White, Background = DemoAssets.Brush("#203B36"), Padding = new Thickness(8, 0, 8, 0), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false });
@@ -157,10 +157,10 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseEnter += (_, _) => { if (!Busy) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
         surface.MouseLeave += (_, _) => { if (!Busy) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
         var menu = new ContextMenu();
-        Add(menu, item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
-        Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
-        if (!item.IsVideo) Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
-        Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
+        Add(menu, item.IsText ? T("复制文字") : item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
+        Add(menu, item.IsText ? T("打开文字") : item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
+        if (!item.IsVideo) Add(menu, item.IsText ? T("编辑文字…") : T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
+        if (!item.IsText) Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
         Add(menu, T("在资源管理器中定位"), () => ShellTransfer.Reveal(item.Path));
         Add(menu, T("另存为"), () => ExportRequested?.Invoke(item, false));
         Add(menu, T("保存副本到桌面"), () => ExportRequested?.Invoke(item, true));
@@ -224,7 +224,7 @@ internal sealed class CardWindow : OverlayWindow
         if (e.ClickCount == 2)
         {
             down = null;
-            try { ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
+            try { if (Item.IsText) WorkspaceRequested?.Invoke(Item, true); else ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
             e.Handled = true; return;
         }
         down = e.GetPosition(this); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
@@ -254,7 +254,7 @@ internal sealed class CardWindow : OverlayWindow
             var data = await ShellTransfer.CopyDataAsync(Item.Path);
             if (closed) return;
             Clipboard.SetDataObject(data, true);
-            Report(Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
+            Report(Item.IsText ? T("已复制文字") : Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
         }
         catch (System.Runtime.InteropServices.COMException) { Report(T("剪贴板正在被占用，请稍后再试。")); }
         catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }

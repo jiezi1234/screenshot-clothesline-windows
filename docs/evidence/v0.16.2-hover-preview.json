@@ -1,0 +1,125 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "brief-hover-does-not-show-or-decode",
+      "passed": true
+    },
+    {
+      "name": "dwell-shows-thumbnail-while-large-preview-loads",
+      "passed": true
+    },
+    {
+      "name": "hover-keeps-foreground-and-does-not-block-collection",
+      "passed": true
+    },
+    {
+      "name": "preview-is-layered-transparent-nonactivating-toolwindow",
+      "passed": true
+    },
+    {
+      "name": "preview-enlarges-without-covering-row-or-leaving-work-area",
+      "passed": true
+    },
+    {
+      "name": "painted-preview-passes-input-to-another-process",
+      "passed": true
+    },
+    {
+      "name": "large-image-replaces-thumbnail-without-extra-loads",
+      "passed": true
+    },
+    {
+      "name": "switching-card-hides-old-preview-immediately",
+      "passed": true
+    },
+    {
+      "name": "late-load-cannot-replace-new-hover",
+      "passed": true
+    },
+    {
+      "name": "escape-dismisses-until-pointer-leaves-card",
+      "passed": true
+    },
+    {
+      "name": "leaving-and-returning-rearms-preview",
+      "passed": true
+    },
+    {
+      "name": "pressed-mouse-cancels-preview-and-load",
+      "passed": true
+    },
+    {
+      "name": "mouse-down-dismisses-before-menu-or-drag",
+      "passed": true
+    },
+    {
+      "name": "mouse-leave-releases-image-immediately",
+      "passed": true
+    },
+    {
+      "name": "preview-does-not-sustain-its-own-hover",
+      "passed": true
+    },
+    {
+      "name": "covered-card-does-not-trigger-preview",
+      "passed": true
+    },
+    {
+      "name": "decode-failure-closes-preview-without-changing-shelf",
+      "passed": true
+    },
+    {
+      "name": "internal-reorder-dismisses-hover",
+      "passed": true
+    },
+    {
+      "name": "incoming-file-drag-dismisses-hover",
+      "passed": true
+    },
+    {
+      "name": "layout-change-cancels-preview",
+      "passed": true
+    },
+    {
+      "name": "removing-source-cancels-preview",
+      "passed": true
+    },
+    {
+      "name": "lock-cancels-and-releases-preview",
+      "passed": true
+    },
+    {
+      "name": "video-cards-do-not-start-image-preview",
+      "passed": true
+    },
+    {
+      "name": "dispose-cancels-load-and-late-result-cannot-reopen-window",
+      "passed": true
+    },
+    {
+      "name": "hover-preserves-all-original-files",
+      "passed": true
+    },
+    {
+      "name": "isolated-decoder-bounds-large-preview-and-preserves-aspect",
+      "passed": true
+    },
+    {
+      "name": "preview-is-not-retained-in-thumbnail-cache",
+      "passed": true
+    },
+    {
+      "name": "existing-thumbnail-route-still-bounded",
+      "passed": true
+    },
+    {
+      "name": "preview-decoder-honors-cancellation",
+      "passed": true
+    },
+    {
+      "name": "missing-source-is-handled-without-a-preview",
+      "passed": true
+    }
+  ]
+}

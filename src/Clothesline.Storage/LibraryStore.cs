@@ -210,13 +210,7 @@ public sealed partial class LibraryStore : IDisposable
     }
     public void EnforceCapacity(int capacity, long now)
     {
-        lock (gate)
-        {
-            // Each type owns half the quota. Empty space is not borrowed by the other type.
-            foreach (var text in new[] { false, true })
-                Execute("UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (SELECT Id FROM Items WHERE State=0 AND (lower(substr(Path,-4))='.txt')=$text ORDER BY AddedAt DESC,rowid DESC LIMIT -1 OFFSET $capacity)",
-                    "$now", now, "$text", text, "$capacity", Clothesline.Core.ShelfZones.Limit(capacity));
-        }
+        lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (SELECT Id FROM Items WHERE State=0 ORDER BY AddedAt DESC,rowid DESC LIMIT -1 OFFSET $capacity)", "$now", now, "$capacity", Math.Clamp(capacity, 1, 100));
     }
     public void Archive(string id, long now)
     { lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$time WHERE Id=$id AND State=0", "$id", id, "$time", now); }

@@ -119,7 +119,7 @@ internal sealed partial class ShelfController : IDisposable
         card.WorkspaceRequested = (entry, edit) => WorkspaceRequested?.Invoke(entry, edit);
         card.BatchArchiveRequested = (entry, scope) => BatchArchiveRequested?.Invoke(entry, scope);
         card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)(() => { Prune(); FilesChanged?.Invoke(); }));
-        card.PreviewMouseWheel += (_, e) => { if (!Busy) { var text = card.Item.IsText; var count = Math.Max(1, (ZoneCards(text).Count + ZoneDisplayCapacity - 1) / ZoneDisplayCapacity); SetZonePage(text, (ZonePage(text) + (e.Delta < 0 ? 1 : count - 1)) % count); Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
+        card.PreviewMouseWheel += (_, e) => { if (!Busy) { var text = card.Item.IsText; var count = Math.Max(1, (ZoneCards(text).Count + ZoneCapacity(text) - 1) / ZoneCapacity(text)); SetZonePage(text, (ZonePage(text) + (e.Delta < 0 ? 1 : count - 1)) % count); Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
         cards.Add(card);
     }
     public void ResetSamples()
@@ -216,7 +216,7 @@ internal sealed partial class ShelfController : IDisposable
         else
         {
             foreach (var text in new[] { false, true })
-                SetZonePage(text, Math.Clamp(ZonePage(text), 0, Math.Max(0, (ZoneCards(text).Count - 1) / ZoneDisplayCapacity)));
+                SetZonePage(text, Math.Clamp(ZonePage(text), 0, Math.Max(0, (ZoneCards(text).Count - 1) / ZoneCapacity(text))));
             var row = ZoneRow(false).Concat(ZoneRow(true)).ToArray();
             var positions = row.ToDictionary(pair => pair.Card, pair => pair.Rect);
             foreach (var card in cards)

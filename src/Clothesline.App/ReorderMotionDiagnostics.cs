@@ -115,7 +115,7 @@ internal static class ReorderMotionDiagnostics
                 shelf.ReorderRequested = saveReorder;
                 Check("failed-write-cleans-up-with-original-order", rejected && shelf.OrderedIds.SequenceEqual(beforeFailure) && !shelf.Busy && !target.IsVisible && app.Windows.OfType<CardWindow>().All(c => c.Opacity == 1));
                 source = Card(shelf.OrderedIds[0]); gesture = shelf.BeginLocalReorder(source, Grip(source), false);
-                var monitor = Native.MonitorAt(gap); var edge = new PixelPoint(ShelfZones.Area(monitor.WorkArea, Native.GetDpiForWindow(new WindowInteropHelper(target).Handle) / 96.0, false).Right - 20, gap.Y);
+                var monitor = Native.MonitorAt(gap); var edge = new PixelPoint(monitor.WorkArea.Right - 20, gap.Y);
                 shelf.UpdateLocalReorder(edge, true, false, 2000); shelf.UpdateLocalReorder(edge, true, false, 2650);
                 Check("cross-page-preview-keeps-held-image-visible", !source.IsVisible && target.PreviewCount > 0);
                 var returnEdge = edge with { X = monitor.WorkArea.X + 20 };
@@ -123,7 +123,7 @@ internal static class ReorderMotionDiagnostics
                 Check("returning-to-page-stops-real-card-entry-animations", app.Windows.OfType<CardWindow>().Where(c => c.IsVisible).All(c => c.Opacity == 0 && !c.MotionRunning));
                 shelf.UpdateLocalReorder(edge, true, false, 3400); shelf.UpdateLocalReorder(edge, true, false, 4050);
                 shelf.UpdateLocalReorder(edge, false, false, 4100); await gesture;
-                Check("cross-page-drop-persists-and-shows-moved-card", Array.IndexOf(shelf.OrderedIds, source.Item.EntryId!) >= shelf.ZoneDisplayCapacity && source.IsVisible && shelf.OrderedIds.SequenceEqual(store.Entries(EntryState.Shelf).Select(e => e.Id)));
+                Check("cross-page-drop-persists-and-shows-moved-card", Array.IndexOf(shelf.OrderedIds, source.Item.EntryId!) >= shelf.DisplayCapacity && source.IsVisible && shelf.OrderedIds.SequenceEqual(store.Entries(EntryState.Shelf).Select(e => e.Id)));
                 gesture = shelf.BeginLocalReorder(source, Grip(source), false);
                 shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionLock);
                 Check("lock-cancels-without-invisible-cards", await gesture == ShelfController.ReorderExit.Cancelled && !target.IsVisible && !shelf.Busy && app.Windows.OfType<CardWindow>().All(c => c.Opacity == 1));

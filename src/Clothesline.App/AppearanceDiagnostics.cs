@@ -51,10 +51,10 @@ internal static class AppearanceDiagnostics
                 Check("card-size-updates-automatic-capacity", shelf.DisplayCapacity == ShelfZones.DisplayCapacity(monitor.WorkArea, dpi, 1.2));
                 Render((FrameworkElement)rope.Content, Path.Combine(directory, "empty-en.png")); rope.Close(); rope = null;
                 var fixture = DemoAssets.Create(Path.Combine(directory, "fixtures"))[0] with { Title = "Fixture image.png", Subtitle = "External file · Scroll for pages" };
-                var total = shelf.ZoneDisplayCapacity + 3;
+                var total = shelf.DisplayCapacity + 3;
                 for (var i = 0; i < total; i++) runtime.Store.Add(fixture.Path, Ownership.External, "Fixture", "size-" + i, LibraryRuntime.Now + i, 100);
                 runtime.ApplySettings(runtime.Settings with { Capacity = 0, CardSizePercent = 120 });
-                Check("large-size-overflow-keeps-records-and-files", runtime.Store.Entries(EntryState.Shelf).Count == shelf.ZoneDisplayCapacity && runtime.Store.Entries(EntryState.History).Count == 3 && runtime.Store.Entries().Count == total && File.Exists(fixture.Path));
+                Check("large-size-overflow-keeps-records-and-files", runtime.Store.Entries(EntryState.Shelf).Count == shelf.DisplayCapacity && runtime.Store.Entries(EntryState.History).Count == 3 && runtime.Store.Entries().Count == total && File.Exists(fixture.Path));
                 runtime.ApplySettings(runtime.Settings with { Capacity = 25, CardSizePercent = 80 });
                 foreach (var entry in runtime.Store.Entries(EntryState.History)) runtime.Store.Restore(entry.Id, 25, LibraryRuntime.Now);
                 runtime.ApplySettings(runtime.Settings with { CardSizePercent = 120 });
@@ -63,7 +63,7 @@ internal static class AppearanceDiagnostics
                 var oldCapacity = shelf.DisplayCapacity; var capacityEvents = 0;
                 shelf.DisplayCapacityChanged += () => capacityEvents++;
                 shelf.SetCardSize(120); await Task.Delay(200);
-                Check("automatic-zone-limit-refreshes-after-layout-capacity-change", runtime.Store.Entries(EntryState.Shelf).Count <= shelf.ZoneDisplayCapacity && (oldCapacity == shelf.DisplayCapacity || capacityEvents == 1));
+                Check("automatic-shared-limit-refreshes-after-layout-capacity-change", runtime.Store.Entries(EntryState.Shelf).Count <= shelf.DisplayCapacity && (oldCapacity == shelf.DisplayCapacity || capacityEvents == 1));
                 card = new CardWindow(fixture);
                 foreach (var percent in new[] { 80, 100, 120 })
                 {

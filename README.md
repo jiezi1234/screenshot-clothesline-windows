@@ -4,13 +4,13 @@
 
 An independently maintained Windows implementation of a screenshot clothesline, inspired by [Tendedero](https://github.com/alejandrobujan/tendedero).
 
-> 当前状态：**v0.16.1 开发版**。新增[左右分区与笔记本卡片](docs/SHELF_ZONES.md)：图片及录像在左、文字在右，各最多占总容量一半，超额同类进入历史；各区独立分页和排序，文字采用横线纸与装订环样式。新增[剪贴板文字卡片](docs/TEXT_CARDS.md)：与图片同尺寸，悬停阅读全文，单击复制，双击在应用内编辑并保存到原卡片。沿用剪贴板开关，同时收集图片与文字。保留[图片堆叠与悬停突出](docs/STACKED_SHELF.md)：拥挤时自动部分重叠，悬停卡片会置于前方并略微放大，继续停留显示完整大图。保留[图片悬停放大预览](docs/HOVER_PREVIEW.md)：停留约 0.4 秒显示完整大图，移开或操作卡片即收起。拖动时相邻照片向外倾斜让位，卡片跟随鼠标并平滑归位。支持[拖动排序与拖入图片](docs/DRAG_AND_DROP.md)，顺序重启后保留。沿用[新版控制面板](docs/DASHBOARD_DESIGN.md)和可选展开保护期（默认 10 秒）。默认 Ctrl + ↓ 显示晾衣绳、Ctrl + ↑ 收回，可分别修改或关闭，详见[快捷键说明](docs/DIRECTIONAL_SHORTCUTS.md)。视频用于挂绳、预览和文件流转，项目不提供视频剪辑；图片标注保留。完整兼容性仍有[待人工验收项目](docs/STAGE3_COMPATIBILITY.md)。
+> 当前状态：**v0.16.2 开发版**。新增[共享空间与笔记本卡片](docs/SHELF_ZONES.md)：图片及录像靠左、文字靠右，按数量自动共享整条绳子的空间；容量为所有类型合计，超额最旧项进入历史。两类各自分页和排序，文字采用横线纸与装订环样式。新增[剪贴板文字卡片](docs/TEXT_CARDS.md)：与图片同尺寸，悬停阅读全文，单击复制，双击在应用内编辑并保存到原卡片。沿用剪贴板开关，同时收集图片与文字。保留[图片堆叠与悬停突出](docs/STACKED_SHELF.md)：拥挤时自动部分重叠，悬停卡片会置于前方并略微放大，继续停留显示完整大图。保留[图片悬停放大预览](docs/HOVER_PREVIEW.md)：停留约 0.4 秒显示完整大图，移开或操作卡片即收起。拖动时相邻照片向外倾斜让位，卡片跟随鼠标并平滑归位。支持[拖动排序与拖入图片](docs/DRAG_AND_DROP.md)，顺序重启后保留。沿用[新版控制面板](docs/DASHBOARD_DESIGN.md)和可选展开保护期（默认 10 秒）。默认 Ctrl + ↓ 显示晾衣绳、Ctrl + ↑ 收回，可分别修改或关闭，详见[快捷键说明](docs/DIRECTIONAL_SHORTCUTS.md)。视频用于挂绳、预览和文件流转，项目不提供视频剪辑；图片标注保留。完整兼容性仍有[待人工验收项目](docs/STAGE3_COMPATIBILITY.md)。
 
 ![阶段 0 示例晾衣绳](docs/images/stage0-shelf.png)
 
 ## 运行开发版
 
-面向 Windows 11 x64。将 `Clothesline-0.16.1-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
+面向 Windows 11 x64。将 `Clothesline-0.16.2-win-x64.zip` 完整解压后运行 `Clothesline.exe`，无需安装 .NET。这是未签名的开发版，尚未提供正式安装器。
 
 升级前先保存编辑并从托盘退出旧版。v0.13.0 首次打开 v1/v2 旧库时，先创建 `library-v1-backup-*.db` 或 `library-v2-backup-*.db` 数据库备份，再迁移至 v3，新增独立的显示顺序表；原有记录、设置与初始排列保留。迁移后的库不能直接用 v0.12 或更早版本打开；数据库备份不包含图片文件。详见[升级说明](docs/DRAG_AND_DROP.md#升级)。
 
@@ -72,7 +72,7 @@ WebP、HEIC/HEIF 可从截图目录、额外目录和手动导入进入同一图
 ./scripts/publish.ps1
 ```
 
-所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.16.1-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.16.1.txt`。
+所有脚本支持 `-Dotnet '完整路径\dotnet.exe'`。便携包输出到 `dist/Clothesline-0.16.2-win-x64.zip`，SHA-256 校验和位于 `dist/SHA256SUMS-0.16.2.txt`。
 
 普通测试包含核心规则、SQLite 生命周期和 100 文件监听突发测试。有交互式 Windows 桌面时，先退出正在运行的应用，再执行 `./scripts/test.ps1 -Desktop`：会短暂显示本程序专用测试窗口，检查跨进程窗口命中、100 张生成的有效 PNG、导出和原生回收站。结果与自身界面渲染位于 `artifacts/validation/` 和 `artifacts/stage1-validation/`。该命令不采集屏幕图像、不修改系统剪贴板；回收站测试仅处理生成的夹具文件。
 
@@ -92,7 +92,7 @@ GitHub Actions 尚未启用；[CI 模板](docs/ci/build.yml.example) 已准备�
 
 v0.12.0 新增 `--dashboard-test artifacts/dashboard-validation`，使用生成素材与隔离数据库检查页面导航、草稿保存/撤销、历史搜索、下拉框与 11 种语言的小窗口布局，已纳入 `test.ps1 -Desktop`。
 
-v0.16.1 新增 `--text-card-test artifacts/text-card-validation`，检查文字收集数据、完整复制、可滚动悬停预览、编辑保存、历史恢复和原生 TXT 拖出。数据库升级至 v4，升级前自动备份；旧版程序不能打开升级后的库。
+v0.16 系列新增 `--text-card-test artifacts/text-card-validation`，检查文字收集数据、完整复制、可滚动悬停预览、编辑保存、历史恢复和原生 TXT 拖出。数据库升级至 v4，升级前自动备份；旧版程序不能打开升级后的库。
 
 v0.15.0 新增 `--stacked-shelf-test artifacts/stacked-shelf-validation`，检查堆叠层次、悬停突出、相邻切换、两段预览、拖动衔接、分页和生命周期。
 

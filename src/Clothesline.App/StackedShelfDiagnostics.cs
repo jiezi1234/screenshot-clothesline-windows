@@ -39,7 +39,7 @@ internal static class StackedShelfDiagnostics
                 var sparse = Card("sparse-0"); var sparseBounds = Bounds(sparse);
                 shelf.TrackHoverPreview(0, Inside(sparseBounds), false, false);
                 Check("sparse-row-keeps-normal-card-bounds", shelf.EmphasizedCard is null && Bounds(sparse) == sparseBounds);
-                var items = Enumerable.Range(0, shelf.ZoneDisplayCapacity + 3).Select(i => assets[i % assets.Count] with { EntryId = "stack-" + i }).ToArray();
+                var items = Enumerable.Range(0, shelf.DisplayCapacity + 3).Select(i => assets[i % assets.Count] with { EntryId = "stack-" + i }).ToArray();
                 shelf.SetItems(items, true);
                 var row = app.Windows.OfType<CardWindow>().Where(c => c.IsVisible).OrderBy(c => Bounds(c).X).ToArray();
                 var homes = row.Select(Bounds).ToArray(); var source = row[1]; var sourceHome = homes[1]; var point = Inside(sourceHome);
@@ -47,13 +47,13 @@ internal static class StackedShelfDiagnostics
                 var outside = new PixelPoint(work.X + 2, work.Bottom - 2);
                 var preview = app.Windows.OfType<HoverPreviewWindow>().Single();
                 var target = app.Windows.OfType<ShelfDropWindow>().Single();
-                Check("overflow-uses-overlap-with-visible-neighbor-strips", row.Length == shelf.ZoneDisplayCapacity && DesktopGeometry.Stacked(homes) && homes.Zip(homes.Skip(1)).All(p => p.Second.X - p.First.X >= .6 * p.First.Width));
+                Check("overflow-uses-overlap-with-visible-neighbor-strips", row.Length == shelf.DisplayCapacity && DesktopGeometry.Stacked(homes) && homes.Zip(homes.Skip(1)).All(p => p.Second.X - p.First.X >= .6 * p.First.Width));
                 Check("normal-layer-order-exposes-each-card", row.Select((c, i) => Hit(Inside(homes[i])) == new WindowInteropHelper(c).Handle).All(ok => ok));
                 Capture(row, null, Path.Combine(output, "stacked-row.png"));
                 var foreground = Native.GetForegroundWindow(); var order = shelf.OrderedIds;
                 shelf.TrackHoverPreview(1000, point, false, false);
                 var expanded = Bounds(source);
-                Check("hover-expands-and-lifts-only-the-hit-card", shelf.EmphasizedCard == source && expanded == DesktopGeometry.EmphasizedCard(sourceHome, ShelfZones.Area(work, Native.GetDpiForWindow(new WindowInteropHelper(source).Handle) / 96.0, false)) && row.Where(c => c != source).All(c => Bounds(c) == homes[Array.IndexOf(row, c)]));
+                Check("hover-expands-and-lifts-only-the-hit-card", shelf.EmphasizedCard == source && expanded == DesktopGeometry.EmphasizedCard(sourceHome, work) && row.Where(c => c != source).All(c => Bounds(c) == homes[Array.IndexOf(row, c)]));
                 Check("hovered-card-comes-in-front-of-overlapping-neighbor", Hit(new PixelPoint(sourceHome.Right - 20, point.Y)) == new WindowInteropHelper(source).Handle);
                 Check("hover-does-not-activate-or-reorder", Native.GetForegroundWindow() == foreground && shelf.OrderedIds.SequenceEqual(order) && !shelf.Busy);
                 Check("pop-precedes-large-preview", !preview.IsVisible && loads == 0);
@@ -108,7 +108,7 @@ internal static class StackedShelfDiagnostics
                 shelf.SetCardSize(120);
                 Check("size-change-clears-emphasis-and-preview", shelf.EmphasizedCard is null && !preview.IsVisible);
                 shelf.SetCardSize(100);
-                shelf.SetItems(items.Take(shelf.ZoneDisplayCapacity + 1), true);
+                shelf.SetItems(items.Take(shelf.DisplayCapacity + 1), true);
                 source = Card(items[0].EntryId!);
                 source.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
                 var last = app.Windows.OfType<CardWindow>().Single(c => c.IsVisible); var lastHome = Bounds(last);
@@ -118,7 +118,7 @@ internal static class StackedShelfDiagnostics
                 var first = Card(items[0].EntryId!); shelf.TrackHoverPreview(3360, Inside(Bounds(first)), false, false);
                 Check("first-card-pop-stays-inside-work-area", shelf.EmphasizedCard == first && Bounds(first).X >= work.X);
                 shelf.TrackHoverPreview(3361, outside, false, false);
-                var end = Card(items[shelf.ZoneDisplayCapacity - 1].EntryId!); shelf.TrackHoverPreview(3370, Inside(Bounds(end)), false, false);
+                var end = Card(items[shelf.DisplayCapacity - 1].EntryId!); shelf.TrackHoverPreview(3370, Inside(Bounds(end)), false, false);
                 Check("last-visible-card-pop-stays-inside-work-area", shelf.EmphasizedCard == end && Bounds(end).Right <= work.Right);
                 var videoItems = items.Select((item, i) => i == 1 ? item with { Path = Path.ChangeExtension(item.Path, ".mp4"), EntryId = "stack-video" } : item).ToArray();
                 shelf.SetItems(videoItems, true); var video = Card("stack-video"); var beforeVideo = loads;

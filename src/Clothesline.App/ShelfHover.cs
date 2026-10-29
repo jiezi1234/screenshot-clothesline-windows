@@ -37,19 +37,17 @@ internal sealed partial class ShelfController
             // Keep the pressed card still until its click/menu/long press finishes.
             hoverPreview.Reset(); textHover.Reset(); return;
         }
-        var text = card?.Item.IsText ?? false; var group = ZoneCards(text); var slots = ZoneSlots(text);
-        if (!DesktopGeometry.Stacked(slots) || group.Count - ZonePage(text) * slots.Count < 2) ResetStackEmphasis();
+        var row = ZoneRow(false).Concat(ZoneRow(true)).ToArray();
+        var home = row.FirstOrDefault(pair => pair.Card == card).Rect;
+        var stacked = card is not null && row.Any(pair => pair.Card != card && pair.Rect.X < home.Right && pair.Rect.Right > home.X);
+        if (!stacked) ResetStackEmphasis();
         else if (card != emphasizedCard)
         {
             ResetStackEmphasis();
             if (card is not null)
             {
-                var slot = group.IndexOf(card) - ZonePage(text) * slots.Count;
-                if (slot >= 0 && slot < slots.Count)
-                {
-                    emphasizedHome = slots[slot]; emphasizedCard = card;
-                    card.SetStackEmphasis(DesktopGeometry.EmphasizedCard(emphasizedHome, ZoneArea(text)), true, MotionAllowed);
-                }
+                emphasizedHome = home; emphasizedCard = card;
+                card.SetStackEmphasis(DesktopGeometry.EmphasizedCard(emphasizedHome, InteractionArea), true, MotionAllowed);
             }
         }
         // The second-stage preview also avoids the enlarged card.

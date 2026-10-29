@@ -44,11 +44,11 @@ internal static class LibraryDiagnostics
                 var until = DateTime.UtcNow.AddSeconds(60);
                 while (runtime.Store.Entries().Count < 100 && DateTime.UtcNow < until) await Task.Delay(150);
                 Check("100-valid-pngs-collected", runtime.Store.Entries().Count == 100, runtime.Store.Entries().Count);
-                Check("capacity25-media12-history88", runtime.Store.Entries(EntryState.Shelf).Count == 12 && runtime.Store.Entries(EntryState.History).Count == 88);
+                Check("capacity25-history75", runtime.Store.Entries(EntryState.Shelf).Count == 25 && runtime.Store.Entries(EntryState.History).Count == 75);
                 Check("source100-files-preserved", Directory.GetFiles(watched, "*.png").Length == 100);
                 var historical = runtime.Store.Entries(EntryState.History).First();
                 Check("restore-real-image", runtime.Store.Restore(historical.Id, 25, LibraryRuntime.Now));
-                runtime.RefreshShelf(false); Check("shelf-thumbnail-count", shelf.Count == 12);
+                runtime.RefreshShelf(false); Check("shelf-thumbnail-count", shelf.Count == 25);
                 var dragEntry = runtime.Store.Entries(EntryState.Shelf).First();
                 var dragItem = new DemoItem(dragEntry.Title, "生成的拖拽测试图片", dragEntry.Path, ImageFiles.Read(dragEntry.Path, true), dragEntry.Id);
                 var dragHash = ImageFiles.Hash(dragEntry.Path);
@@ -60,7 +60,7 @@ internal static class LibraryDiagnostics
                     Check("drag-shell-data-contains-readable-original", file == dragEntry.Path && ImageFiles.Hash(file) == dragHash);
                     File.Copy(file, droppedCopy); effect = 1; return 0x40100;
                 });
-                bool Retained() => File.Exists(dragEntry.Path) && ImageFiles.Hash(dragEntry.Path) == dragHash && runtime.Store.Find(dragEntry.Id)?.State == EntryState.Shelf && shelf.Count == 12;
+                bool Retained() => File.Exists(dragEntry.Path) && ImageFiles.Hash(dragEntry.Path) == dragHash && runtime.Store.Find(dragEntry.Id)?.State == EntryState.Shelf && shelf.Count == 25;
                 runtime.RefreshShelf(false);
                 Check("drag-copy-preserves-original-and-shelf-entry", Retained() && ImageFiles.Hash(droppedCopy) == dragHash);
                 ShellTransfer.Drag(0, dragItem, (nint owner, System.Runtime.InteropServices.ComTypes.IDataObject data, nint source, uint allowed, out uint effect) => { effect = 2; return 0x40101; });

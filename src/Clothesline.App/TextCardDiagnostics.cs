@@ -134,9 +134,9 @@ internal static class TextCardDiagnostics
                     await Until(() => target.IsVisible);
                     CardWindow[] Visible(bool text) => app.Windows.OfType<CardWindow>().Where(c => c.IsVisible && c.Item.IsText == text).OrderBy(c => Bounds(c).X).ToArray();
                     var work = Native.MonitorAt(Center(target)).WorkArea;
-                    Check("media-left-text-right-with-equal-page-limits", Visible(false).Length == mixed.ZoneDisplayCapacity && Visible(true).Length == mixed.ZoneDisplayCapacity
-                        && Visible(false).All(c => Bounds(c).Right <= work.X + work.Width / 2) && Visible(true).All(c => Bounds(c).X >= work.X + work.Width / 2));
-                    await Task.Delay(50); CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "partitioned-shelf.png"));
+                    Check("media-before-text-with-shared-page-allocation", Visible(false).Length == mixed.ZoneCapacity(false) && Visible(true).Length == mixed.ZoneCapacity(true)
+                        && Visible(false).Length + Visible(true).Length == mixed.DisplayCapacity && Bounds(Visible(false)[^1]).X < Bounds(Visible(true)[0]).X);
+                    await Task.Delay(50); CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "shared-shelf.png"));
                     var mediaPage = Visible(false).Select(c => c.Item.EntryId).ToArray(); var notesPage = Visible(true).Select(c => c.Item.EntryId).ToArray();
                     target.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
                     Check("text-paging-keeps-media-page-still", Visible(false).Select(c => c.Item.EntryId).SequenceEqual(mediaPage) && !Visible(true).Select(c => c.Item.EntryId).SequenceEqual(notesPage));
@@ -152,12 +152,32 @@ internal static class TextCardDiagnostics
                     var gestureText = mixed.BeginLocalReorder(target, Center(target), false);
                     mixed.UpdateLocalReorder(new PixelPoint(work.X + 100, Center(target).Y), true, false, 31000);
                     var drop = app.Windows.OfType<ShelfDropWindow>().Single(); var dropDpi = Native.GetDpiForWindow(new WindowInteropHelper(drop).Handle) / 96.0;
-                    Check("text-drag-stays-in-right-zone-and-keeps-media-visible", drop.PreviewState(target.Item.EntryId!).X * dropDpi + Bounds(drop).X >= work.X + work.Width / 2
-                        && mediaPage.All(id => drop.PreviewState(id!).TargetAngle == 0) && drop.PreviewCount > mixed.ZoneDisplayCapacity);
+                    Check("text-drag-can-cross-midpoint-and-keeps-media-visible", drop.PreviewState(target.Item.EntryId!).X * dropDpi + Bounds(drop).X < work.X + work.Width / 2
+                        && mediaPage.All(id => drop.PreviewState(id!).TargetAngle == 0) && drop.PreviewCount > mixed.ZoneCapacity(true));
                     mixed.UpdateLocalReorder(Center(target), true, true, 31100); await gestureText;
                     mixed.MoveCardBefore(target, null);
                     Check("text-reorder-never-mixes-with-media-order", mixed.OrderedIds.Take(12).All(id => int.Parse(id[6..]) % 2 == 1) && mixed.OrderedIds[^1] == "mixed-0");
-                    mixed.SetItems([target.Item], true);
+                    var note = target.Item;
+                    mixed.SetItems(Enumerable.Range(0, mixed.DisplayCapacity - 1).Select(i => photo with { EntryId = "photo-" + i }).Append(note), true);
+                    await Task.Delay(50);
+                    Check("media-borrows-right-space-with-one-note", Visible(false).Length == mixed.DisplayCapacity - 1 && Bounds(Visible(false)[^1]).X > work.X + work.Width / 2
+                        && Visible(true).Length == 1 && Bounds(Visible(true)[0]).Right > work.Right - 50);
+                    CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "fluid-media-heavy.png"));
+                    mixed.TrackHoverPreview(31200, Center(Visible(true)[0]), false, false);
+                    Check("single-note-at-media-boundary-pops-when-overlapped", mixed.EmphasizedCard == Visible(true)[0]);
+                    mixed.SetItems(new[] { photo with { EntryId = "one-photo" } }.Concat(Enumerable.Range(0, mixed.DisplayCapacity - 1).Select(i => note with { EntryId = "note-" + i })), true);
+                    await Task.Delay(50);
+                    Check("text-borrows-left-space-with-one-image", Visible(true).Length == mixed.DisplayCapacity - 1 && Bounds(Visible(true)[0]).X < work.X + work.Width / 2);
+                    CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "fluid-text-heavy.png"));
+                    var onlyImage = Visible(false)[0]; var onlyImageBounds = Bounds(onlyImage);
+                    mixed.TrackHoverPreview(31300, new PixelPoint(onlyImageBounds.X + 20, onlyImageBounds.Y + onlyImageBounds.Height / 2), false, false);
+                    Check("single-image-at-text-boundary-pops-when-overlapped", mixed.EmphasizedCard == onlyImage);
+                    mixed.SetItems(Enumerable.Range(0, mixed.DisplayCapacity + 1).Select(i => note with { EntryId = "only-note-" + i }), true);
+                    var noteTotal = mixed.DisplayCapacity + 1;
+                    Check("text-only-uses-full-row-capacity", Visible(true).Length == mixed.DisplayCapacity && Bounds(Visible(true)[0]).X < work.X + 50);
+                    Visible(true)[0].RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                    Check("short-final-text-page-remains-right-aligned", Visible(true).Length == 1 && Visible(true)[0].Item.EntryId == "only-note-" + (noteTotal - 1) && Bounds(Visible(true)[0]).Right > work.Right - 50);
+                    mixed.SetItems([note], true);
                     mixed.UpdateDropFeedback(new PixelPoint(work.X + 100, work.Y + 70), 32000);
                     Check("incoming-image-into-empty-left-zone-preserves-right-preview", drop.PreviewCount == 1 && drop.PreviewState(target.Item.EntryId!).TargetAngle == 0);
                     mixed.Hide();

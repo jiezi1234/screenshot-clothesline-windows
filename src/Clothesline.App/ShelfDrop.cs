@@ -77,7 +77,7 @@ internal sealed partial class ShelfController
         if (dropMonitor != monitor.Handle || !dropTarget.IsVisible) { dropScale = Native.MoveAndGetScale(dropTarget, monitor); dropMonitor = monitor.Handle; }
         if (expanded)
         {
-            var slots = ShelfZones.Cards(monitor.WorkArea, dropScale, 1, false, cardScale);
+            var slots = ShelfZones.Plan(monitor.WorkArea, dropScale, 1, 0, cardScale).Media;
             var height = Math.Min(monitor.WorkArea.Height, slots[0].Bottom - monitor.WorkArea.Y + (int)(24 * dropScale));
             dropBounds = new(monitor.WorkArea.X + (int)(8 * dropScale), monitor.WorkArea.Y, Math.Max(1, monitor.WorkArea.Width - (int)(16 * dropScale)), height);
         }
@@ -90,7 +90,7 @@ internal sealed partial class ShelfController
         var monitor = activeMonitor ?? Native.MonitorAt(cursor);
         if (DragCards.Count == 0) { hoverSlot = 0; return null; }
         var slots = DragSlots;
-        var offset = page * slots.Count; var count = Math.Min(slots.Count, DragCards.Count - offset);
+        var offset = page * DragCapacity; var count = Math.Min(slots.Count, DragCards.Count - offset);
         if (hoverPage != page) { hoverPage = page; hoverSlot = -1; }
         var slot = hoverSlot = ShelfDropGeometry.StableSlot(slots, count, hoverSlot, cursor.X, (int)(8 * scale));
         var next = DragCards.ElementAtOrDefault(offset + slot)?.Item;
@@ -109,17 +109,17 @@ internal sealed partial class ShelfController
         if (!presented || activeMonitor?.Handle != monitor.Handle) { RestorePreviewCards(); Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present(); }
         UpdateDragPage(cursor, monitor, now);
         DropPosition(cursor);
-        ShowDropTarget(monitor, true, draggedCard is null ? T("松手挂上图片，原文件保留。") : T("拖动调整区内顺序；在分区边缘停留可翻页。"));
+        ShowDropTarget(monitor, true, draggedCard is null ? T("松手挂上图片，原文件保留。") : T("拖动调整顺序；在左右边缘停留可翻页。"));
         RenderIncomingGap();
     }
     private void UpdateDragPage(PixelPoint cursor, MonitorInfo monitor, long now)
     {
-        var zone = ZoneArea(DragText);
+        var zone = InteractionArea;
         var direction = cursor.X < zone.X || cursor.X >= zone.Right ? 0 : cursor.X < zone.X + 48 * scale ? -1 : cursor.X > zone.Right - 48 * scale ? 1 : 0;
         if (direction != pageDirection) { pageDirection = direction; pageEdgeSince = now; }
         else if (direction != 0 && now - pageEdgeSince >= 650)
         {
-            var next = Math.Clamp(page + direction, 0, Math.Max(0, (DragCards.Count - 1) / ZoneDisplayCapacity));
+            var next = Math.Clamp(page + direction, 0, Math.Max(0, (DragCards.Count - 1) / DragCapacity));
             if (next != page) { page = next; Present(); dropTarget.InvalidatePlacement(); }
             pageEdgeSince = now;
         }

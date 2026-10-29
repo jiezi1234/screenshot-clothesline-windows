@@ -15,11 +15,11 @@ using (var store = new LibraryStore(Path.Combine(root, "library")))
 {
     Check(store.LoadSettings().RetentionDays == 0 && !store.LoadSettings().ClipboardEnabled && store.LoadSettings().RevealProtectionSeconds == 10, "conservative initial settings with 10-second reveal protection");
     store.SaveSettings(new LibrarySettings { Capacity = 25, RetentionDays = 7, ExtraFolders = [root] });
-    for (var i = 0; i < 100; i++) store.Add(Make($"image-{i}.png", i.ToString()), Ownership.External, "test", i.ToString(), now + i, 6);
+    for (var i = 0; i < 100; i++) store.Add(Make($"image-{i}.png", i.ToString()), Ownership.External, "test", i.ToString(), now + i, 3);
     Check(store.Entries(EntryState.Shelf).Count == 3 && store.Entries(EntryState.History).Count == 97, "100 captures spill into history without loss");
     Check(Directory.GetFiles(root, "image-*.png").Length == 100, "capacity does not delete external files");
     var oldest = store.Entries(EntryState.History).Last(); restoreId = oldest.Id;
-    Check(store.Restore(oldest.Id, 6, now + 1000) && store.Find(oldest.Id)!.ArchivedAt is null, "restore clears history timer and enforces capacity");
+    Check(store.Restore(oldest.Id, 3, now + 1000) && store.Find(oldest.Id)!.ArchivedAt is null, "restore clears history timer and enforces capacity");
     Check(store.Entries(EntryState.Shelf).Count == 3, "restore maintains shelf limit");
     var cleanCalls = 0;
     var removed = store.Cleanup(7, now + 10 * day, _ => { cleanCalls++; return true; });
@@ -39,9 +39,9 @@ using (var store = new LibraryStore(Path.Combine(root, "library")))
     File.Move(external, external + ".moved"); store.RefreshMissing();
     Check(store.Find(item.Id)!.Missing && !store.Restore(item.Id, 3, now), "missing external file is marked rather than forgotten");
     var recovered = Path.Combine(store.ManagedFolder, "pending.png"); File.WriteAllText(recovered, "complete");
-    store.Add(recovered, Ownership.Managed, "Clipboard", "pending", now, 6, EntryState.Pending, "pending-complete");
+    store.Add(recovered, Ownership.Managed, "Clipboard", "pending", now, 3, EntryState.Pending, "pending-complete");
     var partial = Path.Combine(store.ManagedFolder, "partial.png"); File.WriteAllText(partial + ".part", "partial");
-    store.Add(partial, Ownership.Managed, "Clipboard", "partial", now, 6, EntryState.Pending, "pending-partial");
+    store.Add(partial, Ownership.Managed, "Clipboard", "partial", now, 3, EntryState.Pending, "pending-partial");
     var kept = Path.Combine(store.ManagedFolder, "interrupted-recycle.png"); File.WriteAllText(kept, "keep me");
     store.Add(kept, Ownership.Managed, "Clipboard", "recycle-keep", now, 100, id: "recycle-kept");
     store.Add(Path.Combine(store.ManagedFolder, "already-recycled.png"), Ownership.Managed, "Clipboard", "recycle-gone", now, 100, id: "recycle-gone");
@@ -307,7 +307,7 @@ using (var store = new LibraryStore(orderingRoot))
     Check(Order() == "b,d,a,c", "custom display order survives database reopen");
     store.Add(Make("e.png"), Ownership.External, "order", "e", now + 5, 25, id: "e");
     Check(Order() == "e,b,d,a,c", "new capture prepends without scrambling custom order");
-    store.MoveShelfItems(["a"], "e"); store.EnforceCapacity(8, now + 6);
+    store.MoveShelfItems(["a"], "e"); store.EnforceCapacity(4, now + 6);
     Check(store.Find("a")!.State == EntryState.History && Order() == "e,b,d,c", "capacity evicts oldest arrival even when moved to front");
     store.Archive("d", now + 7); store.Restore("d", 25, now + 8);
     Check(Order() == "d,e,b,c", "restored card returns to front without stale custom position");

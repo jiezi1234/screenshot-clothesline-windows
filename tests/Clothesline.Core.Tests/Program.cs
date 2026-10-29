@@ -192,17 +192,27 @@ Check(HoverPreviewGeometry.Place(rightAnchor, previewWork, 1, 1600, 900, [rightA
 var narrowWork = new PixelRect(-400, 0, 400, 500); var wideCard = new PixelRect(-390, 20, 380, 190);
 Check(HoverPreviewGeometry.Place(wideCard, narrowWork, 1, 1600, 900, [wideCard]) is PixelRect downPreview && downPreview.Y > wideCard.Bottom && downPreview.Bottom <= narrowWork.Bottom, "hover shrinks below row on narrow work area");
 Check(HoverPreviewGeometry.Place(new PixelRect(0, 0, 50, 50), new PixelRect(0, 0, 50, 50), 2, 1600, 900, []) is null, "no room does not cover source or leave screen");
-Check(ShelfZones.Limit(25) == 12 && ShelfZones.Limit(50) == 25 && ShelfZones.Limit(100) == 50, "split quota rounds odd totals down without borrowing");
 foreach (var dpi in new[] { 1.0, 1.25, 1.5, 2.0, 2.5 })
 foreach (var size in new[] { .8, 1.0, 1.2 })
 foreach (var width in new[] { 400, 1920, 3840 })
+foreach (var counts in new[] { (0, 0), (25, 0), (0, 25), (1, 20), (20, 1), (20, 20), (2, 3) })
 {
     var work = new PixelRect(-1920, -100, width, 1040);
-    var total = ShelfZones.DisplayCapacity(work, dpi, size);
-    var media = ShelfZones.Cards(work, dpi, 100, false, size); var notes = ShelfZones.Cards(work, dpi, 100, true, size);
-    Check(total % 2 == 0 && media.Count == notes.Count && media.Count == total / 2
-        && media.All(r => r.X >= work.X && r.Right <= work.X + width / 2 && r.Bottom <= work.Bottom)
-        && notes.All(r => r.X >= work.X + width / 2 && r.Right <= work.Right && r.Bottom <= work.Bottom)
-        && media.All(m => notes.All(n => !HoverPreviewGeometry.Overlaps(m, n))), $"equal bounded zones at {width}px, DPI {dpi}, card {size}");
+    var capacity = ShelfZones.DisplayCapacity(work, dpi, size);
+    var layout = ShelfZones.Plan(work, dpi, counts.Item1, counts.Item2, size);
+    var all = layout.Media.Concat(layout.Text).ToArray();
+    Check(all.Length == Math.Min(capacity, counts.Item1 + counts.Item2)
+        && layout.Media.Count <= counts.Item1 && layout.Text.Count <= counts.Item2
+        && (counts.Item1 == 0 || layout.Media.Count > 0) && (counts.Item2 == 0 || layout.Text.Count > 0)
+        && all.All(r => r.X >= work.X && r.Right <= work.Right && r.Y >= work.Y && r.Bottom <= work.Bottom)
+        && all.Zip(all.Skip(1)).All(p => p.Second.X - p.First.X >= Math.Ceiling(p.First.Width * .6)),
+        $"shared layout {counts} at {width}px, DPI {dpi}, card {size}");
 }
+var fluidWork = new PixelRect(0, 0, 1920, 1080);
+var mediaHeavy = ShelfZones.Plan(fluidWork, 1, 12, 1); var textHeavy = ShelfZones.Plan(fluidWork, 1, 1, 12);
+Check(mediaHeavy.Media[^1].X > 960 && textHeavy.Text[0].X < 960, "both types can extend beyond the screen midpoint as counts change");
+Check(ShelfZones.Plan(fluidWork, 1, 100, 0).Media.Count == ShelfZones.DisplayCapacity(fluidWork, 1)
+    && ShelfZones.Plan(fluidWork, 1, 0, 100).Text.Count == ShelfZones.DisplayCapacity(fluidWork, 1), "single type can occupy every screen slot");
+var sparseAnchored = ShelfZones.Plan(fluidWork, 1, 1, 1);
+Check(sparseAnchored.Media[0].X == 16 && sparseAnchored.Text[0].Right == 1904, "sparse media anchors left and sparse text anchors right");
 Console.WriteLine($"{checks} checks passed.");

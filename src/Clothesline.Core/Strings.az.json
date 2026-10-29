@@ -378,6 +378,6 @@
   "这张卡片不能直接编辑。": "Bu kart birbaşa redaktə edilə bilməz.",
   "自管内容上限": "İdarə olunan məzmun limiti",
   "取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。": "Çıxarılan və ya tutumu aşan elementlər tarixçəyə keçir. Müddət bitdikdə xarici orijinallar saxlanılır; tətbiqin saxladığı məzmun yalnız zibil qutusuna köçürülür və uğursuzluq zamanı qeydlər qorunur.",
-  "图片和录像在左，文字在右；各最多占总容量的一半，单数向下取整。超出仅将该类最旧项目转入历史。": "Şəkillər və videolar solda, mətnlər sağda yerləşir. Hər qrup ümumi tutumun aşağı yuvarlaqlaşdırılmış yarısından çoxunu istifadə edə bilməz. Hədd aşılarsa, yalnız həmin qrupun ən köhnə elementləri tarixçəyə köçürülür.",
-  "拖动调整区内顺序；在分区边缘停留可翻页。": "Bu bölmədə sıralamaq üçün sürükləyin; səhifəni dəyişmək üçün bölmənin kənarında gözləyin."
+  "拖动调整区内顺序；在分区边缘停留可翻页。": "Bu bölmədə sıralamaq üçün sürükləyin; səhifəni dəyişmək üçün bölmənin kənarında gözləyin.",
+  "图片和录像靠左，文字靠右，自动共享整条绳子的空间。容量为所有类型合计；超额时最旧项目进入历史。": "Şəkillər və videolar sola, mətnlər sağa düzülür və ipin bütün sahəsini avtomatik bölüşür. Tutum bütün növlərin cəmidir; hədd aşıldıqda ən köhnə elementlər tarixçəyə köçürülür."
 }

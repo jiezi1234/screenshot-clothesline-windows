@@ -1,0 +1,27 @@
+{
+  "version": "0.21.1",
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "suites": [
+    {
+      "suite": "image-hover-edit",
+      "checks": 43,
+      "passed": true
+    },
+    {
+      "suite": "editor",
+      "checks": 34,
+      "passed": true
+    }
+  ],
+  "checks": 77,
+  "notes": [
+    "Image hover desktop diagnostics include the offscreen cases, counted once.",
+    "Generated fixtures and isolated libraries; no user images edited.",
+    "The full v0.21.0 baseline is recorded separately; this update reruns the affected image editing suites.",
+    "Undo history is runtime-only, up to 16 recently edited cards with an estimated 256 MiB budget."
+  ]
+}

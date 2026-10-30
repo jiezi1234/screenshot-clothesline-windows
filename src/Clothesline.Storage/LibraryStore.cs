@@ -44,8 +44,8 @@ public sealed partial class LibraryStore : IDisposable
         db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, "library.db"), Pooling = false }.ToString());
         db.Open(); Execute("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
         var version = Convert.ToInt32(Scalar("PRAGMA user_version;"));
-        if (version > 4) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
-        if (version is 1 or 2 or 3)
+        if (version > 5) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
+        if (version is 1 or 2 or 3 or 4)
         {
             using var backup = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, $"library-v{version}-backup-" + Guid.NewGuid().ToString("N") + ".db"), Pooling = false }.ToString());
             backup.Open(); db.BackupDatabase(backup);
@@ -89,7 +89,16 @@ public sealed partial class LibraryStore : IDisposable
                 PRAGMA user_version=4;
                 COMMIT;
                 """);
-        RecoverTextEdits(); Recover();
+        if (version < 5)
+            Execute("""
+                BEGIN IMMEDIATE;
+                CREATE TABLE IF NOT EXISTS ImageEdits(EntryId TEXT PRIMARY KEY REFERENCES Items(Id) ON DELETE CASCADE,
+                    StagePath TEXT NOT NULL, Destination TEXT NOT NULL, OldDigest TEXT NOT NULL, NewDigest TEXT NOT NULL,
+                    PixelHash TEXT NOT NULL, OriginalId TEXT NOT NULL REFERENCES Items(Id) ON DELETE RESTRICT, SavedAt INTEGER NOT NULL);
+                PRAGMA user_version=5;
+                COMMIT;
+                """);
+        RecoverTextEdits(); RecoverImageEdits(); Recover();
     }
     private SqliteCommand Command(string sql, params object?[] pairs)
     {
@@ -157,7 +166,7 @@ public sealed partial class LibraryStore : IDisposable
     public LibraryEntry? Find(string id) => Entries().FirstOrDefault(e => e.Id == id);
     public const string OriginalSource = "EditOriginal";
     public bool HasOriginalDependents(string id)
-    { lock (gate) return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM EditOrigins WHERE OriginalId=$id", "$id", id)) > 0; }
+    { lock (gate) return Convert.ToInt64(Scalar("SELECT (SELECT COUNT(*) FROM EditOrigins WHERE OriginalId=$id) + (SELECT COUNT(*) FROM ImageEdits WHERE OriginalId=$id)", "$id", id)) > 0; }
     public LibraryEntry? OriginalFor(string id)
     {
         lock (gate)

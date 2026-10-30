@@ -1,0 +1,82 @@
+{
+  "version": "0.21.0",
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "suites": [
+    {
+      "suite": "core",
+      "checks": 683,
+      "passed": true
+    },
+    {
+      "suite": "storage",
+      "checks": 227,
+      "passed": true
+    },
+    {
+      "suite": "drag-drop",
+      "checks": 35,
+      "passed": true
+    },
+    {
+      "suite": "editor",
+      "checks": 34,
+      "passed": true
+    },
+    {
+      "suite": "hover-preview",
+      "checks": 31,
+      "passed": true
+    },
+    {
+      "suite": "image-hover-edit",
+      "checks": 27,
+      "passed": true
+    },
+    {
+      "suite": "paper-style",
+      "checks": 31,
+      "passed": true
+    },
+    {
+      "suite": "reorder-motion",
+      "checks": 30,
+      "passed": true
+    },
+    {
+      "suite": "shelf-entrance",
+      "checks": 36,
+      "passed": true
+    },
+    {
+      "suite": "stacked-shelf",
+      "checks": 34,
+      "passed": true
+    },
+    {
+      "suite": "text-card",
+      "checks": 50,
+      "passed": true
+    },
+    {
+      "suite": "text-hover-edit",
+      "checks": 72,
+      "passed": true
+    },
+    {
+      "suite": "screen-quota",
+      "checks": 19,
+      "passed": true
+    }
+  ],
+  "uniqueChecks": 1309,
+  "notes": [
+    "Image desktop diagnostics include the offscreen image editor checks; counted once.",
+    "The initial shelf entrance foreground-equality assertion failed; an independent rerun passed all 36 checks. Actual foreground activity can affect that assertion.",
+    "Synthetic images and isolated libraries only. No user clipboard or user image edits.",
+    "Physical mixed-DPI monitors, real pointer gestures and language proofreading still need manual acceptance."
+  ]
+}

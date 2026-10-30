@@ -1,0 +1,113 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "hover-editor-ready-without-showing-a-window",
+      "passed": true
+    },
+    {
+      "name": "change-saves-automatically-at-original-resolution",
+      "passed": true
+    },
+    {
+      "name": "previous-step-restores-and-autosaves-original-state",
+      "passed": true
+    },
+    {
+      "name": "next-step-restores-and-autosaves-edit-after-save",
+      "passed": true
+    },
+    {
+      "name": "new-edit-after-undo-discards-redo-branch",
+      "passed": true
+    },
+    {
+      "name": "crop-saves-image-dimensions-not-preview-size",
+      "passed": true
+    },
+    {
+      "name": "leaving-flushes-and-releases-session",
+      "passed": true
+    },
+    {
+      "name": "editing-and-undo-remain-available-during-save",
+      "passed": true
+    },
+    {
+      "name": "completed-save-does-not-mark-newer-changes-saved",
+      "passed": true
+    },
+    {
+      "name": "mouse-leave-flushes-newer-revision-before-closing",
+      "passed": true
+    },
+    {
+      "name": "save-failure-preserves-editor-draft-and-lease",
+      "passed": true
+    },
+    {
+      "name": "declining-discard-keeps-draft",
+      "passed": true
+    },
+    {
+      "name": "retry-saves-retained-draft",
+      "passed": true
+    },
+    {
+      "name": "card-to-popup-travel-grace",
+      "passed": true
+    },
+    {
+      "name": "returning-during-save-keeps-editor-open",
+      "passed": true
+    },
+    {
+      "name": "leaving-again-closes-clean-editor",
+      "passed": true
+    },
+    {
+      "name": "runtime-updates-same-card-and-preserves-file",
+      "passed": true
+    },
+    {
+      "name": "runtime-saves-full-resolution-png-with-original-link",
+      "passed": true
+    },
+    {
+      "name": "saved-metadata-hash-matches-decoded-png",
+      "passed": true
+    },
+    {
+      "name": "undo-auto-save-keeps-same-copy-path",
+      "passed": true
+    },
+    {
+      "name": "reopened-editor-retains-original-lineage-and-same-card",
+      "passed": true
+    },
+    {
+      "name": "desktop-hover-opens-inline-editor-without-workspace-or-focus-steal",
+      "passed": true
+    },
+    {
+      "name": "desktop-editing-mouse-press-keeps-popup-and-shelf-open",
+      "passed": true
+    },
+    {
+      "name": "desktop-undo-saves-and-retains-redo",
+      "passed": true
+    },
+    {
+      "name": "desktop-leaving-dismisses-popup-and-releases-busy",
+      "passed": true
+    },
+    {
+      "name": "desktop-hide-removes-popup-without-dropping-unsaved-draft",
+      "passed": true
+    },
+    {
+      "name": "desktop-hidden-save-releases-clean-session",
+      "passed": true
+    }
+  ]
+}

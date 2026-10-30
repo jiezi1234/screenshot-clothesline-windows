@@ -43,6 +43,17 @@ internal static class HoverPreviewDiagnostics
                 PixelRect Bounds(Window window) { Native.GetWindowRect(new WindowInteropHelper(window).Handle, out var rect); return rect.Pixels; }
                 PixelPoint Center(Window window) { var rect = Bounds(window); return new(rect.X + rect.Width / 2, rect.Y + rect.Height / 2); }
                 var source = Card("hover-0"); var second = Card("hover-1"); var point = Center(source);
+                async Task Ready(Window window)
+                {
+                    for (var i = 0; i < 100; i++)
+                    {
+                        var center = Center(window);
+                        if (Native.WindowFromPoint(new Native.Point { X = center.X, Y = center.Y }) == new WindowInteropHelper(window).Handle && window.Opacity == 1) return;
+                        await Task.Delay(20);
+                    }
+                    throw new TimeoutException("Fixture window was not ready for native hit testing");
+                }
+                await Ready(source);
                 var foreground = Native.GetForegroundWindow();
                 shelf.TrackHoverPreview(0, point, false, false); shelf.TrackHoverPreview(399, point, false, false);
                 Check("brief-hover-does-not-show-or-decode", !preview.IsVisible && requests.Count == 0);
@@ -50,14 +61,14 @@ internal static class HoverPreviewDiagnostics
                 Check("dwell-shows-thumbnail-while-large-preview-loads", preview.IsVisible && ReferenceEquals(preview.PreviewImage, items[0].Image) && requests.Count == 1);
                 Check("hover-keeps-foreground-and-does-not-block-collection", Native.GetForegroundWindow() == foreground && !shelf.Busy);
                 var style = Native.GetWindowLongPtrW(new WindowInteropHelper(preview).Handle, -20).ToInt64();
-                Check("preview-is-layered-transparent-nonactivating-toolwindow", (style & 0x080800a0) == 0x080800a0);
+                Check("preview-is-interactive-nonactivating-toolwindow", (style & 0x08080080) == 0x08080080 && (style & 0x20) == 0);
                 var rect = Bounds(preview); var monitor = Native.MonitorAt(point);
                 Check("preview-enlarges-without-covering-row-or-leaving-work-area", (rect.Width > Bounds(source).Width || rect.Height > Bounds(source).Height)
                     && rect.X >= monitor.WorkArea.X && rect.Right <= monitor.WorkArea.Right && rect.Y >= monitor.WorkArea.Y && rect.Bottom <= monitor.WorkArea.Bottom
                     && app.Windows.OfType<CardWindow>().Where(c => c.IsVisible).All(c => !HoverPreviewGeometry.Overlaps(rect, Bounds(c))));
+                await Ready(preview);
                 var hit = Native.WindowFromPoint(new Native.Point { X = rect.X + rect.Width / 2, Y = rect.Y + rect.Height / 2 });
-                Native.GetWindowThreadProcessId(hit, out var pid);
-                Check("painted-preview-passes-input-to-another-process", hit != 0 && pid != Environment.ProcessId);
+                Check("painted-preview-receives-mouse-input", hit == new WindowInteropHelper(preview).Handle);
                 requests[0].Completion.SetResult(assets[0].Image); await Task.Delay(40);
                 Check("large-image-replaces-thumbnail-without-extra-loads", ReferenceEquals(preview.PreviewImage, assets[0].Image) && requests.Count == 1);
                 Capture(preview, Path.Combine(output, "hover-preview.png"));
@@ -78,45 +89,54 @@ internal static class HoverPreviewDiagnostics
                 shelf.TrackHoverPreview(3400, point, false, false); shelf.TrackHoverPreview(3800, point, false, false);
                 source.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Right) { RoutedEvent = Mouse.PreviewMouseDownEvent });
                 Check("mouse-down-dismisses-before-menu-or-drag", !preview.IsVisible && requests.Last().Token.IsCancellationRequested);
+                shelf.TrackHoverPreview(3900, outside, false, false);
                 shelf.TrackHoverPreview(4000, point, false, false); shelf.TrackHoverPreview(4400, point, false, false);
                 source.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
-                Check("mouse-leave-releases-image-immediately", !preview.IsVisible && preview.PreviewImage is null);
+                Check("mouse-leave-event-allows-travel-to-preview", preview.IsVisible);
+                shelf.TrackHoverPreview(4500, outside, false, false);
+                Check("leaving-card-and-preview-releases-image", !preview.IsVisible && preview.PreviewImage is null);
                 shelf.TrackHoverPreview(4600, point, false, false); shelf.TrackHoverPreview(5000, point, false, false);
+                await Ready(preview);
                 shelf.TrackHoverPreview(5100, Center(preview), false, false);
-                Check("preview-does-not-sustain-its-own-hover", !preview.IsVisible);
+                Check("preview-stays-open-under-pointer", preview.IsVisible);
+                shelf.TrackHoverPreview(5150, outside, false, false);
                 shelf.TrackHoverPreview(5200, point, false, false); shelf.TrackHoverPreview(5600, point, false, false);
                 using (var blocker = new WindowScope(new OverlayWindow("Hover test occluder", false) { Content = new Border { Background = Brushes.AliceBlue } }))
                 {
-                    blocker.Window.Present(Bounds(source), false); shelf.TrackHoverPreview(5700, point, false, false);
-                    Check("covered-card-does-not-trigger-preview", !preview.IsVisible);
+                    blocker.Window.Present(Bounds(source), false); await Ready(blocker.Window); shelf.TrackHoverPreview(5700, point, false, false);
+                    shelf.TrackHoverPreview(6100, point, false, false);
+                    Check("covered-card-dismisses-after-travel-grace", !preview.IsVisible);
                 }
-                shelf.TrackHoverPreview(5800, point, false, false); shelf.TrackHoverPreview(6200, point, false, false);
+                await Ready(source);
+                shelf.TrackHoverPreview(6300, point, false, false); shelf.TrackHoverPreview(6700, point, false, false);
                 requests.Last().Completion.SetException(new IOException("fixture decode failed")); await Task.Delay(40);
                 Check("decode-failure-closes-preview-without-changing-shelf", !preview.IsVisible && shelf.Count == 3 && preview.PreviewImage is null);
-                shelf.TrackHoverPreview(6300, outside, false, false); shelf.TrackHoverPreview(6400, point, false, false); shelf.TrackHoverPreview(6800, point, false, false);
+                shelf.TrackHoverPreview(6800, outside, false, false); shelf.TrackHoverPreview(6900, point, false, false); shelf.TrackHoverPreview(7300, point, false, false);
                 var gesture = shelf.BeginLocalReorder(source, point, false);
                 Check("internal-reorder-dismisses-hover", !preview.IsVisible && requests.Last().Token.IsCancellationRequested);
                 shelf.Hide(); await gesture; shelf.Show();
-                shelf.TrackHoverPreview(7000, point, false, false); shelf.TrackHoverPreview(7400, point, false, false);
-                shelf.UpdateDropFeedback(point, 7500);
+                await Ready(source);
+                shelf.TrackHoverPreview(7500, point, false, false); shelf.TrackHoverPreview(7900, point, false, false);
+                shelf.UpdateDropFeedback(point, 8000);
                 Check("incoming-file-drag-dismisses-hover", !preview.IsVisible);
                 shelf.Hide(); shelf.Show();
-                shelf.TrackHoverPreview(7600, point, false, false); shelf.TrackHoverPreview(8000, point, false, false);
+                await Ready(source);
+                shelf.TrackHoverPreview(8100, point, false, false); shelf.TrackHoverPreview(8500, point, false, false);
                 shelf.SetCardSize(120);
                 Check("layout-change-cancels-preview", !preview.IsVisible && requests.Last().Token.IsCancellationRequested);
-                point = Center(source); shelf.TrackHoverPreview(8200, point, false, false); shelf.TrackHoverPreview(8600, point, false, false);
+                point = Center(source); shelf.TrackHoverPreview(8700, point, false, false); shelf.TrackHoverPreview(9100, point, false, false);
                 shelf.SetItems(items.Skip(1), false);
                 Check("removing-source-cancels-preview", !preview.IsVisible && requests.Last().Token.IsCancellationRequested);
-                source = Card("hover-1"); point = Center(source); shelf.TrackHoverPreview(8800, point, false, false); shelf.TrackHoverPreview(9200, point, false, false);
+                source = Card("hover-1"); point = Center(source); shelf.TrackHoverPreview(9300, point, false, false); shelf.TrackHoverPreview(9700, point, false, false);
                 shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionLock);
                 Check("lock-cancels-and-releases-preview", !preview.IsVisible && preview.PreviewImage is null && requests.Last().Token.IsCancellationRequested);
                 shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionUnlock);
                 shelf.SetItems([items[0] with { Path = Path.ChangeExtension(items[0].Path, ".mp4"), EntryId = "video" }], true);
                 var beforeVideo = requests.Count; var video = Card("video");
-                shelf.TrackHoverPreview(9400, Center(video), false, false); shelf.TrackHoverPreview(9900, Center(video), false, false);
+                shelf.TrackHoverPreview(9900, Center(video), false, false); shelf.TrackHoverPreview(10400, Center(video), false, false);
                 Check("video-cards-do-not-start-image-preview", !preview.IsVisible && requests.Count == beforeVideo);
                 shelf.SetItems(items, true); source = Card("hover-0"); point = Center(source);
-                shelf.TrackHoverPreview(10000, point, false, false); shelf.TrackHoverPreview(10400, point, false, false); var last = requests.Last();
+                shelf.TrackHoverPreview(10500, point, false, false); shelf.TrackHoverPreview(10900, point, false, false); var last = requests.Last();
                 shelf.Dispose(); last.Completion.SetResult(assets[0].Image); await Task.Delay(40);
                 Check("dispose-cancels-load-and-late-result-cannot-reopen-window", last.Token.IsCancellationRequested && !app.Windows.OfType<HoverPreviewWindow>().Any());
                 foreach (var request in requests) request.Completion.TrySetCanceled();

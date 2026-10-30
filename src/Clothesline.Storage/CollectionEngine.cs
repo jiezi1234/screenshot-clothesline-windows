@@ -192,6 +192,16 @@ public sealed partial class CollectionEngine : IDisposable
         try { var hash = await Task.Run(() => store.SaveText(id, text, expectedHash, limit), cancellation).ConfigureAwait(false); Changed?.Invoke(); return hash; }
         finally { importLock.Release(); }
     }
+    public async Task<LibraryEntry> SaveImageEdit(string id, byte[] png, string hash, string expectedDigest, string originalId, long limit, CancellationToken cancellation = default)
+    {
+        await importLock.WaitAsync(cancellation).ConfigureAwait(false);
+        try
+        {
+            var entry = await Task.Run(() => store.SaveImageEdit(id, png, hash, expectedDigest, originalId, limit, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), cancellation).ConfigureAwait(false);
+            Changed?.Invoke(); return entry;
+        }
+        finally { importLock.Release(); }
+    }
     private async Task<bool> ImportManaged(byte[] png, string hash, long limit, string? text, CancellationToken cancellation)
     {
         await importLock.WaitAsync(cancellation).ConfigureAwait(false);

@@ -39,7 +39,7 @@ internal sealed partial class ShelfController
         }
         catch { return []; } // External OLE data may be unavailable or malformed; never interpret it as commands.
     }
-    private bool CanReceive(DragEventArgs e) => !disposed && !SessionBlocked && !textHover.IsEditing && !importingDrop && (e.AllowedEffects & DragDropEffects.Copy) != 0
+    private bool CanReceive(DragEventArgs e) => !disposed && !SessionBlocked && !textHover.IsEditing && !hoverPreview.IsEditing && !importingDrop && (e.AllowedEffects & DragDropEffects.Copy) != 0
         && (!SuppressFullscreen || !Native.IsFullscreen(Native.MonitorAt(Native.Cursor)))
         && (draggedCard is not null || (IncomingDropRequested is not null && ImageDropPaths(e.Data).Length > 0));
     internal string DragCard(CardWindow card, ShellTransfer.DragOperation? perform)
@@ -58,7 +58,7 @@ internal sealed partial class ShelfController
         if (localReorder is not null) return;
         if (!leftDown) { suppressDropUntilRelease = false; HideDropTarget(); return; }
         if (Native.GetAsyncKeyState(0x1B) < 0) suppressDropUntilRelease = true;
-        if (textHover.IsEditing || textHover.Contains(cursor) || suppressDropUntilRelease || importingDrop || SessionBlocked || (SuppressFullscreen && Native.IsFullscreen(monitor))) { HideDropTarget(); return; }
+        if (textHover.IsEditing || textHover.Contains(cursor) || hoverPreview.IsEditing || hoverPreview.Contains(cursor) || suppressDropUntilRelease || importingDrop || SessionBlocked || (SuppressFullscreen && Native.IsFullscreen(monitor))) { HideDropTarget(); return; }
         // Do not show a target for a click, long press or menu on one of our cards.
         if (draggedCard is null && cards.Any(c => c.InteractionActive)) { HideDropTarget(); return; }
         if (IncomingDropRequested is null && draggedCard is null) return;

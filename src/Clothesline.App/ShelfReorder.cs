@@ -31,7 +31,7 @@ internal sealed partial class ShelfController
     }
     internal Task<ReorderExit> BeginLocalReorder(CardWindow source, PixelPoint cursor, bool pollInput = true)
     {
-        if (!textHover.ReleaseCleanPreview() || localReorder is not null || !presented || activeMonitor is null || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
+        if (!textHover.ReleaseCleanPreview() || !hoverPreview.ReleaseCleanPreview() || localReorder is not null || !presented || activeMonitor is null || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
         var slots = RowSlots;
         var slot = cards.IndexOf(source) - page * DragCapacity;
         if (slot < 0 || slot >= slots.Count) return Task.FromResult(ReorderExit.Cancelled);

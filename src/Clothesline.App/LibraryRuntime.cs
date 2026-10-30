@@ -63,6 +63,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         shelf.ExportRequested += (item, desktop) => Export(item.Path, desktop);
         shelf.WorkspaceRequested += (item, edit) => { if (item.EntryId is not null) OpenWorkspace(item.EntryId, edit); };
         shelf.StartTextEdit = CreateTextEditSession;
+        shelf.StartImageEdit = CreateImageEditSession;
         shelf.BatchArchiveRequested += (item, scope) => ArchiveBatch(item.EntryId, scope);
         shelf.FilesChanged += () => ScheduleRefresh(false);
         shelf.EnvironmentRecovered += RecoverEnvironment;
@@ -256,7 +257,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     public bool TryCloseWorkspaces()
     {
         if (fileOperation > 0) { Report(T("文件操作进行中，请稍后再退出。")); return false; }
-        if (!shelf.TryCloseTextEditor()) return false;
+        if (!shelf.TryCloseTextEditor() || !shelf.TryCloseImageEditor()) return false;
         foreach (var window in workspaces.ToArray()) { window.Close(); if (workspaces.Contains(window)) return false; }
         return true;
     }
@@ -373,6 +374,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     {
         if (disposed) return;
         disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
+        imageEditHistory.Clear();
         shelf.EnvironmentRecovered -= RecoverEnvironment; shelf.DisplayCapacityChanged -= RefreshCapacity; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

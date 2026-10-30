@@ -1,0 +1,269 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "restored-history-is-independent-from-saved-checkpoint",
+      "passed": true
+    },
+    {
+      "name": "changed-file-invalidates-old-history",
+      "passed": true
+    },
+    {
+      "name": "history-count-limit-evicts-least-recently-used-card",
+      "passed": true
+    },
+    {
+      "name": "history-memory-budget-retains-latest-edited-card",
+      "passed": true
+    },
+    {
+      "name": "runtime-exit-releases-retained-history",
+      "passed": true
+    },
+    {
+      "name": "browse-hides-irrelevant-annotation-and-size-controls",
+      "passed": true
+    },
+    {
+      "name": "color-and-width-controls-change-active-drawing-settings",
+      "passed": true
+    },
+    {
+      "name": "toolbar-single-row-within-620-dip-popup",
+      "passed": true
+    },
+    {
+      "name": "palette-and-slider-do-not-overlap-at-620-dips",
+      "passed": true
+    },
+    {
+      "name": "toolbar-single-row-within-352-dip-popup",
+      "passed": true
+    },
+    {
+      "name": "palette-and-slider-do-not-overlap-at-352-dips",
+      "passed": true
+    },
+    {
+      "name": "text-tool-exposes-editable-annotation-without-overlapping-tools",
+      "passed": true
+    },
+    {
+      "name": "mosaic-shows-size-without-color-or-annotation",
+      "passed": true
+    },
+    {
+      "name": "crop-displays-contextual-instruction",
+      "passed": true
+    },
+    {
+      "name": "one-hundred-percent-uses-physical-pixels",
+      "passed": true
+    },
+    {
+      "name": "fit-keeps-entire-image-within-viewport",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-en",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-es",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-fr",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-gl",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-pt-BR",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-ja",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-ko",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-tr",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-az",
+      "passed": true
+    },
+    {
+      "name": "compact-toolbar-accessible-and-contained-hi",
+      "passed": true
+    },
+    {
+      "name": "hover-editor-ready-without-showing-a-window",
+      "passed": true
+    },
+    {
+      "name": "change-saves-automatically-at-original-resolution",
+      "passed": true
+    },
+    {
+      "name": "previous-step-restores-and-autosaves-original-state",
+      "passed": true
+    },
+    {
+      "name": "next-step-restores-and-autosaves-edit-after-save",
+      "passed": true
+    },
+    {
+      "name": "new-edit-after-undo-discards-redo-branch",
+      "passed": true
+    },
+    {
+      "name": "crop-saves-image-dimensions-not-preview-size",
+      "passed": true
+    },
+    {
+      "name": "leaving-flushes-and-releases-session",
+      "passed": true
+    },
+    {
+      "name": "editing-and-undo-remain-available-during-save",
+      "passed": true
+    },
+    {
+      "name": "completed-save-does-not-mark-newer-changes-saved",
+      "passed": true
+    },
+    {
+      "name": "retained-history-matches-committed-save-not-newer-draft",
+      "passed": true
+    },
+    {
+      "name": "mouse-leave-flushes-newer-revision-before-closing",
+      "passed": true
+    },
+    {
+      "name": "save-failure-preserves-editor-draft-and-lease",
+      "passed": true
+    },
+    {
+      "name": "declining-discard-keeps-draft",
+      "passed": true
+    },
+    {
+      "name": "retry-saves-retained-draft",
+      "passed": true
+    },
+    {
+      "name": "card-to-popup-travel-grace",
+      "passed": true
+    },
+    {
+      "name": "returning-during-save-keeps-editor-open",
+      "passed": true
+    },
+    {
+      "name": "leaving-again-closes-clean-editor",
+      "passed": true
+    },
+    {
+      "name": "runtime-updates-same-card-and-preserves-file",
+      "passed": true
+    },
+    {
+      "name": "runtime-saves-full-resolution-png-with-original-link",
+      "passed": true
+    },
+    {
+      "name": "saved-metadata-hash-matches-decoded-png",
+      "passed": true
+    },
+    {
+      "name": "undo-auto-save-keeps-same-copy-path",
+      "passed": true
+    },
+    {
+      "name": "rehover-restores-redo-after-undo-and-close",
+      "passed": true
+    },
+    {
+      "name": "rehover-restores-undo-after-edit-and-close",
+      "passed": true
+    },
+    {
+      "name": "rehover-undo-saves-original-pixels",
+      "passed": true
+    },
+    {
+      "name": "explicit-discard-drops-only-unsaved-draft",
+      "passed": true
+    },
+    {
+      "name": "rehover-after-discard-retains-last-saved-history",
+      "passed": true
+    },
+    {
+      "name": "switching-cards-keeps-independent-crop-and-undo-history",
+      "passed": true
+    },
+    {
+      "name": "rehover-undo-crop-restores-full-image-size",
+      "passed": true
+    },
+    {
+      "name": "redo-survives-repeated-close-and-rehover",
+      "passed": true
+    },
+    {
+      "name": "reopened-editor-retains-original-lineage-and-same-card",
+      "passed": true
+    },
+    {
+      "name": "runtime-drops-stale-undo-after-external-file-change",
+      "passed": true
+    },
+    {
+      "name": "desktop-hover-opens-inline-editor-without-workspace-or-focus-steal",
+      "passed": true
+    },
+    {
+      "name": "desktop-editing-mouse-press-keeps-popup-and-shelf-open",
+      "passed": true
+    },
+    {
+      "name": "desktop-open-zoom-menu-keeps-editor-and-shelf-open",
+      "passed": true
+    },
+    {
+      "name": "desktop-undo-saves-and-retains-redo",
+      "passed": true
+    },
+    {
+      "name": "desktop-leaving-dismisses-popup-and-releases-busy",
+      "passed": true
+    },
+    {
+      "name": "desktop-rehover-resumes-previous-editing-history",
+      "passed": true
+    },
+    {
+      "name": "desktop-hiding-shelf-closes-zoom-menu",
+      "passed": true
+    },
+    {
+      "name": "desktop-hide-removes-popup-without-dropping-unsaved-draft",
+      "passed": true
+    },
+    {
+      "name": "desktop-hidden-save-releases-clean-session",
+      "passed": true
+    }
+  ]
+}

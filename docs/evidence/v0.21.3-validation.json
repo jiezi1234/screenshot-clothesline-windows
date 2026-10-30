@@ -1,0 +1,35 @@
+{
+  "version": "0.21.3",
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "suites": [
+    {
+      "suite": "core",
+      "checks": 683,
+      "passed": true
+    },
+    {
+      "suite": "image-hover-edit",
+      "checks": 76,
+      "passed": true
+    }
+  ],
+  "checks": 759,
+  "layout": {
+    "popupDips": [
+      596,
+      504
+    ],
+    "browseViewportHeightDips": 414,
+    "drawingViewportHeightDips": 382
+  },
+  "notes": [
+    "Desktop image hover diagnostics include offscreen cases, counted once; generated fixtures and isolated libraries only.",
+    "Checked normal and compact screenshots, seven tool switches, image boundaries, undo target sizes and ten translated compact layouts.",
+    "The first layout run exposed a nested zoom button minimum height that kept the footer too tall; reduced that height and retained the viewport assertion.",
+    "Actual IME input, mixed-DPI displays and high-contrast interaction remain manual acceptance items."
+  ]
+}

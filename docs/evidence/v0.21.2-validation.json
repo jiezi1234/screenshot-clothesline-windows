@@ -1,0 +1,33 @@
+{
+  "version": "0.21.2",
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "suites": [
+    {
+      "suite": "core",
+      "checks": 683,
+      "passed": true
+    },
+    {
+      "suite": "image-hover-edit",
+      "checks": 66,
+      "passed": true
+    },
+    {
+      "suite": "hover-preview",
+      "checks": 31,
+      "passed": true
+    }
+  ],
+  "checks": 780,
+  "notes": [
+    "Image hover desktop diagnostics include offscreen cases, counted once.",
+    "Generated fixtures and isolated libraries; no user images edited.",
+    "Rendered arrow, browse, text, mosaic and compact layouts; inspected the normal and compact screenshots.",
+    "The first Core run found missing Undo/Redo/Retry translations inherited from dynamic labels; all ten catalogs were completed and the check passed.",
+    "Real IME input, mixed-DPI displays and high-contrast interaction remain manual acceptance items."
+  ]
+}

@@ -10,6 +10,7 @@ using System.Windows.Interop;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Clothesline.Core;
 using Clothesline.Storage;
 
@@ -92,7 +93,7 @@ internal static class TextHoverEditDiagnostics
                 window.StartEdit = item => Session(item, (_, _) => completion.Task);
                 window.SetPreview(Item("external change")); window.BeginEdit(); window.TextView.Text = "pending write";
                 var pending = window.SaveAndDismiss();
-                Check("pending-save-disables-editing-and-discard", window.Saving && window.TextView.IsReadOnly && !window.TryEndEditing(() => true) && !await window.Save());
+                Check("pending-save-allows-typing-but-blocks-discard-and-duplicate-save", window.Saving && !window.TextView.IsReadOnly && !window.TryEndEditing(() => true) && !await window.Save());
                 window.Dismiss();
                 Check("hiding-during-save-does-not-drop-session", window.IsEditing && leases == 1 && window.PreviewText == "pending write");
                 completion.SetResult(TextContent.Hash("pending write"));
@@ -104,6 +105,76 @@ internal static class TextHoverEditDiagnostics
                 var manualSave = window.Save(); var closeDuringSave = window.SaveAndDismiss();
                 completion.SetResult(TextContent.Hash(window.PreviewText));
                 Check("close-during-manual-save-waits-for-the-same-write", await manualSave && await closeDuringSave && !window.IsEditing && leases == 0);
+                async Task Until(Func<bool> ready)
+                {
+                    for (var i = 0; i < 200 && !ready(); i++) await Task.Delay(25);
+                    if (!ready()) throw new TimeoutException("Auto-save fixture did not become ready");
+                }
+                var autoWrites = 0;
+                window.StartEdit = item => Session(item, async (text, hash) => { autoWrites++; return await engine.SaveText(entry.Id, text, hash, 1024 * 1024); });
+                window.SetPreview(Item("external change"));
+                await Task.Delay(TextHoverWindow.AutoSaveDelayMilliseconds + 100);
+                Check("reading-without-changes-does-not-write", autoWrites == 0 && !window.Dirty);
+                window.TextView.Text = "First typing burst"; await Task.Delay(150);
+                window.TextView.Text = "Automatically saved while hovering 🧺"; await Task.Delay(300);
+                Check("continued-typing-restarts-auto-save-delay", autoWrites == 0 && window.Dirty);
+                await Until(() => !window.Dirty && !window.Saving);
+                Check("idle-edit-saves-original-file-without-leaving-or-closing", autoWrites == 1 && window.IsEditing && !window.TextView.IsReadOnly
+                    && TextContent.Read(entry.Path) == window.PreviewText && store.Find(entry.Id)!.AddedAt == entry.AddedAt);
+                window.SetCompositionActive(true); window.TextView.Text = "Input method composition";
+                await Task.Delay(TextHoverWindow.AutoSaveDelayMilliseconds + 100);
+                Check("input-method-composition-defers-auto-save-and-dismiss", autoWrites == 1 && window.Dirty && window.PointerInteraction && !await window.SaveAndDismiss());
+                window.SetCompositionActive(false);
+                await Until(() => !window.Dirty && !window.Saving);
+                Check("committed-composition-resumes-auto-save", autoWrites == 2 && TextContent.Read(entry.Path) == "Input method composition");
+                window.TextView.Text = " \r\n";
+                await Until(() => window.SaveFailed);
+                var writesAfterFailure = autoWrites;
+                await Task.Delay(TextHoverWindow.AutoSaveDelayMilliseconds + 100);
+                Check("failed-idle-save-retains-draft-without-retry-loop", autoWrites == writesAfterFailure && window.Dirty && window.PreviewText == " \r\n" && TextContent.Read(entry.Path) == "Input method composition");
+                window.TextView.Text = "Recovered draft";
+                await Until(() => !window.Dirty && !window.Saving);
+                Check("new-edit-retries-auto-save-after-failure", !window.SaveFailed && TextContent.Read(entry.Path) == "Recovered draft");
+                window.TextView.Text = "Undo this new edit"; window.TextView.Undo();
+                var writesBeforeUndoWait = autoWrites;
+                await Task.Delay(TextHoverWindow.AutoSaveDelayMilliseconds + 100);
+                Check("undo-to-saved-text-does-not-write-again", !window.Dirty && autoWrites == writesBeforeUndoWait && window.TextView.Text == "Recovered draft");
+                window.TextView.Text = "Discard before debounce"; window.TryEndEditing(() => true);
+                await Task.Delay(TextHoverWindow.AutoSaveDelayMilliseconds + 100);
+                Check("discard-stops-pending-auto-save", autoWrites == writesBeforeUndoWait && TextContent.Read(entry.Path) == "Recovered draft" && leases == 0);
+                window.SetPreview(Item("Recovered draft")); window.TextView.Text = "Draft while deciding whether to quit";
+                window.TryEndEditing(() =>
+                {
+                    window.SetCompositionActive(false); // Losing focus to a modal must not rearm auto-save.
+                    var frame = new DispatcherFrame(); var decision = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(TextHoverWindow.AutoSaveDelayMilliseconds + 100) };
+                    decision.Tick += (_, _) => { decision.Stop(); frame.Continue = false; }; decision.Start(); Dispatcher.PushFrame(frame);
+                    Check("discard-confirmation-pauses-save-even-when-focus-changes", autoWrites == writesBeforeUndoWait && window.Dirty && !window.Save().GetAwaiter().GetResult());
+                    return false;
+                });
+                await Until(() => !window.Dirty && !window.Saving);
+                Check("declining-discard-resumes-auto-save", autoWrites == writesBeforeUndoWait + 1 && TextContent.Read(entry.Path) == "Draft while deciding whether to quit");
+                window.TryEndEditing(() => true);
+                var snapshots = new List<string>(); var hashes = new List<string>();
+                completion = new TaskCompletionSource<string>();
+                window.StartEdit = item => Session(item, (text, hash) =>
+                {
+                    snapshots.Add(text); hashes.Add(hash);
+                    return snapshots.Count == 1 ? completion.Task : Task.FromResult(TextContent.Hash(text));
+                });
+                window.SetPreview(Item("Recovered draft")); window.TextView.Text = "Snapshot one";
+                await Until(() => window.Saving);
+                window.TextView.Text = "Snapshot two, typed during the write";
+                Check("auto-save-in-flight-does-not-disable-typing", !window.TextView.IsReadOnly && window.Dirty);
+                completion.SetResult(TextContent.Hash("Snapshot one"));
+                await Until(() => !window.Dirty && !window.Saving);
+                Check("newer-draft-is-saved-after-in-flight-snapshot", snapshots.SequenceEqual(new[] { "Snapshot one", "Snapshot two, typed during the write" })
+                    && hashes[1] == TextContent.Hash("Snapshot one") && window.PreviewText == snapshots[1]);
+                window.TryEndEditing(() => true);
+                snapshots.Clear(); hashes.Clear(); completion = new TaskCompletionSource<string>();
+                window.SetPreview(Item("Recovered draft")); window.TextView.Text = "Closing snapshot";
+                var flush = window.SaveAndDismiss(); window.TextView.Text = "Newest text before close";
+                completion.SetResult(TextContent.Hash("Closing snapshot"));
+                Check("close-flushes-newest-edit-made-during-save", await flush && snapshots.SequenceEqual(new[] { "Closing snapshot", "Newest text before close" }) && !window.IsEditing && leases == 0);
                 using (var hover = new ShelfTextHover())
                 {
                     var popup = app.Windows.OfType<TextHoverWindow>().Single(w => w != window);
@@ -141,6 +212,10 @@ internal static class TextHoverEditDiagnostics
                     Check("clean-hover-does-not-block-reorder", hover.ReleaseCleanPreview() && !hover.IsEditing && leases == 0);
                     popup.SetPreview(Item(original)); hover.Hide();
                     Check("hiding-clean-hover-does-not-leave-a-session-behind", !hover.IsEditing && leases == 0);
+                    hover.StartEdit = item => Session(item, (_, _) => Task.FromResult("saved"));
+                    popup.SetPreview(Item(original)); popup.TextView.Text = "Hidden auto-save"; hover.Hide();
+                    await Until(() => !hover.IsEditing);
+                    Check("hidden-draft-auto-saves-and-releases-file-protection", leases == 0 && popup.PreviewText.Length == 0);
                 }
                 foreach (var style in Enum.GetValues<TextPaperStyle>())
                 {

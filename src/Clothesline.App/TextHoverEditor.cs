@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Clothesline.Core;
 
 namespace Clothesline.App;
@@ -22,6 +23,9 @@ internal sealed partial class TextHoverWindow
     private string original = "";
     private bool saving, savedNotice, permanentClose;
     private Task<bool>? pendingSave;
+    internal const int AutoSaveDelayMilliseconds = 600;
+    private readonly DispatcherTimer autoSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(AutoSaveDelayMilliseconds) };
+    private bool composing, confirmingDiscard;
     private nint previousForeground;
     private readonly TextBlock editStatus = new() { TextWrapping = TextWrapping.Wrap, MaxHeight = 48, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 0, 6), Visibility = Visibility.Collapsed };
     private Button saveButton = null!, cancelButton = null!;
@@ -29,11 +33,12 @@ internal sealed partial class TextHoverWindow
     internal Func<DemoItem, TextEditSession?>? StartEdit { get; set; }
     internal Action<IDataObject> CopyToClipboard { get; set; } = data => Clipboard.SetDataObject(data, true);
     internal event Action? CloseRequested;
+    internal event Action? Saved;
     internal bool IsEditing => session is not null;
     internal bool Dirty => IsEditing && TextView.Text != original;
     internal bool Saving => saving;
     internal bool SaveFailed { get; private set; }
-    internal bool PointerInteraction => IsMouseCaptureWithin || TextView.ContextMenu?.IsOpen == true;
+    internal bool PointerInteraction => composing || IsMouseCaptureWithin || TextView.ContextMenu?.IsOpen == true;
     internal string? EditingId => session?.EntryId;
     internal string EditStatus => editStatus.Text;
 
@@ -51,7 +56,20 @@ internal sealed partial class TextHoverWindow
         saveButton = Action("保存文字", () => _ = Save());
         cancelButton = Action("取消编辑", () => { if (TryEndEditing(() => true)) Dismiss(); });
         TextView.AcceptsReturn = true; TextView.AcceptsTab = true; TextView.UndoLimit = 100;
-        TextView.TextChanged += (_, _) => { if (IsEditing && !saving) { SaveFailed = false; editStatus.Text = Dirty ? T("未保存修改") : T("直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字"); UpdateEditorTools(); } };
+        TextView.TextChanged += (_, _) =>
+        {
+            if (!IsEditing) return;
+            SaveFailed = false; editStatus.Text = Dirty ? T("未保存修改") : T("直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字");
+            ScheduleAutoSave(); UpdateEditorTools();
+        };
+        autoSaveTimer.Tick += async (_, _) =>
+        {
+            autoSaveTimer.Stop();
+            if (Dirty && !saving && !composing && !SaveFailed) await Save();
+        };
+        TextCompositionManager.AddPreviewTextInputStartHandler(TextView, (_, _) => SetCompositionActive(true));
+        TextCompositionManager.AddPreviewTextInputHandler(TextView, (_, _) => SetCompositionActive(false));
+        TextView.LostKeyboardFocus += (_, _) => SetCompositionActive(false);
         copyItem = new MenuItem { Header = T("复制"), Command = ApplicationCommands.Copy, CommandTarget = TextView, InputGestureText = "Ctrl+C" };
         TextView.ContextMenu = new ContextMenu(); TextView.ContextMenu.Items.Add(copyItem);
         foreach (var command in new[] { ApplicationCommands.Copy, ApplicationCommands.Cut })
@@ -60,10 +78,10 @@ internal sealed partial class TextHoverWindow
                 try { CopyToClipboard(ShellTransfer.TextData(TextView.SelectedText)); if (e.Command == ApplicationCommands.Cut) TextView.SelectedText = ""; }
                 catch (Exception ex) { editStatus.Text = ex.Message; editStatus.Visibility = Visibility.Visible; }
                 e.Handled = true;
-            }, (_, e) => { e.CanExecute = TextView.SelectionLength > 0 && (e.Command == ApplicationCommands.Copy || IsEditing && !saving); e.Handled = true; }));
+            }, (_, e) => { e.CanExecute = TextView.SelectionLength > 0 && (e.Command == ApplicationCommands.Copy || IsEditing); e.Handled = true; }));
         PreviewKeyDown += (_, e) =>
         {
-            if (!IsEditing) return;
+            if (!IsEditing || composing) return;
             if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { _ = Save(); e.Handled = true; }
             else if (e.Key == Key.Escape) { RequestClose(); e.Handled = true; }
         };
@@ -93,7 +111,7 @@ internal sealed partial class TextHoverWindow
             previousForeground = Native.GetForegroundWindow();
             TextView.IsUndoEnabled = false; TextView.IsUndoEnabled = true;
             TextView.IsReadOnly = false; TextView.Focusable = true; SetKeyboardInput(true);
-            editStatus.Text = T("直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字"); UpdateEditorTools(); return true;
+            editStatus.Text = T("直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字"); UpdateEditorTools(); return true;
         }
         catch (Exception ex) { if (session is not null) FinishEdit(); savedNotice = true; editStatus.Text = ex.Message; UpdateEditorTools(); return false; }
     }
@@ -117,21 +135,36 @@ internal sealed partial class TextHoverWindow
     }
     internal Task<bool> Save()
     {
-        if (session is null || saving) return Task.FromResult(false);
+        if (session is null || saving || composing || confirmingDiscard) return Task.FromResult(false);
+        autoSaveTimer.Stop();
         return pendingSave = SaveCore();
+    }
+    private void ScheduleAutoSave()
+    {
+        autoSaveTimer.Stop();
+        if (Dirty && !SaveFailed && !composing && !confirmingDiscard) autoSaveTimer.Start();
+    }
+    internal void SetCompositionActive(bool active)
+    {
+        composing = active; ScheduleAutoSave();
     }
     private async Task<bool> SaveCore()
     {
         if (!Dirty) return true;
-        saving = true; TextView.IsReadOnly = true; UpdateEditorTools();
+        saving = true; UpdateEditorTools();
         try
         {
             var text = TextView.Text; await session!.Save(text); original = text;
             if (previewItem is not null) previewItem = previewItem with { Text = text, Title = TextContent.Title(text) };
-            SaveFailed = false; savedNotice = true; editStatus.Text = T("文字已保存，原卡片已更新。"); return true;
+            SaveFailed = false; savedNotice = true;
+            editStatus.Text = Dirty ? T("未保存修改") : T("文字已保存，原卡片已更新。"); return true;
         }
         catch (Exception ex) { SaveFailed = true; editStatus.Text = ex.Message; return false; }
-        finally { saving = false; TextView.IsReadOnly = !IsEditing; UpdateEditorTools(); }
+        finally
+        {
+            saving = false; ScheduleAutoSave(); UpdateEditorTools();
+            if (!SaveFailed) Saved?.Invoke();
+        }
     }
     private void RequestClose()
     {
@@ -139,7 +172,14 @@ internal sealed partial class TextHoverWindow
     }
     internal async Task<bool> SaveAndDismiss(Func<bool>? shouldClose = null)
     {
-        if (IsEditing && !await (saving && pendingSave is not null ? pendingSave : Save())) return false;
+        // The user may keep typing while an earlier snapshot is being saved.
+        // Flush every newer draft before dismissing, unless the pointer has returned.
+        while (IsEditing)
+        {
+            if (composing || shouldClose is not null && !shouldClose()) return false;
+            if (!await (saving && pendingSave is not null ? pendingSave : Save())) return false;
+            if (!Dirty) break;
+        }
         if (shouldClose is not null && !shouldClose()) return false;
         FinishEdit(); Dismiss(); return true;
     }
@@ -147,11 +187,18 @@ internal sealed partial class TextHoverWindow
     {
         if (saving) return false;
         if (!IsEditing) return true;
-        if (Dirty && !(confirmDiscard?.Invoke() ?? MessageBox.Show(T("放弃本次尚未保存的修改？"), T("未保存修改"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes)) return false;
-        TextView.Text = original; FinishEdit(); return true;
+        // A native confirmation pumps dispatcher events: pause auto-save until the choice is made.
+        confirmingDiscard = true; autoSaveTimer.Stop();
+        try
+        {
+            if (Dirty && !(confirmDiscard?.Invoke() ?? MessageBox.Show(T("放弃本次尚未保存的修改？"), T("未保存修改"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes)) return false;
+            TextView.Text = original; FinishEdit(); return true;
+        }
+        finally { confirmingDiscard = false; ScheduleAutoSave(); }
     }
     private void FinishEdit()
     {
+        autoSaveTimer.Stop(); composing = false;
         var previous = session; session = null; previous?.Dispose(); SaveFailed = false;
         TextView.IsReadOnly = true; TextView.Focusable = false; SetKeyboardInput(false);
         var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
@@ -161,5 +208,5 @@ internal sealed partial class TextHoverWindow
         TextView.IsUndoEnabled = false; TextView.IsUndoEnabled = true;
         UpdateEditorTools();
     }
-    internal void ClosePermanently() { permanentClose = true; Close(); }
+    internal void ClosePermanently() { autoSaveTimer.Stop(); permanentClose = true; Close(); }
 }

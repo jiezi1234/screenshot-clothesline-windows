@@ -381,5 +381,5 @@
   "图片和录像靠左，文字靠右，自动共享整条绳子的空间。容量为所有类型合计；超额时最旧项目进入历史。": "Las imágenes y los vídeos se alinean a la izquierda y el texto a la derecha, compartiendo automáticamente todo el tendedero. La capacidad es conjunta; al superarla, los elementos más antiguos pasan al historial.",
   "收集剪贴板图片和文字（默认开启）": "Recopilar imágenes y texto del portapapeles (activado por defecto)",
   "取消编辑": "Cancelar edición",
-  "直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字": "Edita aquí · Al salir se guarda · Ctrl+C copia la selección"
+  "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Edita aquí · Los cambios se guardan solos · Ctrl+C copia la selección"
 }

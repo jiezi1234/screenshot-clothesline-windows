@@ -45,8 +45,12 @@ internal sealed class ShelfTextHover : IDisposable
     private CardWindow? candidate, suppressed;
     private long entered, lastInside;
     private PixelRect travel;
-    private bool attempted, disposed, closing, closeRequested, forceClose;
-    internal ShelfTextHover() { window.CloseRequested += () => _ = ClosePreview(true); }
+    private bool attempted, disposed, closing, closeRequested, forceClose, hiddenByShelf;
+    internal ShelfTextHover()
+    {
+        window.CloseRequested += () => _ = ClosePreview(true);
+        window.Saved += () => { if (!disposed && hiddenByShelf && !window.Dirty) ReleaseCleanPreview(); };
+    }
     internal bool IsEditing => window.IsEditing;
     internal string? EditingId => window.EditingId;
     internal Func<DemoItem, TextEditSession?>? StartEdit { set => window.StartEdit = value; }
@@ -109,7 +113,7 @@ internal sealed class ShelfTextHover : IDisposable
         if (!Native.GetWindowRect(new WindowInteropHelper(card).Handle, out var anchor)) return;
         var scale = Native.MoveAndGetScale(window, monitor);
         if (HoverPreviewGeometry.Place(anchor.Pixels, monitor.WorkArea, scale, 560, 440, occupied) is not PixelRect rect) return;
-        window.SetPreview(card.Item); window.Present(rect, animate);
+        hiddenByShelf = false; window.SetPreview(card.Item); window.Present(rect, animate);
         var left = Math.Min(rect.X, anchor.Left); var top = Math.Min(rect.Y, anchor.Top);
         travel = new(left, top, Math.Max(rect.Right, anchor.Right) - left, Math.Max(rect.Bottom, anchor.Bottom) - top);
     }
@@ -120,10 +124,11 @@ internal sealed class ShelfTextHover : IDisposable
         window.TryEndEditing(); Clear(); return true;
     }
     internal void Reset() { if (disposed || window.IsEditing) return; Clear(); suppressed = null; }
-    internal void Hide() { if (window.Dirty || window.Saving) window.Dismiss(); else ReleaseCleanPreview(); }
+    internal void Hide() { hiddenByShelf = true; if (window.Dirty || window.Saving) window.Dismiss(); else ReleaseCleanPreview(); }
     internal void Resume(MonitorInfo monitor)
     {
         if (!window.IsEditing || window.IsVisible) return;
+        hiddenByShelf = false;
         var scale = Native.MoveAndGetScale(window, monitor);
         var work = monitor.WorkArea; var width = Math.Min(work.Width, (int)(560 * scale)); var height = Math.Min(work.Height, (int)(440 * scale));
         window.Present(new PixelRect(work.X + (work.Width - width) / 2, work.Y + (work.Height - height) / 2, width, height), false);

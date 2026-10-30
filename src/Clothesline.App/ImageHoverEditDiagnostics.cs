@@ -31,6 +31,22 @@ internal static class ImageHoverEditDiagnostics
                 void Mark(ImageDocument document, EditorTool tool = EditorTool.Arrow) => document.Add(document.CreateMark(tool, [new Point(20, 20), new Point(220, 130)], Colors.Crimson, 6, "Note"));
                 async Task Until(Func<bool> done) { for (var i = 0; i < 150 && !done(); i++) await Task.Delay(40); if (!done()) throw new TimeoutException("Image editor did not settle"); }
                 var held = 0; var writes = 0; BitmapSource? saved = null;
+                var histories = new ImageEditHistory(2);
+                var historyDoc = new ImageDocument(bitmap); Mark(historyDoc); historyDoc.MarkSaved();
+                histories.Remember("a", "a.png", "bytes-a", "pixels-a", historyDoc.SavedCheckpoint());
+                var historyA = histories.Restore("a", "a.png", "bytes-a", "pixels-a")!;
+                historyA.Undo();
+                Check("restored-history-is-independent-from-saved-checkpoint", historyA.CanRedo && histories.Restore("a", "a.png", "bytes-a", "pixels-a")!.CanUndo);
+                Check("changed-file-invalidates-old-history", histories.Restore("a", "a.png", "external-change", "pixels-a") is null && histories.Count == 0);
+                histories.Remember("a", "a.png", "bytes-a", "pixels-a", historyDoc.SavedCheckpoint());
+                histories.Remember("b", "b.png", "bytes-b", "pixels-b", historyDoc.SavedCheckpoint());
+                histories.Restore("a", "a.png", "bytes-a", "pixels-a");
+                histories.Remember("c", "c.png", "bytes-c", "pixels-c", historyDoc.SavedCheckpoint());
+                Check("history-count-limit-evicts-least-recently-used-card", histories.Count == 2 && histories.Restore("b", "b.png", "bytes-b", "pixels-b") is null && histories.Restore("a", "a.png", "bytes-a", "pixels-a") is not null);
+                var bounded = new ImageEditHistory(16, historyDoc.RetainedBytes + 1);
+                bounded.Remember("a", "a.png", "a", "a", historyDoc.SavedCheckpoint()); bounded.Remember("b", "b.png", "b", "b", historyDoc.SavedCheckpoint());
+                Check("history-memory-budget-retains-latest-edited-card", bounded.Count == 1 && bounded.Restore("b", "b.png", "b", "b") is not null);
+                bounded.Clear(); Check("runtime-exit-releases-retained-history", bounded.Count == 0 && bounded.RetainedBytes == 0);
                 ImageEditSession Session(Func<BitmapSource, Task> save)
                 { held++; return new(new(bitmap), save, new Lease(() => held--)); }
                 window.SetSession(Session(image => { saved = image; writes++; return Task.CompletedTask; }));
@@ -51,13 +67,15 @@ internal static class ImageHoverEditDiagnostics
                 var capture = new RenderTargetBitmap(620, 520, 96, 96, PixelFormats.Pbgra32); capture.Render(content); DemoAssets.Save(capture, Path.Combine(output, "image-hover-editor.png"));
                 Check("leaving-flushes-and-releases-session", await window.SaveAndDismiss() && !window.IsEditing && held == 0);
 
-                var blocked = new TaskCompletionSource(); writes = 0;
-                window.SetSession(Session(async image => { saved = image; writes++; if (writes == 1) await blocked.Task; }));
+                var blocked = new TaskCompletionSource(); writes = 0; ImageDocument? committedHistory = null;
+                held++;
+                window.SetSession(new(new(bitmap), async image => { saved = image; writes++; if (writes == 1) await blocked.Task; }, new Lease(() => held--), checkpoint => committedHistory = checkpoint));
                 doc = window.Document!; Mark(doc); var first = doc.State; var pending = window.Save();
                 await Until(() => writes == 1); Mark(doc, EditorTool.Rectangle); var latest = doc.State;
                 Check("editing-and-undo-remain-available-during-save", window.Saving && doc.CanUndo && !ReferenceEquals(latest, first));
                 blocked.SetResult(); await pending;
                 Check("completed-save-does-not-mark-newer-changes-saved", window.Dirty && ReferenceEquals(doc.State, latest));
+                Check("retained-history-matches-committed-save-not-newer-draft", committedHistory is not null && ReferenceEquals(committedHistory.State, first) && !committedHistory.IsDirty);
                 Check("mouse-leave-flushes-newer-revision-before-closing", await window.SaveAndDismiss() && writes == 2 && held == 0);
 
                 var fail = true;
@@ -102,14 +120,50 @@ internal static class ImageHoverEditDiagnostics
                     await window.SaveAndDismiss();
                     var rootId = runtime.Store.OriginalFor(entry.Id)!.Id;
                     var reopened = await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default);
-                    window.SetSession(reopened!); Mark(window.Document!); await window.SaveAndDismiss();
-                    Check("reopened-editor-retains-original-lineage-and-same-card", runtime.Store.OriginalFor(entry.Id)!.Id == rootId && runtime.Store.Find(entry.Id)!.Path == editedPath && runtime.Store.Entries(EntryState.Shelf).Count == 1);
+                    window.SetSession(reopened!);
+                    Check("rehover-restores-redo-after-undo-and-close", window.Document!.CanRedo && !window.Dirty);
+                    window.Redo(); await window.SaveAndDismiss();
+                    var markedHash = ImageFiles.Hash(editedPath);
+                    reopened = await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default);
+                    window.SetSession(reopened!);
+                    Check("rehover-restores-undo-after-edit-and-close", window.Document!.CanUndo && !window.Dirty);
+                    window.Undo(); await window.SaveAndDismiss();
+                    Check("rehover-undo-saves-original-pixels", ImageFiles.Hash(editedPath) == originalHash && markedHash != originalHash);
+                    reopened = await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default);
+                    window.SetSession(reopened!); window.Redo(); await window.Save();
+                    var savedState = window.Document!.State; Mark(window.Document!, EditorTool.Rectangle);
+                    Check("explicit-discard-drops-only-unsaved-draft", window.TryEndEditing(() => true));
+                    reopened = await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default);
+                    window.SetSession(reopened!);
+                    Check("rehover-after-discard-retains-last-saved-history", ReferenceEquals(window.Document!.State, savedState) && window.Document.CanUndo && !window.Dirty);
+                    Mark(window.Document!, EditorTool.Rectangle); window.Document.Crop(new Rect(10, 10, 300, 180)); await window.SaveAndDismiss();
+                    // Edit another card in between; each card must resume its own state.
+                    await runtime.Collector.ImportExternal(assets[1].Path);
+                    var other = runtime.Store.Entries().Single(e => e.Path == assets[1].Path);
+                    window.SetSession((await runtime.CreateImageEditSession(assets[1] with { EntryId = other.Id }, default))!);
+                    Mark(window.Document!); await window.SaveAndDismiss();
+                    window.SetSession((await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default))!);
+                    Check("switching-cards-keeps-independent-crop-and-undo-history", window.Document!.State.Crop.Width == 300 && window.Document.CanUndo);
+                    window.Undo(); await window.SaveAndDismiss();
+                    Check("rehover-undo-crop-restores-full-image-size", ImageFiles.Read(editedPath).PixelWidth == bitmap.PixelWidth);
+                    window.SetSession((await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default))!);
+                    Check("redo-survives-repeated-close-and-rehover", window.Document!.CanRedo); await window.SaveAndDismiss();
+                    Check("reopened-editor-retains-original-lineage-and-same-card", runtime.Store.OriginalFor(entry.Id)!.Id == rootId && runtime.Store.Find(entry.Id)!.Path == editedPath && runtime.Store.Entries(EntryState.Shelf).Count == 2);
+                    DemoAssets.Save(assets[2].Image, editedPath);
+                    window.SetSession((await runtime.CreateImageEditSession(assets[0] with { EntryId = entry.Id, Path = editedPath }, default))!);
+                    Check("runtime-drops-stale-undo-after-external-file-change", !window.Document!.CanUndo && !window.Document.CanRedo); await window.SaveAndDismiss();
                 }
                 if (desktop)
                 {
                     using var shelf = new ShelfController { ReduceMotion = true, SuppressFullscreen = false };
                     var popup = app.Windows.OfType<HoverPreviewWindow>().Single(w => w != window);
-                    shelf.StartImageEdit = (_, _) => Task.FromResult<ImageEditSession?>(Session(image => { saved = image; writes++; return Task.CompletedTask; }));
+                    var desktopHistory = new ImageEditHistory();
+                    shelf.StartImageEdit = (_, _) =>
+                    {
+                        held++; var restored = desktopHistory.Restore("desktop", assets[0].Path, "fixture-bytes", "fixture-pixels") ?? new ImageDocument(bitmap);
+                        return Task.FromResult<ImageEditSession?>(new(restored, image => { saved = image; writes++; return Task.CompletedTask; }, new Lease(() => held--),
+                            checkpoint => desktopHistory.Remember("desktop", assets[0].Path, "fixture-bytes", "fixture-pixels", checkpoint)));
+                    };
                     shelf.SetItems([assets[0] with { EntryId = "desktop-fixture" }], true);
                     var card = app.Windows.OfType<CardWindow>().Single(c => c.Item.EntryId == "desktop-fixture");
                     PixelPoint Center(Window value) { Native.GetWindowRect(new WindowInteropHelper(value).Handle, out var rect); return new((rect.Left + rect.Right) / 2, (rect.Top + rect.Bottom) / 2); }
@@ -127,7 +181,9 @@ internal static class ImageHoverEditDiagnostics
                     await Until(() => !popup.IsEditing && !popup.IsVisible);
                     Check("desktop-leaving-dismisses-popup-and-releases-busy", !shelf.Busy && held == 0);
                     shelf.TrackHoverPreview(2000, Center(card), false, false); shelf.TrackHoverPreview(2450, Center(card), false, false);
-                    await Until(() => popup.IsEditing); Mark(popup.Document!);
+                    await Until(() => popup.IsEditing);
+                    Check("desktop-rehover-resumes-previous-editing-history", popup.Document!.CanRedo && !popup.Dirty);
+                    Mark(popup.Document!);
                     shelf.Hide();
                     Check("desktop-hide-removes-popup-without-dropping-unsaved-draft", !popup.IsVisible && popup.Dirty && held == 1);
                     await Until(() => !popup.Saving && !popup.Dirty);

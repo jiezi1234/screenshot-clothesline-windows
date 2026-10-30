@@ -49,6 +49,27 @@ internal sealed class ImageDocument
     }
     public void MarkSaved() => MarkSaved(State);
     internal void MarkSaved(ImageEditState snapshot) { saved = snapshot; Changed?.Invoke(); }
+    // Copy stacks, sharing only immutable image states. A save in flight must remember the
+    // history that produced its pixels, even when the user keeps editing the live document.
+    internal ImageDocument SavedCheckpoint()
+    {
+        var copy = new ImageDocument(Original, initial, State);
+        copy.undo.AddRange(undo); copy.redo.AddRange(redo); return copy;
+    }
+    private ImageDocument(BitmapSource original, ImageEditState initial, ImageEditState state)
+    { Original = original; this.initial = initial; State = saved = state; }
+    internal long RetainedBytes
+    {
+        get
+        {
+            var states = undo.Concat(redo).Append(initial).Append(saved).Append(State).Distinct().ToArray();
+            var images = states.Select(s => s.BaseImage).Append(Original).Distinct();
+            var marks = states.SelectMany(s => s.Marks).Distinct();
+            return images.Sum(image => (long)image.PixelWidth * image.PixelHeight * 4)
+                + states.Sum(state => (long)state.Marks.Length * IntPtr.Size + 64)
+                + marks.Sum(mark => (long)mark.Points.Length * 16 + (long)mark.Tiles.Length * 48 + (long)mark.Text.Length * 2 + 96);
+        }
+    }
     public Point Clamp(Point p) => new(Math.Clamp(p.X, State.Crop.X, State.Crop.X + State.Crop.Width), Math.Clamp(p.Y, State.Crop.Y, State.Crop.Y + State.Crop.Height));
     public ImageMark CreateMark(EditorTool tool, IEnumerable<Point> points, Color color, double size, string text = "")
     {

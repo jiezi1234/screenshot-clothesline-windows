@@ -12,10 +12,11 @@ using System.Windows.Threading;
 
 namespace Clothesline.App;
 
-internal sealed class ImageEditSession(ImageDocument document, Func<BitmapSource, Task> save, IDisposable lease) : IDisposable
+internal sealed class ImageEditSession(ImageDocument document, Func<BitmapSource, Task> save, IDisposable lease, Action<ImageDocument>? remember = null) : IDisposable
 {
     internal ImageDocument Document => document;
-    internal Task Save(BitmapSource image) => save(image);
+    internal async Task Save(BitmapSource image, ImageDocument checkpoint)
+    { await save(image); remember?.Invoke(checkpoint); }
     public void Dispose() => lease.Dispose();
 }
 
@@ -157,10 +158,10 @@ internal sealed partial class HoverPreviewWindow
     {
         if (!Dirty) return true;
         saving = true; status.Text = T("正在保存…");
-        var active = session!; var snapshot = active.Document.State;
+        var active = session!; var snapshot = active.Document.State; var checkpoint = active.Document.SavedCheckpoint();
         try
         {
-            var rendered = await active.Document.RenderAsync(); await active.Save(rendered);
+            var rendered = await active.Document.RenderAsync(); await active.Save(rendered, checkpoint);
             // Editing remains available while encoding/writing. Only acknowledge this exact snapshot.
             active.Document.MarkSaved(snapshot); SaveFailed = false;
             status.Text = Dirty ? T("未保存修改") : T("图片已保存，原卡片已更新。"); return true;

@@ -374,6 +374,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     {
         if (disposed) return;
         disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
+        imageEditHistory.Clear();
         shelf.EnvironmentRecovered -= RecoverEnvironment; shelf.DisplayCapacityChanged -= RefreshCapacity; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

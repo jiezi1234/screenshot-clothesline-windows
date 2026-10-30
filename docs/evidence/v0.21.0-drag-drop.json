@@ -1,0 +1,145 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "drop-parser-only-accepts-file-drop",
+      "passed": true
+    },
+    {
+      "name": "drop-parser-filters-and-deduplicates-images",
+      "passed": true
+    },
+    {
+      "name": "drop-parser-rejects-over-100-files",
+      "passed": true
+    },
+    {
+      "name": "near-edge-does-not-intercept-immediately",
+      "passed": true
+    },
+    {
+      "name": "held-drag-near-hidden-shelf-offers-target-without-opening-rope",
+      "passed": true
+    },
+    {
+      "name": "drop-target-keeps-foreground-and-is-nonactivating",
+      "passed": true
+    },
+    {
+      "name": "invalid-payload-does-not-open-shelf",
+      "passed": true
+    },
+    {
+      "name": "move-only-drop-is-rejected",
+      "passed": true
+    },
+    {
+      "name": "release-restores-click-through",
+      "passed": true
+    },
+    {
+      "name": "valid-file-drag-expands-empty-shelf-with-copy-effect",
+      "passed": true
+    },
+    {
+      "name": "drop-returns-copy-before-async-decoding",
+      "passed": true
+    },
+    {
+      "name": "drop-hangs-images-in-payload-order-even-when-collection-paused",
+      "passed": true
+    },
+    {
+      "name": "drop-does-not-create-managed-copies",
+      "passed": true
+    },
+    {
+      "name": "drop-inserts-before-selected-card",
+      "passed": true
+    },
+    {
+      "name": "already-hung-file-moves-without-duplicate",
+      "passed": true
+    },
+    {
+      "name": "dragging-history-image-restores-existing-record",
+      "passed": true
+    },
+    {
+      "name": "internal-reorder-keeps-card-instance-and-syncs-database",
+      "passed": true
+    },
+    {
+      "name": "internal-reorder-keeps-original-arrival-time",
+      "passed": true
+    },
+    {
+      "name": "native-shell-data-reaches-wpf-target-with-copy-only",
+      "passed": true
+    },
+    {
+      "name": "cancelled-native-drag-keeps-order-and-cleans-target",
+      "passed": true
+    },
+    {
+      "name": "failed-database-write-keeps-display-order",
+      "passed": true
+    },
+    {
+      "name": "bad-image-does-not-stop-following-valid-file",
+      "passed": true
+    },
+    {
+      "name": "external-image-inserts-between-text-cards",
+      "passed": true
+    },
+    {
+      "name": "archive-left-follows-mixed-visual-order-and-keeps-files",
+      "passed": true
+    },
+    {
+      "name": "session-lock-hides-and-rejects-drop",
+      "passed": true
+    },
+    {
+      "name": "all-original-images-still-present-and-unchanged",
+      "passed": true
+    },
+    {
+      "name": "disposal-closes-all-drop-and-card-windows",
+      "passed": true
+    },
+    {
+      "name": "overflow-drop-keeps-screen-media-quota-in-payload-order",
+      "passed": true
+    },
+    {
+      "name": "overflow-goes-to-history-with-all-files-kept",
+      "passed": true
+    },
+    {
+      "name": "drag-edge-keeps-current-row-before-dwell",
+      "passed": true
+    },
+    {
+      "name": "screen-quota-fits-one-row-after-right-edge-dwell",
+      "passed": true
+    },
+    {
+      "name": "screen-quota-fits-one-row-after-left-edge-dwell",
+      "passed": true
+    },
+    {
+      "name": "repeated-edge-dwell-preserves-all-retained-cards",
+      "passed": true
+    },
+    {
+      "name": "drag-feedback-renders-cards-making-room",
+      "passed": true
+    },
+    {
+      "name": "manual-hide-dismisses-drop-target",
+      "passed": true
+    }
+  ]
+}

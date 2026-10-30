@@ -36,11 +36,22 @@ internal static class StackedShelfDiagnostics
                 PixelRect Bounds(Window w) { Native.GetWindowRect(new WindowInteropHelper(w).Handle, out var rect); return rect.Pixels; }
                 nint Hit(PixelPoint p) => Native.WindowFromPoint(new Native.Point { X = p.X, Y = p.Y });
                 PixelPoint Inside(PixelRect r) => new(r.X + r.Width / 4, r.Y + r.Height / 2);
+                async Task ReadyRow()
+                {
+                    for (var attempt = 0; attempt < 100; attempt++)
+                    {
+                        var visible = app.Windows.OfType<CardWindow>().Where(c => c.IsVisible && !c.Retiring).ToArray();
+                        if (visible.Length > 0 && visible.All(c => c.Opacity == 1 && Hit(Inside(Bounds(c))) == new WindowInteropHelper(c).Handle)) return;
+                        await Task.Delay(20);
+                    }
+                    throw new TimeoutException("Fixture row was not ready for native hit testing");
+                }
+                await ReadyRow();
                 var sparse = Card("sparse-0"); var sparseBounds = Bounds(sparse);
                 shelf.TrackHoverPreview(0, Inside(sparseBounds), false, false);
                 Check("sparse-row-keeps-normal-card-bounds", shelf.EmphasizedCard is null && Bounds(sparse) == sparseBounds);
                 var items = Enumerable.Range(0, shelf.DisplayCapacity + 3).Select(i => assets[i % assets.Count] with { EntryId = "stack-" + i }).ToArray();
-                shelf.SetItems(items, true);
+                shelf.SetItems(items, true); await ReadyRow();
                 var row = app.Windows.OfType<CardWindow>().Where(c => c.IsVisible).OrderBy(c => Bounds(c).X).ToArray();
                 var homes = row.Select(Bounds).ToArray(); var source = row[1]; var sourceHome = homes[1]; var point = Inside(sourceHome);
                 var work = Native.MonitorAt(point).WorkArea;
@@ -54,6 +65,7 @@ internal static class StackedShelfDiagnostics
                 shelf.TrackHoverPreview(1000, point, false, false);
                 var expanded = Bounds(source);
                 Check("hover-expands-and-lifts-only-the-hit-card", shelf.EmphasizedCard == source && expanded == DesktopGeometry.EmphasizedCard(sourceHome, work) && row.Where(c => c != source).All(c => Bounds(c) == homes[Array.IndexOf(row, c)]));
+                await Task.Delay(40);
                 Check("hovered-card-comes-in-front-of-overlapping-neighbor", Hit(new PixelPoint(sourceHome.Right - 20, point.Y)) == new WindowInteropHelper(source).Handle);
                 Check("hover-does-not-activate-or-reorder", Native.GetForegroundWindow() == foreground && shelf.OrderedIds.SequenceEqual(order) && !shelf.Busy);
                 Check("pop-precedes-large-preview", !preview.IsVisible && loads == 0);
@@ -87,6 +99,7 @@ internal static class StackedShelfDiagnostics
                     Check("covered-card-resets-without-raising-row-over-occluder", shelf.EmphasizedCard is null && Hit(point) == new WindowInteropHelper(blocker).Handle && !preview.IsVisible);
                 }
                 finally { blocker.Close(); }
+                await ReadyRow();
                 shelf.TrackHoverPreview(2600, point, false, false);
                 var grip = (int)Math.Round((point.X - Bounds(source).X) * sourceHome.Width / (double)Bounds(source).Width);
                 var gesture = shelf.BeginLocalReorder(source, point, false);
@@ -98,7 +111,7 @@ internal static class StackedShelfDiagnostics
                 Check("cancel-from-pop-preserves-order-and-opacity", shelf.OrderedIds.SequenceEqual(order) && !shelf.Busy && row.All(c => c.Opacity == 1));
                 shelf.TrackHoverPreview(2800, point, false, false); shelf.UpdateDropFeedback(point, 2900);
                 Check("incoming-image-preview-clears-pop-before-snapshot", shelf.EmphasizedCard is null && Bounds(source) == sourceHome && row.All(c => c.Opacity == 0));
-                shelf.Hide(); shelf.Show();
+                shelf.Hide(); shelf.Show(); await ReadyRow();
                 shelf.ReduceMotion = false; shelf.TrackHoverPreview(3000, point, false, false);
                 Check("pop-has-finite-animation-when-motion-enabled", source.MotionRunning);
                 await Task.Delay(220);
@@ -108,28 +121,28 @@ internal static class StackedShelfDiagnostics
                 shelf.SetCardSize(120);
                 Check("size-change-clears-emphasis-and-preview", shelf.EmphasizedCard is null && !preview.IsVisible);
                 shelf.SetCardSize(100);
-                shelf.SetItems(items.Take(shelf.DisplayCapacity + 1), true);
+                shelf.SetItems(items.Take(shelf.DisplayCapacity + 1), true); await ReadyRow();
                 source = Card(items[0].EntryId!);
                 source.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
                 var last = app.Windows.OfType<CardWindow>().Single(c => c.IsVisible); var lastHome = Bounds(last);
                 shelf.TrackHoverPreview(3350, Inside(lastHome), false, false);
                 Check("single-card-last-page-does-not-use-stack-pop", shelf.EmphasizedCard is null && Bounds(last) == lastHome);
-                shelf.SetItems(items, true);
+                shelf.SetItems(items, true); await ReadyRow();
                 var first = Card(items[0].EntryId!); shelf.TrackHoverPreview(3360, Inside(Bounds(first)), false, false);
                 Check("first-card-pop-stays-inside-work-area", shelf.EmphasizedCard == first && Bounds(first).X >= work.X);
                 shelf.TrackHoverPreview(3361, outside, false, false);
                 var end = Card(items[shelf.DisplayCapacity - 1].EntryId!); shelf.TrackHoverPreview(3370, Inside(Bounds(end)), false, false);
                 Check("last-visible-card-pop-stays-inside-work-area", shelf.EmphasizedCard == end && Bounds(end).Right <= work.Right);
                 var videoItems = items.Select((item, i) => i == 1 ? item with { Path = Path.ChangeExtension(item.Path, ".mp4"), EntryId = "stack-video" } : item).ToArray();
-                shelf.SetItems(videoItems, true); var video = Card("stack-video"); var beforeVideo = loads;
+                shelf.SetItems(videoItems, true); await ReadyRow(); var video = Card("stack-video"); var beforeVideo = loads;
                 shelf.TrackHoverPreview(3380, Inside(Bounds(video)), false, false);
                 shelf.TrackHoverPreview(3980, Inside(Bounds(video)), false, false);
                 Check("video-card-is-accessible-in-stack-without-image-decoding", shelf.EmphasizedCard == video && !preview.IsVisible && loads == beforeVideo);
-                shelf.SetItems(items, true);
+                shelf.SetItems(items, true); await ReadyRow();
                 source = Card(items[0].EntryId!); point = Inside(Bounds(source)); shelf.TrackHoverPreview(3400, point, false, false);
-                shelf.SetItems(items.Skip(1), false);
+                shelf.SetItems(items.Skip(1), false); await ReadyRow();
                 Check("removing-popped-item-clears-state", shelf.EmphasizedCard is null && !preview.IsVisible);
-                shelf.SetItems(items, true); source = Card(items[0].EntryId!); point = Inside(Bounds(source));
+                shelf.SetItems(items, true); await ReadyRow(); source = Card(items[0].EntryId!); point = Inside(Bounds(source));
                 shelf.TrackHoverPreview(3500, point, false, false);
                 shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionLock);
                 Check("lock-clears-pop-and-all-card-windows", shelf.EmphasizedCard is null && !shelf.Visible && !app.Windows.OfType<CardWindow>().Any(c => c.IsVisible));

@@ -20,6 +20,8 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--screen-quota-test") return ScreenQuotaDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--shelf-entrance-test") return ShelfEntranceDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--text-hover-edit-test") return TextHoverEditDiagnostics.Run(app, args[1]);
+        if (args.Length == 2 && args[0] == "--image-hover-edit-test") return ImageHoverEditDiagnostics.Run(app, args[1]);
+        if (args.Length == 2 && args[0] == "--image-hover-edit-desktop-test") return ImageHoverEditDiagnostics.Run(app, args[1], true);
         if (args.Length == 2 && args[0] == "--paper-style-test") return PaperStyleDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--text-card-test") return TextCardDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--stacked-shelf-test") return StackedShelfDiagnostics.Run(app, args[1]);

@@ -384,5 +384,13 @@
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Edita aquí · Los cambios se guardan solos · Ctrl+C copia la selección",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "Esta pantalla admite {0} tarjetas: hasta {1} imágenes/vídeos y {1} textos.",
   "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "El tamaño se aplica al instante. Los límites dependen de la pantalla y del tamaño; el exceso del mismo tipo pasa al historial.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Cada tipo puede ocupar como máximo la mitad de la capacidad de la pantalla actual. Al superar el límite, solo el elemento más antiguo del mismo tipo pasa al historial. Las imágenes y el texto comparten todo el tendedero y se pueden mezclar y reordenar arrastrándolos."
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Cada tipo puede ocupar como máximo la mitad de la capacidad de la pantalla actual. Al superar el límite, solo el elemento más antiguo del mismo tipo pasa al historial. Las imágenes y el texto comparten todo el tendedero y se pueden mezclar y reordenar arrastrándolos.",
+  "上次图片保存尚未完成，请重启后检查。": "El guardado anterior de la imagen está incompleto. Reinicia y comprueba de nuevo.",
+  "图片修改后自动保存 · 原图保留": "Los cambios se guardan automáticamente · Se conserva el original",
+  "图片已保存，原卡片已更新。": "Imagen guardada; se ha actualizado la tarjeta original.",
+  "图片已在其他窗口或程序中更改，请重新打开后编辑。": "La imagen cambió en otra ventana o aplicación. Vuelve a abrirla antes de editar.",
+  "图片编辑画布": "Lienzo de edición de imágenes",
+  "正在保存…": "Guardando…",
+  "笔画粗细": "Grosor del trazo",
+  "颜色": "Color"
 }

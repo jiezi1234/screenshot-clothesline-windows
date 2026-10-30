@@ -384,5 +384,13 @@
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Edit directly · Changes save automatically · Ctrl+C copies selection",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "This screen fits up to {0} cards: up to {1} images/videos and {1} text cards.",
   "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "Size applies immediately. Each quota follows the screen and card size; the oldest items of the overflowing type move to history.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Each type is limited to half the current screen capacity. Overflow moves only the oldest item of the same type to history. Images and text share the whole clothesline and can be freely mixed and reordered by dragging."
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Each type is limited to half the current screen capacity. Overflow moves only the oldest item of the same type to history. Images and text share the whole clothesline and can be freely mixed and reordered by dragging.",
+  "上次图片保存尚未完成，请重启后检查。": "The previous image save is incomplete. Restart and check again.",
+  "图片修改后自动保存 · 原图保留": "Image changes save automatically · Original preserved",
+  "图片已保存，原卡片已更新。": "Image saved; the original card has been updated.",
+  "图片已在其他窗口或程序中更改，请重新打开后编辑。": "Image changed in another window or app. Reopen it before editing.",
+  "图片编辑画布": "Image editing canvas",
+  "正在保存…": "Saving…",
+  "笔画粗细": "Stroke width",
+  "颜色": "Color"
 }

@@ -37,9 +37,11 @@ internal sealed partial class ShelfController : IDisposable
     private bool sampleMode = true;
     public int DisplayCapacity { get; private set; } = 2;
     private bool CardInteractionBusy => localReorder is not null || previewCards.Count > 0 || importingDrop || cards.Any(c => c.InteractionActive);
-    public bool Busy => CardInteractionBusy || textHover.IsEditing;
+    public bool Busy => CardInteractionBusy || textHover.IsEditing || hoverPreview.IsEditing;
     internal Func<DemoItem, TextEditSession?>? StartTextEdit { set => textHover.StartEdit = value; }
     internal bool TryCloseTextEditor() => textHover.TryCloseEditor();
+    internal Func<DemoItem, CancellationToken, Task<ImageEditSession?>>? StartImageEdit { set => hoverPreview.StartEdit = value; }
+    internal bool TryCloseImageEditor() => hoverPreview.TryCloseEditor();
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;
@@ -110,7 +112,6 @@ internal sealed partial class ShelfController : IDisposable
     private void AddCard(DemoItem item)
     {
         var card = new CardWindow(item);
-        card.MouseLeave += (_, _) => hoverPreview.ClearFor(card);
         card.PreviewMouseDown += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
         card.ContextMenuOpening += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
         card.Closed += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
@@ -122,7 +123,7 @@ internal sealed partial class ShelfController : IDisposable
         card.WorkspaceRequested = (entry, edit) => WorkspaceRequested?.Invoke(entry, edit);
         card.BatchArchiveRequested = (entry, scope) => BatchArchiveRequested?.Invoke(entry, scope);
         card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)(() => { Prune(); FilesChanged?.Invoke(); }));
-        card.PreviewMouseWheel += (_, e) => { if (!CardInteractionBusy && textHover.ReleaseCleanPreview()) { var count = Math.Max(1, (cards.Count + DragCapacity - 1) / DragCapacity); page = (page + (e.Delta < 0 ? 1 : count - 1)) % count; Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
+        card.PreviewMouseWheel += (_, e) => { if (!CardInteractionBusy && textHover.ReleaseCleanPreview() && hoverPreview.ReleaseCleanPreview()) { var count = Math.Max(1, (cards.Count + DragCapacity - 1) / DragCapacity); page = (page + (e.Delta < 0 ? 1 : count - 1)) % count; Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
         cards.Add(card);
     }
     public void ResetSamples()
@@ -197,7 +198,7 @@ internal sealed partial class ShelfController : IDisposable
         var target = activeMonitor ?? monitor;
         var busy = Busy || Native.GetAsyncKeyState(1) < 0;
         gate.Tick(now, DesktopGeometry.Trigger(target.Bounds, scale).Contains(cursor),
-            presented && (shelfArea.Contains(cursor) || textHover.KeepsShelfOpen(now, cursor)), busy, SuppressFullscreen && Native.IsFullscreen(target));
+            presented && (shelfArea.Contains(cursor) || textHover.KeepsShelfOpen(now, cursor) || hoverPreview.KeepsShelfOpen(now, cursor)), busy, SuppressFullscreen && Native.IsFullscreen(target));
         if (gate.Visible && !presented) Present();
         else if (!gate.Visible && presented) Dismiss();
         TrackHoverPreview(now, cursor, Native.GetAsyncKeyState(1) < 0 || Native.GetAsyncKeyState(2) < 0 || Native.GetAsyncKeyState(4) < 0, Native.GetAsyncKeyState(0x1B) < 0);
@@ -232,9 +233,10 @@ internal sealed partial class ShelfController : IDisposable
         }
         ShelfPresentation.Present(placements, monitor, MotionAllowed);
         textHover.Resume(monitor);
+        hoverPreview.Resume(monitor);
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
-    private void Dismiss() { ResetShelfHover(); textHover.Hide(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
+    private void Dismiss() { ResetShelfHover(); textHover.Hide(); hoverPreview.Hide(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
     internal void ResetEnvironment(bool recover)
     {
         if (disposed) return;

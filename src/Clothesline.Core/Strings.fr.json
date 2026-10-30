@@ -384,5 +384,13 @@
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Modifiez ici · Enregistrement automatique · Ctrl+C copie la sélection",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "Cet écran peut afficher {0} cartes : au plus {1} images/vidéos et {1} textes.",
   "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "La taille est appliquée immédiatement. Les limites suivent l’écran et la taille des cartes ; les plus anciens éléments du type excédentaire sont archivés.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Chaque type est limité à la moitié de la capacité de l’écran actuel. En cas de dépassement, seul l’élément le plus ancien du même type est déplacé dans l’historique. Images et textes partagent toute la corde et peuvent être mélangés et réorganisés par glisser-déposer."
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Chaque type est limité à la moitié de la capacité de l’écran actuel. En cas de dépassement, seul l’élément le plus ancien du même type est déplacé dans l’historique. Images et textes partagent toute la corde et peuvent être mélangés et réorganisés par glisser-déposer.",
+  "上次图片保存尚未完成，请重启后检查。": "Le précédent enregistrement de l’image est incomplet. Redémarrez et vérifiez.",
+  "图片修改后自动保存 · 原图保留": "Enregistrement automatique · Original conservé",
+  "图片已保存，原卡片已更新。": "Image enregistrée ; la carte d’origine a été mise à jour.",
+  "图片已在其他窗口或程序中更改，请重新打开后编辑。": "L’image a changé dans une autre fenêtre ou application. Rouvrez-la avant de la modifier.",
+  "图片编辑画布": "Zone de retouche d’image",
+  "正在保存…": "Enregistrement…",
+  "笔画粗细": "Épaisseur du trait",
+  "颜色": "Couleur"
 }

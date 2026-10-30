@@ -4,6 +4,7 @@ $executable = (Get-Command $Dotnet -ErrorAction Stop).Source
 Push-Location (Join-Path $PSScriptRoot '..')
 $previousRoot = $env:DOTNET_ROOT
 try {
+    $env:DOTNET_ROOT = Split-Path $executable
     & $executable build Clothesline.slnx --configuration Release
     if ($LASTEXITCODE -ne 0) { throw "Build failed: $LASTEXITCODE" }
     & $executable run --project tests/Clothesline.Core.Tests --configuration Release --no-build
@@ -17,9 +18,13 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Shelf entrance checks failed. See artifacts/shelf-entrance-validation/shelf-entrance-diagnostics.json" }
     & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --text-hover-edit-test artifacts/text-hover-edit-validation
     if ($LASTEXITCODE -ne 0) { throw "Inline text editor checks failed. See artifacts/text-hover-edit-validation/text-hover-edit-diagnostics.json" }
+    & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --image-hover-edit-test artifacts/image-hover-edit-validation
+    if ($LASTEXITCODE -ne 0) { throw "Inline image editor checks failed. See artifacts/image-hover-edit-validation/image-hover-edit-diagnostics.json" }
     & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --paper-style-test artifacts/paper-style-validation
     if ($LASTEXITCODE -ne 0) { throw "Paper style checks failed. See artifacts/paper-style-validation/paper-style-diagnostics.json" }
     if ($Desktop) {
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --image-hover-edit-desktop-test artifacts/image-hover-edit-desktop-validation
+        if ($LASTEXITCODE -ne 0) { throw "Inline image desktop checks failed. See artifacts/image-hover-edit-desktop-validation/image-hover-edit-diagnostics.json" }
         # Interactive desktop required. This starts only our own test windows.
         $env:DOTNET_ROOT = Split-Path $executable
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --text-card-test artifacts/text-card-validation

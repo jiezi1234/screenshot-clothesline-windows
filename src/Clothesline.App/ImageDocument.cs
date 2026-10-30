@@ -47,7 +47,8 @@ internal sealed class ImageDocument
         var bitmap = original.IsFrozen ? original : original.Clone(); bitmap.Freeze();
         Commit(new(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), [], bitmap));
     }
-    public void MarkSaved() { saved = State; Changed?.Invoke(); }
+    public void MarkSaved() => MarkSaved(State);
+    internal void MarkSaved(ImageEditState snapshot) { saved = snapshot; Changed?.Invoke(); }
     public Point Clamp(Point p) => new(Math.Clamp(p.X, State.Crop.X, State.Crop.X + State.Crop.Width), Math.Clamp(p.Y, State.Crop.Y, State.Crop.Y + State.Crop.Height));
     public ImageMark CreateMark(EditorTool tool, IEnumerable<Point> points, Color color, double size, string text = "")
     {
@@ -146,6 +147,12 @@ internal sealed class ImageDocument
     }
     public BitmapSource Render()
     {
+        // Undoing all marks must restore exact source pixels, without a WPF render/color round trip.
+        if (State.Marks.Length == 0)
+        {
+            if (State.Crop == new Int32Rect(0, 0, State.BaseImage.PixelWidth, State.BaseImage.PixelHeight)) return State.BaseImage;
+            var cropped = new CroppedBitmap(State.BaseImage, State.Crop); cropped.Freeze(); return cropped;
+        }
         var drawing = new DrawingVisual(); using (var dc = drawing.RenderOpen()) Draw(dc);
         var result = new RenderTargetBitmap(State.Crop.Width, State.Crop.Height, 96, 96, PixelFormats.Pbgra32);
         result.Render(drawing); result.Freeze(); return result;

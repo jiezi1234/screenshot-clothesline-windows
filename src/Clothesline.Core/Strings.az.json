@@ -384,5 +384,13 @@
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Birbaşa redaktə edin · Dəyişikliklər avtomatik saxlanır · Ctrl+C seçimi köçürür",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "Bu ekrana ən çox {0} kart sığır: {1} şəkil/video və {1} mətn kartı.",
   "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "Ölçü dərhal tətbiq edilir. Limitlər ekrana və kart ölçüsünə uyğun dəyişir; həddi aşan növün ən köhnə elementləri tarixçəyə keçir.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Hər növ cari ekran tutumunun yarısı ilə məhdudlaşır. Hədd aşıldıqda yalnız eyni növdən ən köhnə element tarixçəyə köçürülür. Şəkillər və mətnlər bütün ipi paylaşır, sərbəst qarışdırıla və sürüklənərək sıralana bilər."
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Hər növ cari ekran tutumunun yarısı ilə məhdudlaşır. Hədd aşıldıqda yalnız eyni növdən ən köhnə element tarixçəyə köçürülür. Şəkillər və mətnlər bütün ipi paylaşır, sərbəst qarışdırıla və sürüklənərək sıralana bilər.",
+  "上次图片保存尚未完成，请重启后检查。": "Əvvəlki şəkil saxlanması tamamlanmayıb. Yenidən başladıb yoxlayın.",
+  "图片修改后自动保存 · 原图保留": "Dəyişikliklər avtomatik saxlanır · Orijinal qorunur",
+  "图片已保存，原卡片已更新。": "Şəkil saxlanıldı; mövcud kart yeniləndi.",
+  "图片已在其他窗口或程序中更改，请重新打开后编辑。": "Şəkil başqa pəncərədə və ya tətbiqdə dəyişdirilib. Redaktədən əvvəl yenidən açın.",
+  "图片编辑画布": "Şəkil redaktəsi sahəsi",
+  "正在保存…": "Saxlanılır…",
+  "笔画粗细": "Xətt qalınlığı",
+  "颜色": "Rəng"
 }

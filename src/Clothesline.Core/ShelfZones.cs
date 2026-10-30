@@ -22,6 +22,7 @@ public static class ShelfZones
         return new(width, height, card.Y, margin, capacity, width + Math.Max(1, (int)Math.Round(28 * scale * cardScale)));
     }
     public static int DisplayCapacity(PixelRect work, double scale, double cardScale = 1) => Measure(work, scale, cardScale).Capacity;
+    public static int TypeCapacity(int displayCapacity) => Math.Max(0, displayCapacity / 2);
     public static (int Media, int Text) Allocate(int capacity, int media, int text)
     {
         if (capacity < 1 || media < 0 || text < 0) throw new ArgumentOutOfRangeException();

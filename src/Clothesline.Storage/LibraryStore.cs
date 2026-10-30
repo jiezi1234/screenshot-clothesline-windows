@@ -17,6 +17,7 @@ public sealed record LibrarySettings
     public bool ShowNew { get; init; } = true;
     public bool SuppressFullscreen { get; init; } = true;
     public bool ReduceMotion { get; init; }
+    // Retained for reading older settings. The application now always follows the current screen.
     public int Capacity { get; init; }
     public int RetentionDays { get; init; }
     public long MaxManagedBytes { get; init; } = 512L * 1024 * 1024;
@@ -210,7 +211,16 @@ public sealed partial class LibraryStore : IDisposable
     }
     public void EnforceCapacity(int capacity, long now)
     {
-        lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (SELECT Id FROM Items WHERE State=0 ORDER BY AddedAt DESC,rowid DESC LIMIT -1 OFFSET $capacity)", "$now", now, "$capacity", Math.Clamp(capacity, 1, 100));
+        lock (gate) Execute("""
+            UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (
+                SELECT Id FROM (
+                    SELECT Id,ROW_NUMBER() OVER (
+                        PARTITION BY lower(substr(Path,-4))='.txt'
+                        ORDER BY AddedAt DESC,rowid DESC) AS ArrivalRank
+                    FROM Items WHERE State=0
+                ) WHERE ArrivalRank>$capacity
+            )
+            """, "$now", now, "$capacity", Clothesline.Core.ShelfZones.TypeCapacity(Math.Clamp(capacity, 1, 100)));
     }
     public void Archive(string id, long now)
     { lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$time WHERE Id=$id AND State=0", "$id", id, "$time", now); }

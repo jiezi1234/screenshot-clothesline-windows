@@ -116,10 +116,11 @@ internal static class DragDropDiagnostics
                 using (var runtime = new LibraryRuntime(shelf, Path.Combine(root, "overflow")))
                 {
                     runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true }); shelf.Start(false);
-                    var batch = Enumerable.Range(0, 27).Select(i => Path.Combine(root, $"batch-{i:D2}.png")).ToArray();
+                    var quota = runtime.TypeCapacity;
+                    var batch = Enumerable.Range(0, quota + 2).Select(i => Path.Combine(root, $"batch-{i:D2}.png")).ToArray();
                     foreach (var path in batch) File.Copy(paths[0], path);
                     await runtime.ImportDroppedImages(batch, null);
-                    Check("overflow-drop-keeps-last-25-in-payload-order", runtime.Store.Entries(EntryState.Shelf).Select(e => e.Path).SequenceEqual(batch.Skip(2)));
+                    Check("overflow-drop-keeps-screen-media-quota-in-payload-order", runtime.Store.Entries(EntryState.Shelf).Select(e => e.Path).SequenceEqual(batch.Skip(2)));
                     Check("overflow-goes-to-history-with-all-files-kept", runtime.Store.Entries(EntryState.History).Count == 2 && batch.All(File.Exists));
                     var monitor = Native.MonitorAt(Native.Cursor);
                     var right = new PixelPoint(monitor.WorkArea.Right - 20, monitor.WorkArea.Y + 70);
@@ -127,13 +128,13 @@ internal static class DragDropDiagnostics
                     shelf.UpdateDropFeedback(right, 0);
                     string FirstVisible() => shelf.OrderedIds.First(id => app.Windows.OfType<CardWindow>().Any(c => c.IsVisible && c.Item.EntryId == id));
                     var firstPage = FirstVisible(); shelf.UpdateDropFeedback(right, 649);
-                    Check("drag-edge-does-not-flip-page-before-dwell", FirstVisible() == firstPage);
+                    Check("drag-edge-keeps-current-row-before-dwell", FirstVisible() == firstPage);
                     shelf.UpdateDropFeedback(right, 650);
-                    Check("drag-edge-dwell-advances-page", FirstVisible() == shelf.OrderedIds[shelf.DisplayCapacity]);
+                    Check("screen-quota-fits-one-row-after-right-edge-dwell", FirstVisible() == firstPage && shelf.OrderedIds.Length == quota);
                     shelf.UpdateDropFeedback(left, 700); shelf.UpdateDropFeedback(left, 1350);
-                    Check("drag-edge-dwell-can-return-to-previous-page", FirstVisible() == firstPage);
+                    Check("screen-quota-fits-one-row-after-left-edge-dwell", FirstVisible() == firstPage);
                     for (var i = 0; i < 40; i++) shelf.UpdateDropFeedback(right, 2000 + i * 650);
-                    Check("drag-page-clamps-at-short-final-page", app.Windows.OfType<CardWindow>().Count(c => c.IsVisible) == (25 - 1) % shelf.DisplayCapacity + 1);
+                    Check("repeated-edge-dwell-preserves-all-retained-cards", app.Windows.OfType<CardWindow>().Count(c => c.IsVisible) == quota);
                     var target = app.Windows.OfType<ShelfDropWindow>().Single();
                     Check("drag-feedback-renders-cards-making-room", target.PreviewCount == app.Windows.OfType<CardWindow>().Count(c => c.IsVisible));
                     shelf.Hide(); Check("manual-hide-dismisses-drop-target", !target.IsVisible);

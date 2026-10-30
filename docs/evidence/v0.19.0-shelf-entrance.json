@@ -1,0 +1,149 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "prepared-row-stays-transparent-through-window-0",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-1",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-2",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-3",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-4",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-5",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-6",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-7",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-8",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-9",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-10",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-11",
+      "passed": true
+    },
+    {
+      "name": "prepared-row-stays-transparent-through-window-12",
+      "passed": true
+    },
+    {
+      "name": "preparation-finishes-native-bounds-and-content-layout",
+      "passed": true
+    },
+    {
+      "name": "preparation-does-not-start-a-fade-even-across-dispatcher-ticks",
+      "passed": true
+    },
+    {
+      "name": "preparation-never-flashes-an-opaque-window",
+      "passed": true
+    },
+    {
+      "name": "rope-images-and-notes-share-one-entrance-clock",
+      "passed": true
+    },
+    {
+      "name": "row-stays-transparent-until-first-animation-tick",
+      "passed": true
+    },
+    {
+      "name": "every-fade-sample-has-identical-progress-across-the-row",
+      "passed": true
+    },
+    {
+      "name": "settled-entrance-releases-clocks-and-restores-opacity",
+      "passed": true
+    },
+    {
+      "name": "stopping-one-card-does-not-stop-the-shared-clock-for-others",
+      "passed": true
+    },
+    {
+      "name": "hide-during-entrance-clears-clocks-without-reappearing",
+      "passed": true
+    },
+    {
+      "name": "reduced-motion-reveals-whole-row-without-clocks",
+      "passed": true
+    },
+    {
+      "name": "new-card-fades-without-restarting-the-existing-row",
+      "passed": true
+    },
+    {
+      "name": "disabling-motion-during-entry-settles-all-windows",
+      "passed": true
+    },
+    {
+      "name": "rapid-show-hide-leaves-no-prepared-windows-or-stale-clocks",
+      "passed": true
+    },
+    {
+      "name": "staged-row-respects-size-0.8",
+      "passed": true
+    },
+    {
+      "name": "staged-row-respects-size-1",
+      "passed": true
+    },
+    {
+      "name": "staged-row-respects-size-1.2",
+      "passed": true
+    },
+    {
+      "name": "staged-row-respects-size-1.5",
+      "passed": true
+    },
+    {
+      "name": "staged-row-respects-size-2",
+      "passed": true
+    },
+    {
+      "name": "empty-shelf-uses-the-same-prepared-entrance",
+      "passed": true
+    },
+    {
+      "name": "failed-preparation-hides-the-entire-uncommitted-row",
+      "passed": true
+    },
+    {
+      "name": "row-can-be-reopened-after-aborted-preparation",
+      "passed": true
+    },
+    {
+      "name": "offscreen-entrance-keeps-user-foreground",
+      "passed": true
+    },
+    {
+      "name": "entrance-disposal-releases-all-overlay-windows",
+      "passed": true
+    }
+  ]
+}

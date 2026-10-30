@@ -227,12 +227,12 @@ internal static class CompatibilityDiagnostics
         for (var n = 0; n < 10; n++)
         {
             var path = Path.Combine(folder, "latency-" + n + ".png"); WriteImage(path, n, 1920, 1080); var watch = Stopwatch.StartNew();
-            await Wait(() => runtime.Store.Entries(EntryState.Shelf).Any(e => e.Path == path) && shelf.Count == n + 1, 10000); latency.Add(watch.Elapsed.TotalMilliseconds);
+            await Wait(() => runtime.Store.Entries(EntryState.Shelf).Any(e => e.Path == path) && shelf.Count == Math.Min(n + 1, runtime.TypeCapacity), 10000); latency.Add(watch.Elapsed.TotalMilliseconds);
         }
         measurements.Add(new { name = "file-close-to-shelf-record-and-card", width = 1920, height = 1080, milliseconds = latency, median = latency.Order().Skip((latency.Count - 1) / 2).Take(latency.Count % 2 == 0 ? 2 : 1).Average(), p95 = latency.Max(), note = "Generated 1080p PNGs; warm decoder after startup. Includes watcher stability delay, database commit and UI refresh; excludes compositor scanout and initial cold decoder startup." });
         var burst = Stopwatch.StartNew(); for (var n = 10; n < 110; n++) WriteImage(Path.Combine(folder, "burst-" + n + ".png"), n);
-        await Wait(() => runtime.Store.Entries().Count == 110 && shelf.Count == 100, 120000);
-        check("100-file-burst-no-loss-or-duplicates", runtime.Store.Entries().Count == 110 && runtime.Store.Entries(EntryState.Shelf).Count == 100 && runtime.Store.Entries(EntryState.History).Count == 10, null);
+        await Wait(() => runtime.Store.Entries().Count == 110 && shelf.Count == runtime.TypeCapacity, 120000);
+        check("100-file-burst-no-loss-or-duplicates", runtime.Store.Entries().Count == 110 && runtime.Store.Entries(EntryState.Shelf).Count == runtime.TypeCapacity && runtime.Store.Entries(EntryState.History).Count == 110 - runtime.TypeCapacity, null);
         measurements.Add(new { name = "100-file-burst", milliseconds = burst.Elapsed.TotalMilliseconds, cacheEntries = ImageDecoder.CacheCount });
         check("thumbnail-cache-bounded", ImageDecoder.CacheCount <= 64, null);
         var bytes = new byte[4000 * 3000 * 4]; for (var n = 0; n < bytes.Length; n += 4) { bytes[n] = 80; bytes[n + 1] = 140; bytes[n + 3] = 255; }

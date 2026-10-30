@@ -33,7 +33,7 @@ internal sealed partial class Dashboard : Window
     private static readonly int[] protectionDurations = RevealGate.ProtectionSecondsOptions.ToArray();
     private readonly ComboBox protection = new() { ItemsSource = protectionDurations.Select(seconds => seconds == RevealGate.DefaultProtectionSeconds ? T("{0} 秒（默认）", seconds) : T("{0} 秒", seconds)).ToArray() };
     private readonly ComboBox language = new() { ItemsSource = Clothesline.Core.UiText.Languages, DisplayMemberPath = "Name", SelectedValuePath = "Code" };
-    private readonly ComboBox capacity = new() { ItemsSource = new[] { T("自动：当前屏幕一排"), T("25 项"), T("50 项"), T("100 项") } };
+    private readonly TextBlock capacity = new() { Text = T("自动：当前屏幕一排"), TextWrapping = TextWrapping.Wrap, FontSize = 14 };
     private readonly ComboBox retention = new() { ItemsSource = new[] { T("永久保留（不自动清理）"), T("取下 7 天后清理"), T("取下 30 天后清理") } };
     private readonly ComboBox storage = new() { ItemsSource = new[] { "512 MiB", "1 GiB", "2 GiB" } };
     private readonly TextBlock interactionHint = new();
@@ -112,7 +112,7 @@ internal sealed partial class Dashboard : Window
         var video = Stack(); video.Children.Add(FolderRow(videoFolder)); video.Children.Add(Text(T("支持 H.264 视频与 AAC 音频或无音轨，最高 4K、单文件 2 GiB。首次选择不导入旧录像；留空关闭。"), 12, true, new Thickness(0, 10, 0, 0)));
         var behavior = Stack(); foreach (var check in new[] { clipboard, popup, full }) behavior.Children.Add(check);
         var limits = Stack(); limits.Children.Add(Field(T("晾衣绳容量"), capacity)); limits.Children.Add(Field(T("历史期限"), retention)); limits.Children.Add(Field(T("自管内容上限"), storage));
-        limits.Children.Add(Text(T("图片和录像靠左，文字靠右，自动共享整条绳子的空间。容量为所有类型合计；超额时最旧项目进入历史。"), 12, true));
+        limits.Children.Add(Text(T("两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。布局共用整条绳子，图片在文字左侧。"), 12, true));
         limits.Children.Add(Text(T("取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。"), 12, true));
         return Scroll(Card(T("截图目录"), capture), Card(T("录像目录"), video), Card(T("收集行为"), behavior), Card(T("容量与历史"), limits));
     }
@@ -130,7 +130,7 @@ internal sealed partial class Dashboard : Window
     private FrameworkElement AppearancePanel()
     {
         var visual = Stack(); visual.Children.Add(Field(T("卡片大小"), cardSize)); visual.Children.Add(motion); motion.ToolTip = T("关闭卡片入场、摆动、取下及绳线淡入；Windows 关闭动画时也会自动停用。鼠标进入卡片时立即停稳。");
-        visual.Children.Add(Text(T("大小立即生效；自动容量会随每排可显示数量调整，超出的图片进入历史。"), 12, true, new Thickness(0, 8, 0, 0)));
+        visual.Children.Add(Text(T("大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。"), 12, true, new Thickness(0, 8, 0, 0)));
         var timing = Field(T("展开保护期"), protection); timing.Margin = new Thickness(0, 18, 0, 8); visual.Children.Add(timing);
         visual.Children.Add(Text(T("给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。"), 12, true));
         var audio = Stack(); audio.Children.Add(sound); audio.Children.Add(Text(T("连续收集最多每 2 秒播放一次；暂停或当前屏幕全屏时静音。提示音遵循 Windows 声音方案和音量设置。"), 12, true, new Thickness(0, 8, 0, 0)));

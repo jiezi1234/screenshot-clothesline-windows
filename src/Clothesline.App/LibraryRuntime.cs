@@ -38,10 +38,13 @@ internal sealed partial class LibraryRuntime : IDisposable
     private readonly Dictionary<string, int> leases = new(StringComparer.OrdinalIgnoreCase);
     public event Action<string>? Status;
     public event Action? Changed;
-    public int Capacity => Settings.Capacity == 0 ? shelf.DisplayCapacity : Settings.Capacity;
+    public int Capacity => shelf.DisplayCapacity;
+    public int TypeCapacity => ShelfZones.TypeCapacity(Capacity);
     public LibraryRuntime(ShelfController shelf, string? root = null)
     {
-        this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); Settings = Store.LoadSettings();
+        this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); Settings = Store.LoadSettings() with { Capacity = 0 };
+        // Measure before any import/refresh can apply a quota; the controller's initial placeholder is two.
+        shelf.SetCardSize(Settings.CardSizePercent);
         UiText.Language = Settings.Language; shelf.RefreshLanguage();
         if (!Store.HasSettings && root is null) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; Store.SaveSettings(Settings); }
         Videos = new VideoCatalog(Store.Root);
@@ -76,7 +79,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (disposed) return;
         Collector.RequestRescan(); Desktop?.RetryShortcut(); ScheduleRefresh(false);
     }
-    private void RefreshCapacity() { if (Settings.Capacity == 0) ScheduleRefresh(false); }
+    private void RefreshCapacity() => ScheduleRefresh(false);
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     public void Start() { shelf.Start(false); ApplySettings(Settings, false); RefreshShelf(false); maintenance.Start(); _ = WarmDecoder(); }
     private async Task WarmDecoder()
@@ -91,7 +94,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (fileOperation > 0) throw new InvalidOperationException(T("文件操作进行中，请稍后再保存设置。"));
         if (shelf.Busy && settings.CardSizePercent != Settings.CardSizePercent) throw new InvalidOperationException(T("图片交互进行中，请稍后再更改卡片大小。"));
         var gestures = ShortcutGesture.ParsePair(settings.ShowShortcut, settings.HideShortcut);
-        settings = settings with { ShowShortcut = gestures.Show.Display, HideShortcut = gestures.Hide.Display };
+        settings = settings with { Capacity = 0, ShowShortcut = gestures.Show.Display, HideShortcut = gestures.Hide.Display };
         LibraryStore.ValidateSettings(settings);
         var all = new[] { settings.ScreenshotFolder, settings.VideoFolder }.Concat(settings.ExtraFolders).Where(p => !string.IsNullOrWhiteSpace(p)).Select(Path.GetFullPath);
         foreach (var folder in all)

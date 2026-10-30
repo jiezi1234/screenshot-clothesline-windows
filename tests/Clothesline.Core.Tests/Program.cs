@@ -214,7 +214,7 @@ var fluidWork = new PixelRect(0, 0, 1920, 1080);
 var mediaHeavy = ShelfZones.Plan(fluidWork, 1, 12, 1); var textHeavy = ShelfZones.Plan(fluidWork, 1, 1, 12);
 Check(mediaHeavy.Media[^1].X > 960 && textHeavy.Text[0].X < 960, "both types can extend beyond the screen midpoint as counts change");
 Check(ShelfZones.Plan(fluidWork, 1, 100, 0).Media.Count == ShelfZones.DisplayCapacity(fluidWork, 1)
-    && ShelfZones.Plan(fluidWork, 1, 0, 100).Text.Count == ShelfZones.DisplayCapacity(fluidWork, 1), "single type can occupy every screen slot");
+    && ShelfZones.Plan(fluidWork, 1, 0, 100).Text.Count == ShelfZones.DisplayCapacity(fluidWork, 1), "layout geometry uses the whole row independently of storage quotas");
 var sparseRow = ShelfZones.Plan(fluidWork, 1, 1, 1);
 Check(sparseRow.Text[0].X - sparseRow.Media[0].Right == 28 && sparseRow.Media[0].X == 734, "one image and one note form a centered adjacent pair");
 UnifiedShelfChecks.Run(Check);

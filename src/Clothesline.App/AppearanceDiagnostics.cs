@@ -54,16 +54,16 @@ internal static class AppearanceDiagnostics
                 var total = shelf.DisplayCapacity + 3;
                 for (var i = 0; i < total; i++) runtime.Store.Add(fixture.Path, Ownership.External, "Fixture", "size-" + i, LibraryRuntime.Now + i, 100);
                 runtime.ApplySettings(runtime.Settings with { Capacity = 0, CardSizePercent = 120 });
-                Check("large-size-overflow-keeps-records-and-files", runtime.Store.Entries(EntryState.Shelf).Count == shelf.DisplayCapacity && runtime.Store.Entries(EntryState.History).Count == 3 && runtime.Store.Entries().Count == total && File.Exists(fixture.Path));
+                Check("large-size-overflow-keeps-records-and-files", runtime.Store.Entries(EntryState.Shelf).Count == runtime.TypeCapacity && runtime.Store.Entries(EntryState.History).Count == total - runtime.TypeCapacity && runtime.Store.Entries().Count == total && File.Exists(fixture.Path));
                 runtime.ApplySettings(runtime.Settings with { Capacity = 25, CardSizePercent = 80 });
                 foreach (var entry in runtime.Store.Entries(EntryState.History)) runtime.Store.Restore(entry.Id, 25, LibraryRuntime.Now);
                 runtime.ApplySettings(runtime.Settings with { CardSizePercent = 120 });
-                Check("fixed-capacity-independent-of-card-size", runtime.Store.Entries(EntryState.Shelf).Count == total && runtime.Capacity == 25);
+                Check("legacy-fixed-capacity-follows-screen-and-type-quota", runtime.Store.Entries(EntryState.Shelf).Count == runtime.TypeCapacity && runtime.Capacity == shelf.DisplayCapacity && runtime.Settings.Capacity == 0);
                 runtime.ApplySettings(runtime.Settings with { Capacity = 0, CardSizePercent = 80 });
                 var oldCapacity = shelf.DisplayCapacity; var capacityEvents = 0;
                 shelf.DisplayCapacityChanged += () => capacityEvents++;
                 shelf.SetCardSize(120); await Task.Delay(200);
-                Check("automatic-shared-limit-refreshes-after-layout-capacity-change", runtime.Store.Entries(EntryState.Shelf).Count <= shelf.DisplayCapacity && (oldCapacity == shelf.DisplayCapacity || capacityEvents == 1));
+                Check("category-limit-refreshes-after-layout-capacity-change", runtime.Store.Entries(EntryState.Shelf).Count <= runtime.TypeCapacity && (oldCapacity == shelf.DisplayCapacity || capacityEvents == 1));
                 card = new CardWindow(fixture);
                 foreach (var percent in new[] { 80, 100, 120 })
                 {

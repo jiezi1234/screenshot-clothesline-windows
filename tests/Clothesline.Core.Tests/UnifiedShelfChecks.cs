@@ -22,16 +22,20 @@ internal static class UnifiedShelfChecks
         check(DesktopGeometry.Stacked(crowdedRow) && crowded.Text[0].X - crowded.Media[^1].X == crowdedRow[1].X - crowdedRow[0].X,
             "crowded media-text boundary shares the same overlap as other cards");
         var allocation = ShelfZones.Allocate(ShelfZones.DisplayCapacity(work, 1), 5, 10);
-        var lastPage = ShelfZones.Plan(work, 1, 5, 10 % allocation.Text);
+        var lastPage = ShelfZones.Plan(work, 1, 5, (allocation.Text + 1) % allocation.Text);
         var lastRow = lastPage.Media.Concat(lastPage.Text).ToArray();
         check(lastPage.Text.Count == 1 && lastRow.SequenceEqual(DesktopGeometry.Cards(work, 1, 6)),
             "short final text page closes its unused slots and recenters both types");
         foreach (var (dpi, size) in new[] { (1.0, .8), (1.25, 1.0), (2.5, 1.2) })
         {
             var negativeWork = new PixelRect(-2560, -200, 2560, 1440);
-            var mixed = ShelfZones.Plan(negativeWork, dpi, 3, 2, size);
-            var sameType = ShelfZones.Plan(negativeWork, dpi, 5, 0, size);
-            check(mixed.Media.Concat(mixed.Text).SequenceEqual(sameType.Media), $"type-neutral placement survives negative coordinates and DPI {dpi}, size {size}");
+            var limit = ShelfZones.TypeCapacity(ShelfZones.DisplayCapacity(negativeWork, dpi, size));
+            var count = Math.Min(5, limit);
+            var mixed = ShelfZones.Plan(negativeWork, dpi, count - 1, 1, size);
+            var sameType = ShelfZones.Plan(negativeWork, dpi, count, 0, size);
+            check(mixed.Media.Concat(mixed.Text).SequenceEqual(sameType.Media), $"within-quota placement stays type-neutral at negative coordinates and DPI {dpi}, size {size}");
         }
+        check(ShelfZones.TypeCapacity(20) == 10 && ShelfZones.TypeCapacity(21) == 10, "category quota rounds down half of current display capacity");
+        check(ShelfZones.TypeCapacity(2) == 1 && ShelfZones.TypeCapacity(1) == 0 && ShelfZones.TypeCapacity(100) == 50, "category quota respects smallest and largest screen capacities");
     }
 }

@@ -1,0 +1,829 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "clipboard collection defaults on with permanent history and 10-second reveal protection",
+      "passed": true
+    },
+    {
+      "name": "100 captures spill into history without loss",
+      "passed": true
+    },
+    {
+      "name": "capacity does not delete external files",
+      "passed": true
+    },
+    {
+      "name": "restore clears history timer and enforces capacity",
+      "passed": true
+    },
+    {
+      "name": "restore maintains shelf limit",
+      "passed": true
+    },
+    {
+      "name": "expired external history never invokes deletion",
+      "passed": true
+    },
+    {
+      "name": "recycle failure preserves record and file",
+      "passed": true
+    },
+    {
+      "name": "background cleanup leaves failed records for manual review",
+      "passed": true
+    },
+    {
+      "name": "successful recycle commits record removal",
+      "passed": true
+    },
+    {
+      "name": "same-path repeated events deduplicate",
+      "passed": true
+    },
+    {
+      "name": "short cross-source duplicate detected",
+      "passed": true
+    },
+    {
+      "name": "dedup window expires",
+      "passed": true
+    },
+    {
+      "name": "distinct same-source files are not globally discarded",
+      "passed": true
+    },
+    {
+      "name": "missing external file is marked rather than forgotten",
+      "passed": true
+    },
+    {
+      "name": "settings survive restart",
+      "passed": true
+    },
+    {
+      "name": "shelf state survives restart",
+      "passed": true
+    },
+    {
+      "name": "completed orphan write recovered into history",
+      "passed": true
+    },
+    {
+      "name": "interrupted partial write retained for inspection",
+      "passed": true
+    },
+    {
+      "name": "interrupted recycle preserves existing source for manual review",
+      "passed": true
+    },
+    {
+      "name": "completed recycle journal reconciles missing source",
+      "passed": true
+    },
+    {
+      "name": "pure PNG accepted",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes UnicodeText",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes Text",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes FileDrop",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes HTML Format",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes Rich Text Format",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes ScreenshotClothesline.OwnCopy",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes ExcludeClipboardContentFromMonitorProcessing",
+      "passed": true
+    },
+    {
+      "name": "clipboard excludes ClipboardViewerIgnore",
+      "passed": true
+    },
+    {
+      "name": "clipboard respects privacy DWORD",
+      "passed": true
+    },
+    {
+      "name": "text-only clipboard rejected",
+      "passed": true
+    },
+    {
+      "name": "clipboard respects no-cloud flag conservatively",
+      "passed": true
+    },
+    {
+      "name": "explicit allowed flags accept image",
+      "passed": true
+    },
+    {
+      "name": "initial directory scan does not import old files",
+      "passed": true
+    },
+    {
+      "name": "source baseline produces no capture sound event",
+      "passed": true
+    },
+    {
+      "name": "watcher ingests 100 burst file events",
+      "passed": true
+    },
+    {
+      "name": "rescan and repeated events do not duplicate",
+      "passed": true
+    },
+    {
+      "name": "only committed automatic captures produce events; duplicate rescan is silent",
+      "passed": true
+    },
+    {
+      "name": "pause stops collection",
+      "passed": true
+    },
+    {
+      "name": "resume reconciles pending new files",
+      "passed": true
+    },
+    {
+      "name": "file and clipboard duplicates merge",
+      "passed": true
+    },
+    {
+      "name": "managed import atomically commits file and record",
+      "passed": true
+    },
+    {
+      "name": "managed image has no unfinished part after success",
+      "passed": true
+    },
+    {
+      "name": "storage ceiling refuses new managed content",
+      "passed": true
+    },
+    {
+      "name": "duplicate and failed clipboard writes do not produce sound events",
+      "passed": true
+    },
+    {
+      "name": "original snapshot and manual import are silent",
+      "passed": true
+    },
+    {
+      "name": "batch archive deduplicates IDs and retains original files",
+      "passed": true
+    },
+    {
+      "name": "repeated batch archive preserves retention start",
+      "passed": true
+    },
+    {
+      "name": "active editor protects managed file and external record while unrelated history expires",
+      "passed": true
+    },
+    {
+      "name": "released editor lease permits normal retention cleanup",
+      "passed": true
+    },
+    {
+      "name": "explicit edited copy survives cross-source dedup but repeats do not create extra cards",
+      "passed": true
+    },
+    {
+      "name": "original snapshot commits atomically to history without occupying shelf",
+      "passed": true
+    },
+    {
+      "name": "original backup cannot suppress a new external capture",
+      "passed": true
+    },
+    {
+      "name": "original backup cannot suppress a new clipboard capture",
+      "passed": true
+    },
+    {
+      "name": "multiple generations share one original snapshot",
+      "passed": true
+    },
+    {
+      "name": "referenced original refuses explicit recycle before filesystem side effect",
+      "passed": true
+    },
+    {
+      "name": "referenced original does not expire with time",
+      "passed": true
+    },
+    {
+      "name": "original snapshots share managed quota and rejection adds no orphan record",
+      "passed": true
+    },
+    {
+      "name": "clipboard quota includes retained originals",
+      "passed": true
+    },
+    {
+      "name": "original lineage survives restart",
+      "passed": true
+    },
+    {
+      "name": "both desktop shortcuts survive restart",
+      "passed": true
+    },
+    {
+      "name": "removing one sibling retains original for remaining sibling",
+      "passed": true
+    },
+    {
+      "name": "last dependent expiry restarts original retention and prevents same-pass deletion",
+      "passed": true
+    },
+    {
+      "name": "original recycle failure preserves file and record",
+      "passed": true
+    },
+    {
+      "name": "unreferenced original can be explicitly recycled",
+      "passed": true
+    },
+    {
+      "name": "shortcut migration: legacy-default",
+      "passed": true
+    },
+    {
+      "name": "duplicate gestures cannot overwrite persisted settings: legacy-default",
+      "passed": true
+    },
+    {
+      "name": "migrated shortcuts survive reopen: legacy-default",
+      "passed": true
+    },
+    {
+      "name": "saving removes the legacy toggle setting: legacy-default",
+      "passed": true
+    },
+    {
+      "name": "shortcut migration: legacy-disabled",
+      "passed": true
+    },
+    {
+      "name": "duplicate gestures cannot overwrite persisted settings: legacy-disabled",
+      "passed": true
+    },
+    {
+      "name": "migrated shortcuts survive reopen: legacy-disabled",
+      "passed": true
+    },
+    {
+      "name": "saving removes the legacy toggle setting: legacy-disabled",
+      "passed": true
+    },
+    {
+      "name": "shortcut migration: legacy-custom",
+      "passed": true
+    },
+    {
+      "name": "duplicate gestures cannot overwrite persisted settings: legacy-custom",
+      "passed": true
+    },
+    {
+      "name": "migrated shortcuts survive reopen: legacy-custom",
+      "passed": true
+    },
+    {
+      "name": "saving removes the legacy toggle setting: legacy-custom",
+      "passed": true
+    },
+    {
+      "name": "shortcut migration: new-fields-win",
+      "passed": true
+    },
+    {
+      "name": "duplicate gestures cannot overwrite persisted settings: new-fields-win",
+      "passed": true
+    },
+    {
+      "name": "migrated shortcuts survive reopen: new-fields-win",
+      "passed": true
+    },
+    {
+      "name": "saving removes the legacy toggle setting: new-fields-win",
+      "passed": true
+    },
+    {
+      "name": "v1 migration preserves entries and supplies directional shortcut defaults",
+      "passed": true
+    },
+    {
+      "name": "v1 migration produces database backup before schema change",
+      "passed": true
+    },
+    {
+      "name": "migration backup remains readable as v1",
+      "passed": true
+    },
+    {
+      "name": "v3 reopening does not repeat migration or create extra backups",
+      "passed": true
+    },
+    {
+      "name": "old JSON settings retain standard size and silent Chinese defaults",
+      "passed": true
+    },
+    {
+      "name": "old JSON without reveal protection defaults to 10 seconds",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "invalid appearance preference leaves persisted settings intact",
+      "passed": true
+    },
+    {
+      "name": "size sound language and reveal protection survive restart",
+      "passed": true
+    },
+    {
+      "name": "video collection stays opt-in for old/default settings",
+      "passed": true
+    },
+    {
+      "name": "enabling video in image folder baselines old videos independently",
+      "passed": true
+    },
+    {
+      "name": "same directory collects each enabled media kind exactly once",
+      "passed": true
+    },
+    {
+      "name": "video repeats deduplicate without changing image behavior",
+      "passed": true
+    },
+    {
+      "name": "slow video decoder does not block new images",
+      "passed": true
+    },
+    {
+      "name": "disabling video during probe prevents stale commit",
+      "passed": true
+    },
+    {
+      "name": "clearing video source retains image watcher",
+      "passed": true
+    },
+    {
+      "name": "paused video is not collected",
+      "passed": true
+    },
+    {
+      "name": "resume and source reenable rescan unseen recordings",
+      "passed": true
+    },
+    {
+      "name": "video directory remains nonrecursive",
+      "passed": true
+    },
+    {
+      "name": "upgrade baselines existing optional images separately",
+      "passed": true
+    },
+    {
+      "name": "new case-insensitive WebP enters common history",
+      "passed": true
+    },
+    {
+      "name": "reconfiguration does not import pre-upgrade HEIC or duplicate WebP",
+      "passed": true
+    },
+    {
+      "name": "optional decoder does not hold ordinary image commit lock",
+      "passed": true
+    },
+    {
+      "name": "source removal during optional decode prevents late commit",
+      "passed": true
+    },
+    {
+      "name": "missing optional codec retains source and permits retry",
+      "passed": true
+    },
+    {
+      "name": "HEIF manual import shares image lifecycle",
+      "passed": true
+    },
+    {
+      "name": "no custom order retains newest-first arrival order",
+      "passed": true
+    },
+    {
+      "name": "move from end into middle",
+      "passed": true
+    },
+    {
+      "name": "move first item to end",
+      "passed": true
+    },
+    {
+      "name": "move group preserves input order and deduplicates IDs",
+      "passed": true
+    },
+    {
+      "name": "dropping immediately before itself is a no-op",
+      "passed": true
+    },
+    {
+      "name": "stale move rejects atomically",
+      "passed": true
+    },
+    {
+      "name": "visual order does not change arrival metadata or all-items chronology",
+      "passed": true
+    },
+    {
+      "name": "reordering does not extend deduplication window",
+      "passed": true
+    },
+    {
+      "name": "custom display order survives database reopen",
+      "passed": true
+    },
+    {
+      "name": "new capture prepends without scrambling custom order",
+      "passed": true
+    },
+    {
+      "name": "capacity evicts oldest arrival even when moved to front",
+      "passed": true
+    },
+    {
+      "name": "restored card returns to front without stale custom position",
+      "passed": true
+    },
+    {
+      "name": "forgetting ordered external record keeps original file",
+      "passed": true
+    },
+    {
+      "name": "deleted entries cascade out of stored order",
+      "passed": true
+    },
+    {
+      "name": "v2 upgrade preserves records and reveal setting",
+      "passed": true
+    },
+    {
+      "name": "v2 backup is readable before v3 ordering migration",
+      "passed": true
+    },
+    {
+      "name": "v3 reopening makes no additional v2 backup",
+      "passed": true
+    },
+    {
+      "name": "rich clipboard uses its plain Unicode text representation",
+      "passed": true
+    },
+    {
+      "name": "legacy plain text has a text route",
+      "passed": true
+    },
+    {
+      "name": "mixed image and text clipboard makes one text card",
+      "passed": true
+    },
+    {
+      "name": "text rejects own copy privacy or file-drop marker: ScreenshotClothesline.OwnCopy",
+      "passed": true
+    },
+    {
+      "name": "text rejects own copy privacy or file-drop marker: ExcludeClipboardContentFromMonitorProcessing",
+      "passed": true
+    },
+    {
+      "name": "text rejects own copy privacy or file-drop marker: ClipboardViewerIgnore",
+      "passed": true
+    },
+    {
+      "name": "text rejects own copy privacy or file-drop marker: FileDrop",
+      "passed": true
+    },
+    {
+      "name": "text respects privacy flag: CanIncludeInClipboardHistory",
+      "passed": true
+    },
+    {
+      "name": "text respects privacy flag: CanUploadToCloudClipboard",
+      "passed": true
+    },
+    {
+      "name": "format-only content is never parsed or executed",
+      "passed": true
+    },
+    {
+      "name": "text encoding preserves Unicode whitespace and mixed line endings",
+      "passed": true
+    },
+    {
+      "name": "invalid empty oversized or malformed text is rejected",
+      "passed": true
+    },
+    {
+      "name": "invalid empty oversized or malformed text is rejected",
+      "passed": true
+    },
+    {
+      "name": "invalid empty oversized or malformed text is rejected",
+      "passed": true
+    },
+    {
+      "name": "invalid empty oversized or malformed text is rejected",
+      "passed": true
+    },
+    {
+      "name": "invalid empty oversized or malformed text is rejected",
+      "passed": true
+    },
+    {
+      "name": "title uses first nonempty line without changing content",
+      "passed": true
+    },
+    {
+      "name": "title never splits emoji pairs",
+      "passed": true
+    },
+    {
+      "name": "clipboard text commits managed file and record",
+      "passed": true
+    },
+    {
+      "name": "text card has managed ownership type and readable title",
+      "passed": true
+    },
+    {
+      "name": "committed text is complete without unfinished file",
+      "passed": true
+    },
+    {
+      "name": "rapid duplicate text is suppressed",
+      "passed": true
+    },
+    {
+      "name": "text import enforces managed storage quota",
+      "passed": true
+    },
+    {
+      "name": "image import shares quota with stored text",
+      "passed": true
+    },
+    {
+      "name": "save updates the same text file and metadata",
+      "passed": true
+    },
+    {
+      "name": "edit preserves ordering capacity age and entry identity",
+      "passed": true
+    },
+    {
+      "name": "editing text keeps its assigned paper style",
+      "passed": true
+    },
+    {
+      "name": "stale editor cannot overwrite newer text",
+      "passed": true
+    },
+    {
+      "name": "save quota failure preserves original file and metadata",
+      "passed": true
+    },
+    {
+      "name": "editing history does not rehang or restart retention",
+      "passed": true
+    },
+    {
+      "name": "edited text restores from history",
+      "passed": true
+    },
+    {
+      "name": "history restoration keeps the same paper style",
+      "passed": true
+    },
+    {
+      "name": "locked text refuses save without truncating source",
+      "passed": true
+    },
+    {
+      "name": "failed write leaves readable original",
+      "passed": true
+    },
+    {
+      "name": "external edits are not silently overwritten",
+      "passed": true
+    },
+    {
+      "name": "text content and shelf state survive restart",
+      "passed": true
+    },
+    {
+      "name": "assigned paper style survives library restart",
+      "passed": true
+    },
+    {
+      "name": "interrupted text save recovers file and metadata: False",
+      "passed": true
+    },
+    {
+      "name": "interrupted text save recovers file and metadata: True",
+      "passed": true
+    },
+    {
+      "name": "v3 to v4 migration backs up and preserves clipboard settings",
+      "passed": true
+    },
+    {
+      "name": "v4 reopening does not create extra backups",
+      "passed": true
+    },
+    {
+      "name": "odd screen capacity gives both categories the same rounded-down quota",
+      "passed": true
+    },
+    {
+      "name": "separate overflow archives oldest arrivals without deleting files",
+      "passed": true
+    },
+    {
+      "name": "library shelf orders media left and text right",
+      "passed": true
+    },
+    {
+      "name": "video shares the image quota",
+      "passed": true
+    },
+    {
+      "name": "each zone supports independent persistent ordering",
+      "passed": true
+    },
+    {
+      "name": "storage rejects cross-zone sorting and mixed moving groups",
+      "passed": true
+    },
+    {
+      "name": "restoring an image evicts the oldest image even when reordered",
+      "passed": true
+    },
+    {
+      "name": "image restore leaves text membership and order intact",
+      "passed": true
+    },
+    {
+      "name": "empty text category does not increase image quota",
+      "passed": true
+    },
+    {
+      "name": "single category remains capped at half the screen slots",
+      "passed": true
+    },
+    {
+      "name": "smaller screen reapplies the per-category quota and preserves files",
+      "passed": true
+    },
+    {
+      "name": "larger screen does not automatically restore archived content",
+      "passed": true
+    },
+    {
+      "name": "separate shelf quotas and history survive restart",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects the first image",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 0",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 1",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 2",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 3",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 4",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 5",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 6",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 7",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 8",
+      "passed": true
+    },
+    {
+      "name": "twenty-slot example collects note 9",
+      "passed": true
+    },
+    {
+      "name": "one image plus ten notes stays at eleven cards after another text copy",
+      "passed": true
+    },
+    {
+      "name": "new text never evicts the older image",
+      "passed": true
+    },
+    {
+      "name": "eleventh note archives first copied note regardless of visual order",
+      "passed": true
+    },
+    {
+      "name": "eleventh image replaces the first image within its own quota",
+      "passed": true
+    },
+    {
+      "name": "image overflow never changes text membership or order",
+      "passed": true
+    },
+    {
+      "name": "restoring archived text consumes only a text slot",
+      "passed": true
+    },
+    {
+      "name": "screen shrink independently keeps newest four per category with every file intact",
+      "passed": true
+    },
+    {
+      "name": "uppercase text extension uses the same quota as lowercase",
+      "passed": true
+    },
+    {
+      "name": "clipboard default respects stored choice: missing",
+      "passed": true
+    },
+    {
+      "name": "manual clipboard disable survives restart: missing",
+      "passed": true
+    },
+    {
+      "name": "clipboard default respects stored choice: disabled",
+      "passed": true
+    },
+    {
+      "name": "manual clipboard disable survives restart: disabled",
+      "passed": true
+    },
+    {
+      "name": "clipboard default respects stored choice: enabled",
+      "passed": true
+    },
+    {
+      "name": "manual clipboard disable survives restart: enabled",
+      "passed": true
+    }
+  ]
+}

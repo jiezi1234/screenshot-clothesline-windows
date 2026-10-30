@@ -41,14 +41,18 @@ internal sealed partial class Dashboard
         }
         shelfEmpty.Visibility = entries.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         historyEmpty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        UpdatePageDescription(); UpdateCollectionState();
+        UpdatePageDescription(); UpdateCollectionState(); UpdateCapacity();
+    }
+    private void UpdateCapacity()
+    {
+        if (library is not null) capacity.Text = T("当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。", library.Capacity, library.TypeCapacity);
     }
     private void FillSettings()
     {
         if (library is null) return; fillingSettings = true; var settings = library.Settings; screenshot.Text = settings.ScreenshotFolder; videoFolder.Text = settings.VideoFolder;
         for (var i = 0; i < 3; i++) extras[i].Text = i < settings.ExtraFolders.Length ? settings.ExtraFolders[i] : "";
         clipboard.IsChecked = settings.ClipboardEnabled; popup.IsChecked = settings.ShowNew; full.IsChecked = settings.SuppressFullscreen; motion.IsChecked = settings.ReduceMotion;
-        capacity.SelectedIndex = Array.IndexOf(new[] { 0, 25, 50, 100 }, settings.Capacity); retention.SelectedIndex = Array.IndexOf(new[] { 0, 7, 30 }, settings.RetentionDays);
+        UpdateCapacity(); retention.SelectedIndex = Array.IndexOf(new[] { 0, 7, 30 }, settings.RetentionDays);
         storage.SelectedIndex = settings.MaxManagedBytes >= 2L * 1024 * 1024 * 1024 ? 2 : settings.MaxManagedBytes >= 1024L * 1024 * 1024 ? 1 : 0;
         cardSize.SelectedIndex = Array.IndexOf(new[] { 80, 100, 120 }, settings.CardSizePercent); sound.IsChecked = settings.CaptureSound;
         protection.SelectedIndex = Array.IndexOf(protectionDurations, settings.RevealProtectionSeconds);
@@ -64,7 +68,7 @@ internal sealed partial class Dashboard
     {
         if (library is null) return;
         library.ApplySettings(library.Settings with { ScreenshotFolder = screenshot.Text.Trim(), VideoFolder = videoFolder.Text.Trim(), ExtraFolders = extras.Select(e => e.Text.Trim()).Where(p => p.Length > 0).ToArray(), ClipboardEnabled = clipboard.IsChecked == true, Paused = library.Settings.Paused, ShowNew = popup.IsChecked == true, SuppressFullscreen = full.IsChecked == true, ReduceMotion = motion.IsChecked == true,
-            Capacity = new[] { 0, 25, 50, 100 }[Math.Max(0, capacity.SelectedIndex)], RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024,
+            Capacity = 0, RetentionDays = new[] { 0, 7, 30 }[Math.Max(0, retention.SelectedIndex)], MaxManagedBytes = new[] { 512L, 1024L, 2048L }[Math.Max(0, storage.SelectedIndex)] * 1024 * 1024,
             ShowShortcut = shortcutEnabled.IsChecked == true ? showShortcut.Text : "", HideShortcut = shortcutEnabled.IsChecked == true ? hideShortcut.Text : "", RunAtLogin = login.IsChecked == true,
             CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], RevealProtectionSeconds = protection.SelectedIndex >= 0 ? protectionDurations[protection.SelectedIndex] : Clothesline.Core.RevealGate.DefaultProtectionSeconds,
             CaptureSound = sound.IsChecked == true, Language = language.SelectedValue as string ?? "zh-CN" });
@@ -79,7 +83,7 @@ internal sealed partial class Dashboard
     {
         screenshot.Text, Video = videoFolder.Text, Extras = extras.Select(e => e.Text).ToArray(),
         Clipboard = clipboard.IsChecked, Popup = popup.IsChecked, Full = full.IsChecked, Motion = motion.IsChecked,
-        Capacity = capacity.SelectedIndex, Retention = retention.SelectedIndex, Storage = storage.SelectedIndex,
+        Retention = retention.SelectedIndex, Storage = storage.SelectedIndex,
         ShortcutEnabled = shortcutEnabled.IsChecked, Show = showShortcut.Text, Hide = hideShortcut.Text, Login = login.IsChecked,
         Size = cardSize.SelectedIndex, Protection = protection.SelectedIndex, Sound = sound.IsChecked, Language = language.SelectedValue
     });
@@ -87,7 +91,7 @@ internal sealed partial class Dashboard
     {
         foreach (var text in new[] { screenshot, videoFolder, showShortcut, hideShortcut }.Concat(extras)) text.TextChanged += (_, _) => UpdateDraftState();
         foreach (var check in new[] { clipboard, popup, full, motion, shortcutEnabled, login, sound }) { check.Checked += (_, _) => UpdateDraftState(); check.Unchecked += (_, _) => UpdateDraftState(); }
-        foreach (var choice in new[] { capacity, retention, storage, cardSize, protection, language }) choice.SelectionChanged += (_, _) => UpdateDraftState();
+        foreach (var choice in new[] { retention, storage, cardSize, protection, language }) choice.SelectionChanged += (_, _) => UpdateDraftState();
     }
     private void UpdateDraftState()
     {

@@ -215,4 +215,5 @@ Check(ShelfZones.Plan(fluidWork, 1, 100, 0).Media.Count == ShelfZones.DisplayCap
     && ShelfZones.Plan(fluidWork, 1, 0, 100).Text.Count == ShelfZones.DisplayCapacity(fluidWork, 1), "single type can occupy every screen slot");
 var sparseAnchored = ShelfZones.Plan(fluidWork, 1, 1, 1);
 Check(sparseAnchored.Media[0].X == 16 && sparseAnchored.Text[0].Right == 1904, "sparse media anchors left and sparse text anchors right");
+PaperStyleChecks.Run(Check);
 Console.WriteLine($"{checks} checks passed.");

@@ -1,45 +1,12 @@
 using System;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using Clothesline.Core;
 using Clothesline.Storage;
 
 namespace Clothesline.App;
-
-internal static class TextCardImage
-{
-    internal static BitmapSource Create(string text)
-    {
-        // Fixed thumbnail work regardless of document length; the preview/editor retain all text.
-        var length = Math.Min(1200, text.Length);
-        if (length < text.Length && char.IsHighSurrogate(text[length - 1])) length--;
-        var excerpt = text[..length];
-        var visual = new DrawingVisual();
-        using (var dc = visual.RenderOpen())
-        {
-            dc.DrawRectangle(DemoAssets.Brush("#FFF9EB"), null, new Rect(0, 0, 400, 270));
-            var rule = new Pen(DemoAssets.Brush("#C9DAD9"), 1);
-            for (var y = 48; y < 270; y += 32) dc.DrawLine(rule, new Point(42, y), new Point(390, y));
-            dc.DrawLine(new Pen(DemoAssets.Brush("#D59A92"), 1.5), new Point(64, 0), new Point(64, 270));
-            dc.DrawRectangle(DemoAssets.Brush("#F0E6CF"), null, new Rect(0, 0, 34, 270));
-            for (var y = 20; y < 270; y += 34)
-            {
-                dc.DrawEllipse(DemoAssets.Brush("#CEBDA0"), null, new Point(24, y), 4, 5);
-                dc.DrawRoundedRectangle(DemoAssets.Brush("#EEE9DD"), new Pen(DemoAssets.Brush("#8E968D"), 2), new Rect(3, y - 4, 24, 8), 4, 4);
-            }
-            var formatted = new FormattedText(excerpt, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI, Microsoft YaHei UI"), 24, DemoAssets.Brush("#394B42"), 1)
-            { MaxTextWidth = 308, MaxTextHeight = 248, LineHeight = 32, Trimming = TextTrimming.CharacterEllipsis };
-            dc.DrawText(formatted, new Point(76, 15));
-        }
-        var image = new RenderTargetBitmap(400, 270, 96, 96, PixelFormats.Pbgra32); image.Render(visual); image.Freeze(); return image;
-    }
-}
 
 internal sealed partial class LibraryRuntime
 {
@@ -51,7 +18,7 @@ internal sealed partial class LibraryRuntime
             if (!disposed && Store.Find(entry.Id)?.State == EntryState.Shelf && CollectionEngine.Signature(entry.Path) == signature)
             {
                 Store.UpdateTextMetadata(entry.Id, text);
-                cache[entry.Id] = (signature, new DemoItem(TextContent.Title(text), T("文字 · {0} 个字符", text.Length), entry.Path, TextCardImage.Create(text), entry.Id, text));
+                cache[entry.Id] = (signature, new DemoItem(TextContent.Title(text), T("文字 · {0} 个字符", text.Length), entry.Path, TextCardImage.Create(text, TextPaperStyles.ForEntry(entry.Id)), entry.Id, text));
             }
         }
         catch (OperationCanceledException) { }

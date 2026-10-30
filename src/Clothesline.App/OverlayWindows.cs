@@ -105,6 +105,7 @@ internal sealed class CardWindow : OverlayWindow
     private Point? down;
     private readonly DispatcherTimer clickTimer;
     private readonly DispatcherTimer holdTimer;
+    private readonly DispatcherTimer feedbackTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private readonly TextBlock caption;
     private readonly Border surface;
     private readonly CardMotion motion;
@@ -121,7 +122,6 @@ internal sealed class CardWindow : OverlayWindow
         var root = new Grid { Margin = new Thickness(5, 1, 5, 5) };
         motion = new CardMotion(root);
         surface = new Border { Background = DemoAssets.Brush("#F9FAF7"), BorderBrush = DemoAssets.Brush("#D6DED6"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 19, 0, 0), Padding = new Thickness(8) };
-        if (item.IsText) { surface.Background = DemoAssets.Brush("#FFF9EB"); surface.BorderBrush = DemoAssets.Brush("#D3C4A5"); surface.CornerRadius = new CornerRadius(3, 8, 8, 3); }
         var inside = new Grid();
         inside.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -135,12 +135,32 @@ internal sealed class CardWindow : OverlayWindow
         var sub = new TextBlock { Text = item.Subtitle, ToolTip = item.Subtitle, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 9, Foreground = DemoAssets.Brush("#7D8B83"), Margin = new Thickness(2, 3, 0, 0) };
         Grid.SetRow(sub, 2); inside.Children.Add(sub);
         surface.Child = inside; root.Children.Add(surface);
+        if (item.IsText)
+        {
+            var palette = TextPaper.Palette(item.PaperStyle);
+            surface.Background = Brushes.Transparent; surface.BorderThickness = new Thickness(0); surface.Padding = new Thickness(0);
+            surface.CornerRadius = new CornerRadius(0);
+            surface.Child = new TextPaperSurface(item.PaperStyle, true, item.Text ?? T("正在读取文字…"));
+            // Text is the card itself, with no photo frame, duplicate title or metadata footer.
+            inside.Children.Remove(caption); Grid.SetRow(caption, 0);
+            caption.Text = ""; caption.ToolTip = null; caption.Visibility = Visibility.Collapsed;
+            caption.VerticalAlignment = VerticalAlignment.Bottom; caption.HorizontalAlignment = HorizontalAlignment.Center;
+            caption.Margin = new Thickness(12, 0, 12, 13); caption.Padding = new Thickness(6, 3, 6, 3);
+            caption.Background = DemoAssets.Brush(palette.Paper); caption.Foreground = DemoAssets.Brush(palette.Ink); caption.FontSize = 11;
+            root.Children.Add(caption);
+        }
+        feedbackTimer.Tick += (_, _) => { feedbackTimer.Stop(); caption.Visibility = Visibility.Collapsed; };
         var clip = new Border { Width = 14, Height = 28, Background = DemoAssets.Brush("#BC8F58"), CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Center };
         root.Children.Add(clip);
         var remove = new Button { Content = "×", Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 23, 4, 0), Background = DemoAssets.Brush("#F7FAF6"), Foreground = DemoAssets.Brush("#355446"), BorderThickness = new Thickness(0), Focusable = false, ToolTip = T("取下到历史（保留文件）") };
         remove.Click += (_, _) => { clickTimer.Stop(); TakeDown?.Invoke(this); };
         AutomationProperties.SetName(remove, T("取下") + item.Title);
         root.Children.Add(remove);
+        if (item.IsText)
+        {
+            remove.Background = DemoAssets.Brush(TextPaper.Palette(item.PaperStyle).Paper); remove.Opacity = 0;
+            root.MouseEnter += (_, _) => remove.Opacity = .9; root.MouseLeave += (_, _) => remove.Opacity = 0;
+        }
         var layout = new Grid { Width = DesktopGeometry.CardWidth, Height = DesktopGeometry.CardHeight }; layout.Children.Add(root);
         Content = new Viewbox { Child = layout, Stretch = Stretch.Uniform };
         clickTimer.Tick += (_, _) => { clickTimer.Stop(); Copy(); };
@@ -155,8 +175,8 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseLeftButtonUp += Up;
         surface.LostMouseCapture += (_, _) => { down = null; holdTimer.Stop(); };
         MouseEnter += (_, _) => { if (!Retiring) StopMotion(); };
-        surface.MouseEnter += (_, _) => { if (!Busy) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
-        surface.MouseLeave += (_, _) => { if (!Busy) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
+        surface.MouseEnter += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
+        surface.MouseLeave += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
         var menu = new ContextMenu();
         Add(menu, item.IsText ? T("复制文字") : item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
         Add(menu, item.IsText ? T("打开文字") : item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
@@ -174,7 +194,7 @@ internal sealed class CardWindow : OverlayWindow
         menu.Opened += (_, _) => { StopMotion(); Busy = true; clickTimer.Stop(); holdTimer.Stop(); };
         menu.Closed += (_, _) => Busy = false;
         surface.ContextMenu = menu;
-        Closed += (_, _) => { closed = true; StopMotion(); clickTimer.Stop(); holdTimer.Stop(); };
+        Closed += (_, _) => { closed = true; StopMotion(); clickTimer.Stop(); holdTimer.Stop(); feedbackTimer.Stop(); };
     }
     public override void Present(PixelRect rect, bool animate)
     {
@@ -261,5 +281,10 @@ internal sealed class CardWindow : OverlayWindow
         catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }
         finally { copying = false; }
     }
-    private void Report(string text) { feedback = text; caption.Text = feedback; Status?.Invoke(text); }
+    private void Report(string text)
+    {
+        feedback = text; caption.Text = feedback;
+        if (Item.IsText) { caption.Visibility = Visibility.Visible; feedbackTimer.Stop(); feedbackTimer.Start(); }
+        Status?.Invoke(text);
+    }
 }

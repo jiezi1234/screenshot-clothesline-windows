@@ -24,12 +24,13 @@ internal static class TextChecks
         }
         check(TextContent.Title("\n  标题 🧺 \n后续") == "标题 🧺", "title uses first nonempty line without changing content");
         check(!char.IsHighSurrogate(TextContent.Title(string.Concat(Enumerable.Repeat("🧺", 50)))[^2]), "title never splits emoji pairs");
-        string id, path, hash;
+        string id, path, hash; TextPaperStyle paperStyle;
         using (var store = new LibraryStore(root))
         using (var engine = new CollectionEngine(store, _ => "fixture-image", () => 25))
         {
             check(await engine.ImportText(content, 1024 * 1024), "clipboard text commits managed file and record");
             var entry = store.Entries(EntryState.Shelf).Single(); id = entry.Id; path = entry.Path; hash = entry.Hash;
+            paperStyle = TextPaperStyles.ForEntry(id);
             check(entry.Ownership == Ownership.Managed && entry.Source == LibraryStore.TextSource && MediaFiles.IsText(path) && entry.Title == "你好 🧺", "text card has managed ownership type and readable title");
             check(TextContent.Read(path) == content && !Directory.GetFiles(store.ManagedFolder, "*.part").Any(), "committed text is complete without unfinished file");
             check(!await engine.ImportText(content, 1024 * 1024), "rapid duplicate text is suppressed");
@@ -40,6 +41,7 @@ internal static class TextChecks
             hash = await engine.SaveText(id, "edited\r\n新的文字", hash, 1024 * 1024);
             check(TextContent.Read(path) == "edited\r\n新的文字" && store.Find(id)!.Hash == hash && store.Find(id)!.Title == "edited", "save updates the same text file and metadata");
             check(store.Entries(EntryState.Shelf).Select(e => e.Id).SequenceEqual(before) && store.Find(id)!.AddedAt == added, "edit preserves ordering capacity age and entry identity");
+            check(TextPaperStyles.ForEntry(store.Find(id)!.Id) == paperStyle, "editing text keeps its assigned paper style");
             var conflict = false; try { await engine.SaveText(id, "stale overwrite", entry.Hash, 1024 * 1024); } catch (IOException) { conflict = true; }
             check(conflict && TextContent.Read(path) == "edited\r\n新的文字", "stale editor cannot overwrite newer text");
             var quota = false; try { await engine.SaveText(id, "too large", hash, 1); } catch (IOException) { quota = true; }
@@ -47,6 +49,7 @@ internal static class TextChecks
             store.Archive(id, 1234); hash = await engine.SaveText(id, "history edit", hash, 1024 * 1024);
             check(store.Find(id) is { State: EntryState.History, ArchivedAt: 1234 }, "editing history does not rehang or restart retention");
             check(store.Restore(id, 25, 2345) && TextContent.Read(path) == "history edit", "edited text restores from history");
+            check(TextPaperStyles.ForEntry(store.Find(id)!.Id) == paperStyle, "history restoration keeps the same paper style");
             using (var locked = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
             {
                 var denied = false; try { await engine.SaveText(id, "locked", hash, 1024 * 1024); } catch (IOException) { denied = true; }
@@ -57,7 +60,11 @@ internal static class TextChecks
             var externalConflict = false; try { await engine.SaveText(id, "overwrite external", hash, 1024 * 1024); } catch (IOException) { externalConflict = true; }
             check(externalConflict && TextContent.Read(path) == "external edit", "external edits are not silently overwritten");
         }
-        using (var store = new LibraryStore(root)) check(store.Find(id)!.State == EntryState.Shelf && TextContent.Read(path) == "external edit", "text content and shelf state survive restart");
+        using (var store = new LibraryStore(root))
+        {
+            check(store.Find(id)!.State == EntryState.Shelf && TextContent.Read(path) == "external edit", "text content and shelf state survive restart");
+            check(TextPaperStyles.ForEntry(store.Find(id)!.Id) == paperStyle, "assigned paper style survives library restart");
+        }
         foreach (var replaced in new[] { false, true })
         {
             var saved = "recovered " + replaced; var stage = path + ".edit-fixture-" + replaced + ".part";

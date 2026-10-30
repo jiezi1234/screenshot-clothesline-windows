@@ -10,6 +10,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Core checks failed: $LASTEXITCODE" }
     & $executable run --project tests/Clothesline.Storage.Tests --configuration Release --no-build
     if ($LASTEXITCODE -ne 0) { throw "Storage checks failed: $LASTEXITCODE" }
+    # Offscreen WPF rendering only; no visible windows, hotkeys or system clipboard access.
+    & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --paper-style-test artifacts/paper-style-validation
+    if ($LASTEXITCODE -ne 0) { throw "Paper style checks failed. See artifacts/paper-style-validation/paper-style-diagnostics.json" }
     if ($Desktop) {
         # Interactive desktop required. This starts only our own test windows.
         $env:DOTNET_ROOT = Split-Path $executable

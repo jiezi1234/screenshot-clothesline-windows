@@ -11,6 +11,7 @@ namespace Clothesline.App;
 internal sealed record DemoItem(string Title, string Subtitle, string Path, BitmapSource Image, string? EntryId = null, string? Text = null)
 {
     public bool IsText => Clothesline.Core.MediaFiles.IsText(Path);
+    public Clothesline.Core.TextPaperStyle PaperStyle => Clothesline.Core.TextPaperStyles.ForEntry(EntryId ?? Path);
     public bool IsVideo => Clothesline.Core.MediaFiles.IsVideo(Path);
 }
 

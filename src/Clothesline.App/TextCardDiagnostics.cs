@@ -54,7 +54,7 @@ internal static class TextCardDiagnostics
                 var point = Center(card); var home = Bounds(card); var monitor = Native.MonitorAt(point);
                 var dpi = Native.GetDpiForWindow(new WindowInteropHelper(card).Handle) / 96.0;
                 Check("text-cards-use-the-same-image-card-dimensions", home.Width == (int)Math.Round(DesktopGeometry.CardWidth * dpi) && home.Height == (int)Math.Round(DesktopGeometry.CardHeight * dpi));
-                Check("card-keeps-full-text-with-a-bounded-thumbnail", card.Item.Text == longText && card.Item.Image.PixelWidth == 400 && card.Item.Image.PixelHeight == 270);
+                Check("card-keeps-full-text-with-a-bounded-thumbnail", card.Item.Text == longText && card.Item.Image.PixelWidth == TextCardImage.Width && card.Item.Image.PixelHeight == TextCardImage.Height);
                 Capture(shortCard, Path.Combine(directory, "text-card.png"));
                 var copy = await ShellTransfer.CopyDataAsync(first.Path);
                 Check("copy-from-persisted-text-keeps-whitespace-and-line-endings", copy.GetData(DataFormats.UnicodeText) as string == text);

@@ -12,18 +12,27 @@ namespace Clothesline.App;
 internal sealed class TextHoverWindow : OverlayWindow
 {
     internal TextBox TextView { get; } = new() { IsReadOnly = true, Focusable = false, ContextMenu = null, TextWrapping = TextWrapping.Wrap,
-        VerticalScrollBarVisibility = ScrollBarVisibility.Auto, FontSize = 16, Padding = new Thickness(14), BorderThickness = new Thickness(0),
-        Background = DemoAssets.Brush("#FFFEFA"), Foreground = DemoAssets.Brush("#294535"), FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI") };
+        VerticalScrollBarVisibility = ScrollBarVisibility.Auto, FontSize = 16, Padding = new Thickness(0), BorderThickness = new Thickness(0),
+        Background = Brushes.Transparent, Foreground = DemoAssets.Brush("#294535"), FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI") };
+    private readonly TextPaperSurface paper = new(TextPaperStyle.Notebook);
+    private readonly DockPanel panel = new();
+    private readonly TextBlock heading = new() { Text = T("文字预览 · 滚轮查看全文"), Margin = new Thickness(0, 0, 0, 16), FontSize = 12 };
+    internal TextPaperStyle PaperStyle => paper.PaperStyle;
     internal string PreviewText => TextView.Text;
     internal TextHoverWindow() : base("Clothesline · Text Preview", false)
     {
-        var panel = new DockPanel();
-        var heading = new TextBlock { Text = T("文字预览 · 滚轮查看全文"), Margin = new Thickness(14, 10, 14, 8), Foreground = DemoAssets.Brush("#6D7B70"), FontSize = 12 };
         DockPanel.SetDock(heading, Dock.Top); panel.Children.Add(heading); panel.Children.Add(TextView);
-        Content = new Border { Margin = new Thickness(4), CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), BorderBrush = DemoAssets.Brush("#A8B9AC"), Background = DemoAssets.Brush("#FFFEFA"), Child = panel };
+        paper.Children.Add(panel); paper.Margin = new Thickness(4); paper.TrackTextLines(TextView); Content = paper;
+        SetText("", TextPaperStyle.Notebook);
         AutomationProperties.SetName(TextView, T("文字内容"));
     }
-    internal void SetText(string text) { TextView.Text = text; TextView.ScrollToHome(); }
+    internal void SetText(string text, TextPaperStyle style = TextPaperStyle.Notebook)
+    {
+        var palette = TextPaper.Palette(style); paper.PaperStyle = style; panel.Margin = TextPaper.Padding(style, false);
+        heading.Foreground = DemoAssets.Brush(palette.Quiet); TextView.Foreground = DemoAssets.Brush(palette.Ink);
+        TextView.FontFamily = new FontFamily(palette.Font); TextView.FontSize = style == TextPaperStyle.Sticky ? 18 : 16;
+        TextView.Text = text; TextView.ScrollToHome();
+    }
     public override void Dismiss() { base.Dismiss(); TextView.Clear(); }
 }
 
@@ -62,7 +71,7 @@ internal sealed class ShelfTextHover : IDisposable
         if (!Native.GetWindowRect(new WindowInteropHelper(card).Handle, out var anchor)) return;
         var scale = Native.MoveAndGetScale(window, monitor);
         if (HoverPreviewGeometry.Place(anchor.Pixels, monitor.WorkArea, scale, 560, 440, occupied) is not PixelRect rect) return;
-        window.SetText(card.Item.Text); window.Present(rect, animate);
+        window.SetText(card.Item.Text, card.Item.PaperStyle); window.Present(rect, animate);
         var left = Math.Min(rect.X, anchor.Left); var top = Math.Min(rect.Y, anchor.Top);
         travel = new(left, top, Math.Max(rect.Right, anchor.Right) - left, Math.Max(rect.Bottom, anchor.Bottom) - top);
     }

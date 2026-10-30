@@ -25,6 +25,9 @@ internal sealed class TextWorkspace : Window
     public TextWorkspace(string id, string path, Func<string, string, Task<string>> save, IDisposable lease)
     {
         EntryId = id; this.save = save;
+        var paper = TextPaper.Palette(TextPaperStyles.ForEntry(id));
+        Editor.Background = DemoAssets.Brush(paper.Paper); Editor.Foreground = DemoAssets.Brush(paper.Ink);
+        Editor.BorderBrush = DemoAssets.Brush(paper.Edge); Editor.FontFamily = new FontFamily(paper.Font);
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(UiText.Language);
         Title = T("文字工作台 · Screenshot Clothesline"); Width = 760; Height = 620; MinWidth = 480; MinHeight = 360;
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = DemoAssets.Brush("#F4F5EE"); Foreground = DemoAssets.Brush("#294535"); FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI");

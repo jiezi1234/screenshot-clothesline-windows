@@ -16,6 +16,13 @@ namespace Clothesline.App;
 internal class OverlayWindow : Window
 {
     private int opacityGeneration;
+    internal bool AcceptsKeyboard { get; private set; }
+    internal void SetKeyboardInput(bool enabled)
+    {
+        AcceptsKeyboard = enabled;
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle != 0) Native.SetOverlayKeyboard(handle, enabled);
+    }
     public OverlayWindow(string title, bool passThrough)
     {
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);

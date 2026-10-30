@@ -86,7 +86,7 @@ internal static class PaperStyleDiagnostics
                     RenderUnifiedRows(directory);
                     Check("diagnostics-do-not-show-windows", app.Windows.Cast<Window>().All(window => !window.IsVisible));
                 }
-                finally { preview.Close(); }
+                finally { preview.ClosePermanently(); }
             }
             catch (Exception ex) { passed = false; checks.Add(new { name = "paper-style-diagnostics-completed", passed = false, error = ex.ToString() }); }
             finally

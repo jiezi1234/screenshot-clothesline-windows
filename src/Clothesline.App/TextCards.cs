@@ -30,15 +30,25 @@ internal sealed partial class LibraryRuntime
     }
     private void OpenTextWorkspace(LibraryEntry entry)
     {
+        if (shelf.FocusTextEditor(entry.Id)) return;
         var existing = workspaces.OfType<TextWorkspace>().FirstOrDefault(w => w.EntryId == entry.Id);
         if (existing is not null) { existing.Show(); existing.Activate(); return; }
-        var window = new TextWorkspace(entry.Id, entry.Path, async (text, hash) =>
-        {
-            if (fileOperation > 0) throw new IOException(T("另一项文件操作进行中，请稍后再保存。"));
-            fileOperation++;
-            try { var saved = await Collector.SaveText(entry.Id, text, hash, Settings.MaxManagedBytes, closing.Token); cache.Remove(entry.Id); ScheduleRefresh(false); return saved; }
-            finally { fileOperation--; }
-        }, AcquireLease(entry.Path));
+        var window = new TextWorkspace(entry.Id, entry.Path, (text, hash) => SaveTextEntry(entry.Id, text, hash), AcquireLease(entry.Path));
         workspaces.Add(window); window.Closed += (_, _) => workspaces.Remove(window); window.Show(); window.Activate();
+    }
+    private TextEditSession? CreateTextEditSession(DemoItem item)
+    {
+        var entry = item.EntryId is null ? null : Store.Find(item.EntryId);
+        if (entry is null || !MediaFiles.IsText(entry.Path) || item.Text is null) throw new IOException(T("原文件已失效，无法打开。请在历史中检查路径。"));
+        var existing = workspaces.OfType<TextWorkspace>().FirstOrDefault(w => w.EntryId == entry.Id);
+        if (existing is not null) { existing.Show(); existing.Activate(); return null; }
+        return new TextEditSession(entry.Id, item.Text, (text, hash) => SaveTextEntry(entry.Id, text, hash), AcquireLease(entry.Path));
+    }
+    private async Task<string> SaveTextEntry(string id, string text, string hash)
+    {
+        if (fileOperation > 0) throw new IOException(T("另一项文件操作进行中，请稍后再保存。"));
+        fileOperation++;
+        try { var saved = await Collector.SaveText(id, text, hash, Settings.MaxManagedBytes, closing.Token); cache.Remove(id); ScheduleRefresh(false); return saved; }
+        finally { fileOperation--; }
     }
 }

@@ -36,7 +36,15 @@ internal sealed partial class ShelfController : IDisposable
     public event Action? DisplayCapacityChanged;
     private bool sampleMode = true;
     public int DisplayCapacity { get; private set; } = 2;
-    public bool Busy => localReorder is not null || previewCards.Count > 0 || importingDrop || cards.Any(c => c.InteractionActive);
+    private bool CardInteractionBusy => localReorder is not null || previewCards.Count > 0 || importingDrop || cards.Any(c => c.InteractionActive);
+    public bool Busy => CardInteractionBusy || textHover.IsEditing;
+    internal Func<DemoItem, TextEditSession?>? StartTextEdit { set => textHover.StartEdit = value; }
+    internal bool TryCloseTextEditor() => textHover.TryCloseEditor();
+    internal bool FocusTextEditor(string id)
+    {
+        if (textHover.EditingId != id) return false;
+        Show(); return textHover.FocusEditor(id);
+    }
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;
@@ -135,20 +143,20 @@ internal sealed partial class ShelfController : IDisposable
     }
     public void Toggle()
     {
-        if (Busy || SessionBlocked) return;
+        if (CardInteractionBusy || SessionBlocked) return;
         if (presented) { Hide(); return; }
         Show();
     }
     public void Show()
     {
-        if (Busy || SessionBlocked) return;
+        if (CardInteractionBusy || SessionBlocked) return;
         if (presented) { gate.Show(clock.ElapsedMilliseconds); return; }
         var monitor = Native.MonitorAt(Native.Cursor);
         if (SuppressFullscreen && Native.IsFullscreen(monitor)) { Status?.Invoke(T("当前显示器为全屏窗口，已暂缓显示。")); return; }
         Prepare(monitor); gate.Show(clock.ElapsedMilliseconds); Present();
     }
     public void Hide() { gate.Hide(); Dismiss(); }
-    public void HideFromShortcut() { if (!Busy) Hide(); }
+    public void HideFromShortcut() { if (!CardInteractionBusy) Hide(); }
     private void Remove(CardWindow card)
     {
         ResetShelfHover();
@@ -227,9 +235,10 @@ internal sealed partial class ShelfController : IDisposable
             shelfArea = new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width,
                 row.Max(pair => pair.Rect.Bottom) - monitor.WorkArea.Y + (int)(14 * scale));
         }
+        textHover.Resume(monitor);
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }
-    private void Dismiss() { ResetShelfHover(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
+    private void Dismiss() { ResetShelfHover(); textHover.Hide(); HideDropTarget(); rope.Dismiss(); foreach (var card in cards) card.Dismiss(); CloseRetiring(); presented = false; }
     internal void ResetEnvironment(bool recover)
     {
         if (disposed) return;

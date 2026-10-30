@@ -28,6 +28,7 @@ internal static class Native
     [DllImport("user32.dll")] internal static extern nint GetForegroundWindow();
     [DllImport("user32.dll")] internal static extern uint GetWindowThreadProcessId(nint hwnd, out uint pid);
     [DllImport("user32.dll")] internal static extern nint GetWindowLongPtrW(nint hwnd, int index);
+    [DllImport("user32.dll")] internal static extern bool SetForegroundWindow(nint hwnd);
     [DllImport("user32.dll")] internal static extern nint SetWindowLongPtrW(nint hwnd, int index, nint value);
     [DllImport("user32.dll", SetLastError = true)] internal static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] internal static extern bool GetWindowRect(nint hwnd, out Rect rect);
@@ -63,13 +64,19 @@ internal static class Native
     {
         var hwnd = new WindowInteropHelper(window).EnsureHandle();
         var style = GetWindowLongPtrW(hwnd, -20).ToInt64() | 0x08000000L | 0x80; // NOACTIVATE, TOOLWINDOW
+        if (window is OverlayWindow { AcceptsKeyboard: true }) style &= ~0x08000000L;
         if (passThrough) style |= 0x20; // WS_EX_TRANSPARENT on a layered window
         SetWindowLongPtrW(hwnd, -20, (nint)style);
         HwndSource.FromHwnd(hwnd)?.AddHook((nint h, int message, nint w, nint l, ref bool handled) =>
         {
-            if (message == 0x21) { handled = true; return 3; } // MA_NOACTIVATE; don't eat the click
+            if (message == 0x21) { handled = true; return window is OverlayWindow { AcceptsKeyboard: true } ? 1 : 3; }
             return 0;
         });
+    }
+    internal static void SetOverlayKeyboard(nint hwnd, bool enabled)
+    {
+        var style = GetWindowLongPtrW(hwnd, -20).ToInt64();
+        SetWindowLongPtrW(hwnd, -20, (nint)(enabled ? style & ~0x08000000L : style | 0x08000000L));
     }
     public static double MoveAndGetScale(Window window, MonitorInfo monitor)
     {

@@ -255,9 +255,7 @@ internal static class TextHoverEditDiagnostics
                         localized.StartEdit = item => Session(item, (_, _) => Task.FromResult("unused"));
                         localized.SetPreview(Item(original)); localized.BeginEdit();
                         Render(localized, directory, "editing-" + language.Code, 360, 300);
-                        Check("inline-editor-keeps-text-space-in-" + language.Code, localized.TextView.ActualHeight >= 70
-                            && UiAccessibility.Descendants((FrameworkElement)localized.Content).OfType<Button>().Where(b => b.Visibility == Visibility.Visible)
-                                .All(b => b.ActualWidth <= 280));
+                        Check("inline-editor-keeps-text-space-in-" + language.Code, localized.TextView.ActualHeight >= 70);
                     }
                     finally { localized.TryEndEditing(() => true); localized.ClosePermanently(); }
                 }

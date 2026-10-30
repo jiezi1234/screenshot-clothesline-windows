@@ -1,0 +1,281 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "passed": true,
+      "name": "hover-is-immediately-editable-without-an-edit-button"
+    },
+    {
+      "passed": true,
+      "name": "hover-prepares-input-without-activating-or-focusing"
+    },
+    {
+      "passed": true,
+      "name": "copy-command-copies-only-selection-and-marks-it-against-recollection"
+    },
+    {
+      "passed": true,
+      "name": "right-click-copy-uses-the-same-selection-command"
+    },
+    {
+      "passed": true,
+      "name": "copy-with-no-selection-is-disabled"
+    },
+    {
+      "passed": true,
+      "name": "failed-selection-cut-keeps-original-text"
+    },
+    {
+      "passed": true,
+      "name": "typing-marks-inline-draft-dirty"
+    },
+    {
+      "passed": true,
+      "name": "hiding-preview-retains-draft-and-file-lease"
+    },
+    {
+      "passed": true,
+      "name": "hover-refresh-cannot-overwrite-active-draft"
+    },
+    {
+      "passed": true,
+      "name": "declining-discard-keeps-inline-editor"
+    },
+    {
+      "passed": true,
+      "name": "save-updates-original-file-and-card-identity"
+    },
+    {
+      "passed": true,
+      "name": "manual-save-keeps-popup-ready-for-further-editing"
+    },
+    {
+      "passed": true,
+      "name": "leaving-clean-preview-releases-file-and-input"
+    },
+    {
+      "passed": true,
+      "name": "leaving-dirty-preview-saves-original-and-closes"
+    },
+    {
+      "passed": true,
+      "name": "failed-auto-save-keeps-draft-session-and-original-file"
+    },
+    {
+      "passed": true,
+      "name": "explicit-cancel-restores-original-preview"
+    },
+    {
+      "passed": true,
+      "name": "external-edit-conflict-does-not-overwrite-or-lose-draft"
+    },
+    {
+      "passed": true,
+      "name": "locked-file-keeps-inline-draft"
+    },
+    {
+      "passed": true,
+      "name": "pending-save-allows-typing-but-blocks-discard-and-duplicate-save"
+    },
+    {
+      "passed": true,
+      "name": "hiding-during-save-does-not-drop-session"
+    },
+    {
+      "passed": true,
+      "name": "save-completion-releases-hidden-editor"
+    },
+    {
+      "passed": true,
+      "name": "finished-preview-clears-on-dismissal"
+    },
+    {
+      "passed": true,
+      "name": "close-during-manual-save-waits-for-the-same-write"
+    },
+    {
+      "passed": true,
+      "name": "reading-without-changes-does-not-write"
+    },
+    {
+      "passed": true,
+      "name": "continued-typing-restarts-auto-save-delay"
+    },
+    {
+      "passed": true,
+      "name": "idle-edit-saves-original-file-without-leaving-or-closing"
+    },
+    {
+      "passed": true,
+      "name": "input-method-composition-defers-auto-save-and-dismiss"
+    },
+    {
+      "passed": true,
+      "name": "committed-composition-resumes-auto-save"
+    },
+    {
+      "passed": true,
+      "name": "failed-idle-save-retains-draft-without-retry-loop"
+    },
+    {
+      "passed": true,
+      "name": "new-edit-retries-auto-save-after-failure"
+    },
+    {
+      "passed": true,
+      "name": "undo-to-saved-text-does-not-write-again"
+    },
+    {
+      "passed": true,
+      "name": "discard-stops-pending-auto-save"
+    },
+    {
+      "passed": true,
+      "name": "discard-confirmation-pauses-save-even-when-focus-changes"
+    },
+    {
+      "passed": true,
+      "name": "declining-discard-resumes-auto-save"
+    },
+    {
+      "passed": true,
+      "name": "auto-save-in-flight-does-not-disable-typing"
+    },
+    {
+      "passed": true,
+      "name": "newer-draft-is-saved-after-in-flight-snapshot"
+    },
+    {
+      "passed": true,
+      "name": "close-flushes-newest-edit-made-during-save"
+    },
+    {
+      "passed": true,
+      "name": "moving-from-card-to-popup-keeps-travel-grace"
+    },
+    {
+      "passed": true,
+      "name": "mouse-leave-starts-only-one-save"
+    },
+    {
+      "passed": true,
+      "name": "returning-during-save-keeps-popup-editable"
+    },
+    {
+      "passed": true,
+      "name": "leaving-after-return-closes-clean-popup"
+    },
+    {
+      "passed": true,
+      "name": "leaving-again-during-save-still-closes-after-write"
+    },
+    {
+      "passed": true,
+      "name": "failed-leave-save-retains-draft-without-retry-loop"
+    },
+    {
+      "passed": true,
+      "name": "editing-failed-draft-allows-new-save-attempt"
+    },
+    {
+      "passed": true,
+      "name": "clean-hover-does-not-block-reorder"
+    },
+    {
+      "passed": true,
+      "name": "hiding-clean-hover-does-not-leave-a-session-behind"
+    },
+    {
+      "passed": true,
+      "name": "hidden-draft-auto-saves-and-releases-file-protection"
+    },
+    {
+      "passed": true,
+      "name": "long-text-remains-editable-and-scrollable-on-Sticky"
+    },
+    {
+      "passed": true,
+      "name": "long-text-remains-editable-and-scrollable-on-Journal"
+    },
+    {
+      "passed": true,
+      "name": "long-text-remains-editable-and-scrollable-on-Notebook"
+    },
+    {
+      "passed": true,
+      "name": "long-text-remains-editable-and-scrollable-on-Index"
+    },
+    {
+      "passed": true,
+      "name": "editing-reserves-shelf-against-refresh-and-reorder"
+    },
+    {
+      "passed": true,
+      "name": "hide-shortcut-retains-inline-draft"
+    },
+    {
+      "passed": true,
+      "name": "session-lock-hides-but-preserves-inline-draft"
+    },
+    {
+      "passed": true,
+      "name": "ending-inline-edit-releases-shelf-for-refresh"
+    },
+    {
+      "passed": true,
+      "name": "user-close-leaves-preview-reusable"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-zh-CN"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-en"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-es"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-fr"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-gl"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-pt-BR"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-ja"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-ko"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-tr"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-az"
+    },
+    {
+      "passed": true,
+      "name": "inline-editor-keeps-text-space-in-hi"
+    },
+    {
+      "passed": true,
+      "name": "all-inline-edit-leases-released"
+    },
+    {
+      "passed": true,
+      "name": "inline-diagnostics-never-show-or-activate-windows"
+    }
+  ]
+}

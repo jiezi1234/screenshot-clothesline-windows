@@ -28,7 +28,6 @@ internal sealed partial class TextHoverWindow
     private bool composing, confirmingDiscard;
     private nint previousForeground;
     private readonly TextBlock editStatus = new() { TextWrapping = TextWrapping.Wrap, MaxHeight = 48, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 0, 6), Visibility = Visibility.Collapsed };
-    private Button saveButton = null!, cancelButton = null!;
     private MenuItem copyItem = null!;
     internal Func<DemoItem, TextEditSession?>? StartEdit { get; set; }
     internal Action<IDataObject> CopyToClipboard { get; set; } = data => Clipboard.SetDataObject(data, true);
@@ -47,14 +46,6 @@ internal sealed partial class TextHoverWindow
         var footer = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
         DockPanel.SetDock(footer, Dock.Bottom); panel.Children.Insert(1, footer);
         footer.Children.Add(editStatus);
-        var actions = new WrapPanel(); footer.Children.Add(actions);
-        Button Action(string label, Action action)
-        {
-            var button = new Button { Content = T(label), Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 6, 2), BorderThickness = new Thickness(0) };
-            button.Click += (_, _) => action(); actions.Children.Add(button); return button;
-        }
-        saveButton = Action("保存文字", () => _ = Save());
-        cancelButton = Action("取消编辑", () => { if (TryEndEditing(() => true)) Dismiss(); });
         TextView.AcceptsReturn = true; TextView.AcceptsTab = true; TextView.UndoLimit = 100;
         TextView.TextChanged += (_, _) =>
         {
@@ -124,13 +115,9 @@ internal sealed partial class TextHoverWindow
     {
         var palette = TextPaper.Palette(PaperStyle);
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(UiText.Language);
-        copyItem.Header = T("复制"); saveButton.Content = T("保存文字"); cancelButton.Content = T("取消编辑");
+        copyItem.Header = T("复制");
         heading.Text = IsEditing ? T("编辑文字") : T("文字预览 · 滚轮查看全文");
-        foreach (var button in new[] { saveButton, cancelButton })
-        { button.Background = DemoAssets.Brush(palette.Edge); button.Foreground = DemoAssets.Brush(palette.Ink); }
         editStatus.Foreground = DemoAssets.Brush(palette.Ink);
-        saveButton.Visibility = cancelButton.Visibility = Dirty || SaveFailed ? Visibility.Visible : Visibility.Collapsed;
-        saveButton.IsEnabled = Dirty && !saving; cancelButton.IsEnabled = !saving;
         editStatus.Visibility = IsEditing || savedNotice ? Visibility.Visible : Visibility.Collapsed;
     }
     internal Task<bool> Save()

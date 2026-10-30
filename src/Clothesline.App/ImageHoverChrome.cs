@@ -22,13 +22,13 @@ internal sealed partial class HoverPreviewWindow
     private readonly TextBlock sizeLabel = new() { FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly StackPanel palette = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
     private readonly StackPanel sizeOptions = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-    private readonly DockPanel textOptions = new() { Margin = new Thickness(0, 2, 0, 8) };
+    private readonly Grid parameterOptions = new() { MinHeight = 32 };
+    private readonly DockPanel textOptions = new() { Margin = new Thickness(0, 0, 0, 4) };
     private readonly Slider strokeSize = new() { Minimum = 1, Maximum = 24, Value = 4, TickFrequency = 1, IsSnapToTickEnabled = true, Width = 80, Margin = new Thickness(6, 0, 0, 0) };
-    private readonly ComboBox zoomPicker = new() { Width = 112, MinHeight = 28, Padding = new Thickness(8, 4, 25, 4), FontSize = 11, ToolTip = T("适应窗口") + " · " + T("Ctrl + 滚轮缩放，滚动条浏览图片") };
+    private readonly ComboBox zoomPicker = new() { Width = 112, MinHeight = 24, Padding = new Thickness(8, 1, 25, 1), FontSize = 11, ToolTip = T("适应窗口") + " · " + T("Ctrl + 滚轮缩放，滚动条浏览图片") };
     private readonly ComboBoxItem customZoom = new();
     private readonly Path saveIndicator = new() { Width = 13, Height = 13, Stretch = Stretch.Uniform, StrokeThickness = 1.5, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly List<(TextBlock Label, double Width)> toolLabels = new();
-    private readonly List<TextBlock> historyLabels = new();
     private readonly Dictionary<Color, ToggleButton> swatches = new();
     private bool updatingZoom;
 
@@ -40,34 +40,35 @@ internal sealed partial class HoverPreviewWindow
         editor.UseLayoutRounding = true;
         frame.Background = (Brush)editor.Resources["CanvasBrush"]; frame.BorderBrush = (Brush)editor.Resources["LineBrush"];
         var header = new StackPanel();
-        var titleRow = new DockPanel { Margin = new Thickness(16, 9, 12, 4), Height = 34 };
-        var history = new StackPanel { Orientation = Orientation.Horizontal };
+        var toolbar = new DockPanel { Margin = new Thickness(8, 5, 8, 4) };
+        var history = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 0) };
+        var historyDivider = new Border { Width = 1, Height = 16, Margin = new Thickness(0, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center };
+        historyDivider.SetResourceReference(Border.BackgroundProperty, "LineBrush"); history.Children.Add(historyDivider);
         Button History(string label, string symbol, Action action)
         {
-            var button = new Button { Content = IconLabel(symbol, T(label), historyLabels), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(2, 0, 0, 0) };
+            var button = new Button { Content = EditorIcon(symbol), Width = 30, MinHeight = 30, Padding = new Thickness(4), Margin = new Thickness(1, 0, 0, 0) };
             AutomationProperties.SetName(button, T(label)); button.Click += (_, _) => action(); history.Children.Add(button); return button;
         }
         previous = History("上一步", "undo", Undo); next = History("下一步", "redo", Redo);
         previous.ToolTip = T("上一步") + " · Ctrl+Z"; next.ToolTip = T("下一步") + " · Ctrl+Y";
-        DockPanel.SetDock(history, Dock.Right); titleRow.Children.Add(history);
-        var titleIcon = EditorIcon("image"); titleIcon.Margin = new Thickness(0, 0, 10, 0); titleRow.Children.Add(titleIcon); titleRow.Children.Add(filename); header.Children.Add(titleRow);
+        DockPanel.SetDock(history, Dock.Right); toolbar.Children.Add(history);
 
-        tools.Margin = new Thickness(10, 0, 10, 8);
+        tools.Margin = new Thickness(0);
         foreach (var (tool, name, symbol) in new[] { (EditorTool.Pan, "浏览", "pan"), (EditorTool.Crop, "裁剪", "crop"), (EditorTool.Pen, "画笔", "pen"), (EditorTool.Arrow, "箭头", "arrow"), (EditorTool.Rectangle, "矩形", "rectangle"), (EditorTool.Text, "文字", "text"), (EditorTool.Mosaic, "马赛克", "mosaic") })
         {
             var labels = new List<TextBlock>(); var content = IconLabel(symbol, T(name), labels);
             labels[0].Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            toolLabels.Add((labels[0], labels[0].DesiredSize.Width + 42));
-            var button = new ToggleButton { Content = content, Margin = new Thickness(2, 0, 2, 0), Padding = new Thickness(4, 6, 4, 6), ToolTip = T(name), MinHeight = 34 };
+            toolLabels.Add((labels[0], labels[0].DesiredSize.Width + 38));
+            var hint = tool == EditorTool.Pan ? T("Ctrl + 滚轮缩放，滚动条浏览图片") : tool == EditorTool.Crop ? T("拖动框选裁剪区域") : null;
+            var button = new ToggleButton { Content = content, Margin = new Thickness(1, 0, 1, 0), Padding = new Thickness(3, 3, 3, 3), ToolTip = hint is null ? T(name) : T(name) + "\n" + hint, MinHeight = 30 };
             AutomationProperties.SetName(button, T(name)); button.Click += (_, _) => SelectTool(tool);
             Grid.SetColumn(button, tools.Children.Count); tools.ColumnDefinitions.Add(new ColumnDefinition()); tools.Children.Add(button); toolButtons.Add(tool, button);
         }
-        header.Children.Add(tools);
+        toolbar.Children.Add(tools); header.Children.Add(toolbar);
         var separator = new Border { Height = 1 }; separator.SetResourceReference(Border.BackgroundProperty, "LineBrush"); header.Children.Add(separator);
 
-        var parameters = new StackPanel { Margin = new Thickness(14, 0, 14, 0) };
-        var options = new Grid { MinHeight = 44 };
-        options.ColumnDefinitions.Add(new ColumnDefinition()); options.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var parameters = new StackPanel { Margin = new Thickness(10, 0, 10, 0) };
+        parameterOptions.ColumnDefinitions.Add(new ColumnDefinition()); parameterOptions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         foreach (var (hex, name) in new[] { ("#DA7858", "红色"), ("#E3B94D", "黄色"), ("#5D9473", "绿色"), ("#5487AE", "蓝色"), ("#FAF7EB", "白色"), ("#293930", "黑色") })
         {
             var color = (Color)ColorConverter.ConvertFromString(hex);
@@ -75,16 +76,16 @@ internal sealed partial class HoverPreviewWindow
             AutomationProperties.SetName(swatch, T("颜色") + ": " + T(name)); swatch.Click += (_, _) => SelectInk(color); swatches.Add(color, swatch); palette.Children.Add(swatch);
         }
         SelectInk(swatches.Keys.First());
-        options.Children.Add(palette); options.Children.Add(optionHint);
+        parameterOptions.Children.Add(palette); parameterOptions.Children.Add(optionHint);
         strokeSize.ValueChanged += (_, _) => { canvas.StrokeSize = strokeSize.Value; UpdateSizeValue(); };
         sizeLabel.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
-        sizeOptions.Children.Add(sizeLabel); sizeOptions.Children.Add(strokeSize); sizeOptions.Children.Add(sizeValue); Grid.SetColumn(sizeOptions, 1); options.Children.Add(sizeOptions); parameters.Children.Add(options);
+        sizeOptions.Children.Add(sizeLabel); sizeOptions.Children.Add(strokeSize); sizeOptions.Children.Add(sizeValue); Grid.SetColumn(sizeOptions, 1); parameterOptions.Children.Add(sizeOptions); parameters.Children.Add(parameterOptions);
         var textLabel = new TextBlock { Text = T("文字内容"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
         textOptions.Children.Add(textLabel); annotation.MinHeight = 32; annotation.Padding = new Thickness(9, 5, 9, 5);
         AutomationProperties.SetName(annotation, T("文字内容")); annotation.TextChanged += (_, _) => canvas.Annotation = annotation.Text; textOptions.Children.Add(annotation); parameters.Children.Add(textOptions);
         header.Children.Add(parameters); DockPanel.SetDock(header, Dock.Top); editor.Children.Add(header);
 
-        var footer = new DockPanel { Margin = new Thickness(16, 5, 12, 8), MinHeight = 30 };
+        var footer = new DockPanel { Margin = new Thickness(10, 3, 8, 4), MinHeight = 24 };
         var scale = new StackPanel { Orientation = Orientation.Horizontal };
         dimensions.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); scale.Children.Add(dimensions);
         zoomPicker.Items.Add(new ComboBoxItem { Content = T("适应窗口"), Tag = 0d });
@@ -99,10 +100,14 @@ internal sealed partial class HoverPreviewWindow
         scale.Children.Add(zoomPicker); DockPanel.SetDock(scale, Dock.Right); footer.Children.Add(scale);
         tryAgain = new Button { Content = T("重试"), Visibility = Visibility.Collapsed, Margin = new Thickness(6, 0, 6, 0), Padding = new Thickness(8, 4, 8, 4) };
         tryAgain.Click += (_, _) => _ = Save(); DockPanel.SetDock(tryAgain, Dock.Right); footer.Children.Add(tryAgain);
-        footer.Children.Add(saveIndicator); status.SetBinding(ToolTipProperty, new Binding(nameof(TextBlock.Text)) { Source = status }); footer.Children.Add(status);
+        var statusDetails = new StackPanel { MaxWidth = 480 };
+        var statusMessage = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+        statusMessage.SetBinding(TextBlock.TextProperty, new Binding(nameof(TextBlock.Text)) { Source = status });
+        statusDetails.Children.Add(filename); statusDetails.Children.Add(statusMessage); status.ToolTip = statusDetails;
+        footer.Children.Add(saveIndicator); footer.Children.Add(status);
         DockPanel.SetDock(footer, Dock.Bottom); editor.Children.Add(footer);
         viewport.Content = canvas; canvas.HorizontalAlignment = HorizontalAlignment.Center; canvas.VerticalAlignment = VerticalAlignment.Center;
-        var imageFrame = new Border { Margin = new Thickness(14, 0, 14, 0), CornerRadius = new CornerRadius(9), Padding = new Thickness(1), Child = viewport };
+        var imageFrame = new Border { Margin = new Thickness(6, 3, 6, 0), CornerRadius = new CornerRadius(9), Padding = new Thickness(1), Child = viewport };
         imageFrame.SetResourceReference(Border.BackgroundProperty, "SidebarBrush");
         editor.Children.Add(imageFrame);
         tools.SizeChanged += (_, _) => AdaptToolbar();
@@ -122,13 +127,10 @@ internal sealed partial class HoverPreviewWindow
             "rectangle" => "M4,4 H20 V20 H4 Z",
             "text" => "M4,6 V4 H20 V6 M12,4 V21 M8,21 H16",
             "mosaic" => "M4,4 H20 V20 H4 Z M4,12 H20 M12,4 V20",
-            "image" => "M3,4 H21 V20 H3 Z M3,16 L9,10 L14,15 L18,11 L21,14 M15,8 H17",
             _ => "M8,12 V5 Q8,2 10,4 V11 M10,8 V3 Q12,1 13,3 V11 M13,6 Q16,3 16,6 V12 M16,9 Q19,6 19,10 V15 Q19,21 13,21 H11 Q8,21 6,18 L3,13 Q2,10 5,11 L8,14"
         };
         var path = new Path { Data = Geometry.Parse(data), StrokeThickness = 1.5, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round };
         path.SetBinding(Shape.StrokeProperty, new Binding { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Control), 1), Path = new PropertyPath(Control.ForegroundProperty) });
-        // Header icons have no Control ancestor with the editor palette.
-        if (symbol == "image") path.SetResourceReference(Shape.StrokeProperty, "MutedBrush");
         return new Viewbox { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center, Child = new Canvas { Width = 24, Height = 24, Children = { path } }, IsHitTestVisible = false };
     }
     private static StackPanel IconLabel(string symbol, string text, List<TextBlock> labels)
@@ -146,7 +148,6 @@ internal sealed partial class HoverPreviewWindow
             toolLabels[i].Label.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
             tools.ColumnDefinitions[i].Width = new GridLength(compact ? 1 : toolLabels[i].Width, GridUnitType.Star);
         }
-        foreach (var label in historyLabels) label.Visibility = tools.ActualWidth < 450 ? Visibility.Collapsed : Visibility.Visible;
         dimensions.Visibility = tools.ActualWidth < 420 ? Visibility.Collapsed : Visibility.Visible;
         strokeSize.Width = tools.ActualWidth < 360 ? 55 : 80;
         sizeLabel.Visibility = tools.ActualWidth < 420 || canvas.Tool == EditorTool.Mosaic ? Visibility.Collapsed : Visibility.Visible;
@@ -160,10 +161,11 @@ internal sealed partial class HoverPreviewWindow
     {
         var tool = canvas.Tool;
         var drawing = tool is not (EditorTool.Pan or EditorTool.Crop);
+        parameterOptions.Visibility = drawing ? Visibility.Visible : Visibility.Collapsed;
         palette.Visibility = drawing && tool != EditorTool.Mosaic ? Visibility.Visible : Visibility.Collapsed;
         sizeOptions.Visibility = drawing ? Visibility.Visible : Visibility.Collapsed;
-        optionHint.Visibility = !drawing || tool == EditorTool.Mosaic ? Visibility.Visible : Visibility.Collapsed;
-        optionHint.Text = tool == EditorTool.Crop ? T("拖动框选裁剪区域") : tool == EditorTool.Mosaic ? T("马赛克大小") : T("Ctrl + 滚轮缩放，滚动条浏览图片");
+        optionHint.Visibility = tool == EditorTool.Mosaic ? Visibility.Visible : Visibility.Collapsed;
+        optionHint.Text = T("马赛克大小");
         optionHint.ToolTip = optionHint.Text;
         textOptions.Visibility = tool == EditorTool.Text ? Visibility.Visible : Visibility.Collapsed;
         var label = tool == EditorTool.Text ? T("字号") : tool == EditorTool.Mosaic ? T("马赛克大小") : T("笔画粗细");

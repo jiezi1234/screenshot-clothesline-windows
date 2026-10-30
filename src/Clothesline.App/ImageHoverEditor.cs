@@ -103,7 +103,7 @@ internal sealed partial class HoverPreviewWindow
     {
         if (Document is not { } document) return;
         var crop = document.State.Crop; canvas.Width = crop.Width; canvas.Height = crop.Height;
-        if (fit) zoom = Math.Clamp(Math.Min(Math.Max(1, viewport.ActualWidth - 20) / crop.Width, Math.Max(1, viewport.ActualHeight - 20) / crop.Height), .001, 1);
+        if (fit) zoom = Math.Clamp(Math.Min(Math.Max(1, viewport.ActualWidth - 8) / crop.Width, Math.Max(1, viewport.ActualHeight - 8) / crop.Height), .001, 1);
         canvas.LayoutTransform = new ScaleTransform(zoom, zoom);
         UpdateZoomDisplay();
     }

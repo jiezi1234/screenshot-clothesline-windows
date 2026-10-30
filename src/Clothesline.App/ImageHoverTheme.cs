@@ -17,7 +17,7 @@ internal static class ImageHoverTheme
           <Style x:Key="EditorButton" TargetType="ButtonBase">
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontSize" Value="12"/><Setter Property="MinHeight" Value="30"/>
+            <Setter Property="FontSize" Value="12"/><Setter Property="MinHeight" Value="24"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ButtonBase">
               <Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>

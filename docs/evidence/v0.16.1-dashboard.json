@@ -1,0 +1,169 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "default-page-is-shelf-with-accessible-empty-state",
+      "passed": true
+    },
+    {
+      "name": "shelf-has-real-entries-and-selected-actions",
+      "passed": true
+    },
+    {
+      "name": "history-restore-enabled-for-selected-record",
+      "passed": true
+    },
+    {
+      "name": "history-search-has-no-destructive-side-effects",
+      "passed": true
+    },
+    {
+      "name": "history-search-matches-file-name-case-insensitively",
+      "passed": true
+    },
+    {
+      "name": "history-restore-returns-original-file-to-shelf",
+      "passed": true
+    },
+    {
+      "name": "changed-source-enables-save-and-discard",
+      "passed": true
+    },
+    {
+      "name": "protection-defaults-to-ten-seconds-with-five-choices",
+      "passed": true
+    },
+    {
+      "name": "switching-pages-retains-unsaved-fields",
+      "passed": true
+    },
+    {
+      "name": "pausing-collection-keeps-settings-draft",
+      "passed": true
+    },
+    {
+      "name": "saving-applies-draft-across-settings-pages",
+      "passed": true
+    },
+    {
+      "name": "saving-protection-persists-and-applies-to-running-controller",
+      "passed": true
+    },
+    {
+      "name": "failed-save-keeps-draft-and-persisted-settings",
+      "passed": true
+    },
+    {
+      "name": "discard-restores-persisted-shortcuts",
+      "passed": true
+    },
+    {
+      "name": "protection-only-change-enables-save-without-applying-draft",
+      "passed": true
+    },
+    {
+      "name": "discard-restores-saved-protection",
+      "passed": true
+    },
+    {
+      "name": "protection-can-return-to-default",
+      "passed": true
+    },
+    {
+      "name": "custom-combobox-opens-usable-popup",
+      "passed": true
+    },
+    {
+      "name": "save-remains-inside-small-window",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-zh-CN",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-zh-CN",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-en",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-en",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-es",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-es",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-fr",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-fr",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-gl",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-gl",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-pt-BR",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-pt-BR",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-ja",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-ja",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-ko",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-ko",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-tr",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-tr",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-az",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-az",
+      "passed": true
+    },
+    {
+      "name": "sidebar-and-save-accessible-hi",
+      "passed": true
+    },
+    {
+      "name": "all-pages-fit-small-window-hi",
+      "passed": true
+    }
+  ]
+}

@@ -10,9 +10,20 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Core checks failed: $LASTEXITCODE" }
     & $executable run --project tests/Clothesline.Storage.Tests --configuration Release --no-build
     if ($LASTEXITCODE -ne 0) { throw "Storage checks failed: $LASTEXITCODE" }
+    # Offscreen WPF rendering only; no on-screen test windows, hotkeys or system clipboard access.
+    & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --screen-quota-test artifacts/screen-quota-validation
+    if ($LASTEXITCODE -ne 0) { throw "Screen quota checks failed. See artifacts/screen-quota-validation/screen-quota-diagnostics.json" }
+    & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --shelf-entrance-test artifacts/shelf-entrance-validation
+    if ($LASTEXITCODE -ne 0) { throw "Shelf entrance checks failed. See artifacts/shelf-entrance-validation/shelf-entrance-diagnostics.json" }
+    & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --text-hover-edit-test artifacts/text-hover-edit-validation
+    if ($LASTEXITCODE -ne 0) { throw "Inline text editor checks failed. See artifacts/text-hover-edit-validation/text-hover-edit-diagnostics.json" }
+    & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --paper-style-test artifacts/paper-style-validation
+    if ($LASTEXITCODE -ne 0) { throw "Paper style checks failed. See artifacts/paper-style-validation/paper-style-diagnostics.json" }
     if ($Desktop) {
         # Interactive desktop required. This starts only our own test windows.
         $env:DOTNET_ROOT = Split-Path $executable
+        & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --text-card-test artifacts/text-card-validation
+        if ($LASTEXITCODE -ne 0) { throw "Text card checks failed. See artifacts/text-card-validation/text-card-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --stacked-shelf-test artifacts/stacked-shelf-validation
         if ($LASTEXITCODE -ne 0) { throw "Stacked shelf checks failed. See artifacts/stacked-shelf-validation/stacked-shelf-diagnostics.json" }
         & $executable src/Clothesline.App/bin/Release/net10.0-windows10.0.19041.0/Clothesline.dll --hover-preview-test artifacts/hover-preview-validation

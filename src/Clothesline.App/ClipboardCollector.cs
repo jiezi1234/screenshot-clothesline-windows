@@ -15,6 +15,7 @@ internal sealed class ClipboardCollector : IDisposable
     private readonly HwndSource source;
     private readonly DispatcherTimer retry;
     private readonly Func<byte[], string, Task> accept;
+    private readonly Func<string, Task>? acceptText;
     private uint sequence;
     private int attempts;
     private bool enabled;
@@ -22,9 +23,9 @@ internal sealed class ClipboardCollector : IDisposable
     [DllImport("user32.dll", SetLastError = true)] private static extern bool AddClipboardFormatListener(nint hwnd);
     [DllImport("user32.dll")] private static extern bool RemoveClipboardFormatListener(nint hwnd);
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
-    public ClipboardCollector(Func<byte[], string, Task> accept)
+    public ClipboardCollector(Func<byte[], string, Task> accept, Func<string, Task>? acceptText = null)
     {
-        this.accept = accept;
+        this.accept = accept; this.acceptText = acceptText;
         source = new HwndSource(new HwndSourceParameters("Clothesline.Clipboard") { ParentWindow = -3 });
         retry = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         retry.Tick += async (_, _) => await Read();
@@ -57,7 +58,15 @@ internal sealed class ClipboardCollector : IDisposable
                 if (value is MemoryStream stream) { var bytes = stream.ToArray(); return bytes.Length >= 4 ? BitConverter.ToUInt32(bytes) != 0 : false; }
                 return value switch { int i => i != 0, uint i => i != 0, byte[] bytes when bytes.Length >= 4 => BitConverter.ToUInt32(bytes) != 0, _ => false };
             }
-            if (!ClipboardPolicy.Accept(data.GetFormats(false), Flag)) return;
+            var kind = ClipboardPolicy.Select(data.GetFormats(false), Flag);
+            if (kind == ClipboardContentKind.None) return;
+            if (kind == ClipboardContentKind.Text)
+            {
+                if (acceptText is null) return;
+                var text = ReadText(data);
+                if (text is not null && enabled && current == GetClipboardSequenceNumber()) await acceptText(text);
+                return;
+            }
             BitmapSource? image = null;
             if (data.GetDataPresent("PNG", false) && data.GetData("PNG", false) is MemoryStream png)
             {
@@ -74,9 +83,15 @@ internal sealed class ClipboardCollector : IDisposable
         catch (COMException)
         {
             if (enabled && current == GetClipboardSequenceNumber() && ++attempts < 6) retry.Start();
-            else Status?.Invoke(T("剪贴板忙，已跳过本次图片。"));
+            else Status?.Invoke(T("剪贴板忙，已跳过本次内容。"));
         }
-        catch (Exception ex) { Status?.Invoke(T("剪贴板图片未收集：") + ex.Message); }
+        catch (Exception ex) { Status?.Invoke(T("剪贴板内容未收集：") + ex.Message); }
+    }
+    internal static string? ReadText(IDataObject data)
+    {
+        var text = (data.GetDataPresent(DataFormats.UnicodeText, false) ? data.GetData(DataFormats.UnicodeText, false) : data.GetData(DataFormats.Text, false)) as string;
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        Clothesline.Core.TextContent.Encode(text); return text;
     }
     public void Dispose() { Enable(false); retry.Stop(); source.Dispose(); }
 }

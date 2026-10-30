@@ -57,7 +57,7 @@ internal static class PreferencesDiagnostics
                 keys[0].Dispose(); keys.Clear();
                 var registration = new FakeLogin();
                 var preferences = new DesktopPreferences(pair, registration, () => "\"C:\\Clothesline Test\\Clothesline.exe\" --startup");
-                var settings = new LibrarySettings { ShowShortcut = candidateKey, HideShortcut = candidateHide, RunAtLogin = true };
+                var settings = new LibrarySettings { ClipboardEnabled = false, ShowShortcut = candidateKey, HideShortcut = candidateHide, RunAtLogin = true };
                 var persistenceFailed = false;
                 try { preferences.Apply(settings, _ => throw new IOException("fixture database error")); } catch (IOException) { persistenceFailed = true; }
                 Check("database-failure-rolls-back-startup-and-both-hotkeys", persistenceFailed && registration.Value is null && pair.ShowGesture == originalKey && pair.HideGesture == originalHide && pair.Registered);
@@ -99,7 +99,7 @@ internal static class PreferencesDiagnostics
                 using (var fixture = Registry.CurrentUser.OpenSubKey(registryPath)) Check("disable-removes-only-owned-registry-value", isolated.Read() is null && fixture!.GetValue("Unrelated") as string == "keep");
                 Check("real-login-registration-untouched-by-diagnostics", actual.Read() == before);
                 using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "settings-" + Guid.NewGuid().ToString("N")));
-                runtime.ApplySettings(runtime.Settings);
+                runtime.ApplySettings(runtime.Settings with { ClipboardEnabled = false });
                 var dashboard = new Dashboard(shelf, true, () => { }, runtime) { Exiting = true };
                 dashboard.ShowDesktopSettings(); dashboard.UpdateLayout(); Render((FrameworkElement)dashboard.Content, Path.Combine(directory, "preferences.png")); dashboard.Close();
             }

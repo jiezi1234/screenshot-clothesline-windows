@@ -30,13 +30,20 @@ internal static class ReorderMotionDiagnostics
                 var hashes = assets.Select(a => ImageFiles.Hash(a.Path)).ToArray();
                 using var store = new LibraryStore(Path.Combine(output, "library-" + Guid.NewGuid().ToString("N")));
                 using var shelf = new ShelfController(() => true) { SuppressFullscreen = false };
-                var items = Enumerable.Range(0, 18).Select(i => assets[i % assets.Count] with { EntryId = "card-" + i }).ToArray();
+                var items = Enumerable.Range(0, 18).Select(i =>
+                {
+                    if (i % 2 == 0) return assets[i % assets.Count] with { EntryId = "card-" + i };
+                    var path = Path.Combine(store.ManagedFolder, "note-" + i + ".txt"); var text = "Generated note " + i; File.WriteAllText(path, text);
+                    return new DemoItem(text, "Mixed reorder fixture", path, TextCardImage.Create(text), "card-" + i, text);
+                }).ToArray();
                 foreach (var item in items) store.Add(item.Path, Ownership.External, "Fixture", "fixture", LibraryRuntime.Now, 100, id: item.EntryId);
                 store.MoveShelfItems(items.Select(i => i.EntryId!).ToArray(), null);
                 var writes = 0;
                 shelf.ReorderRequested = (id, before) => { if (!store.MoveShelfItems([id], before)) throw new IOException("stale fixture"); writes++; };
                 shelf.SetItems(items, true);
                 await Task.Delay(720);
+                Check("interleaved-fixture-keeps-global-persisted-order", shelf.OrderedIds.SequenceEqual(items.Select(i => i.EntryId))
+                    && store.Entries(EntryState.Shelf).Select(e => e.Id).SequenceEqual(shelf.OrderedIds));
                 var target = app.Windows.OfType<ShelfDropWindow>().Single();
                 CardWindow Card(string id) => app.Windows.OfType<CardWindow>().Single(c => c.Item.EntryId == id);
                 PixelRect Bounds(CardWindow card) { Native.GetWindowRect(new WindowInteropHelper(card).Handle, out var rect); return rect.Pixels; }

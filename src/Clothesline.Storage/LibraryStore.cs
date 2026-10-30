@@ -12,11 +12,12 @@ public sealed record LibrarySettings
     public string ScreenshotFolder { get; init; } = "";
     public string VideoFolder { get; init; } = "";
     public string[] ExtraFolders { get; init; } = [];
-    public bool ClipboardEnabled { get; init; }
+    public bool ClipboardEnabled { get; init; } = true;
     public bool Paused { get; init; }
     public bool ShowNew { get; init; } = true;
     public bool SuppressFullscreen { get; init; } = true;
     public bool ReduceMotion { get; init; }
+    // Retained for reading older settings. The application now always follows the current screen.
     public int Capacity { get; init; }
     public int RetentionDays { get; init; }
     public long MaxManagedBytes { get; init; } = 512L * 1024 * 1024;
@@ -43,8 +44,8 @@ public sealed partial class LibraryStore : IDisposable
         db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, "library.db"), Pooling = false }.ToString());
         db.Open(); Execute("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
         var version = Convert.ToInt32(Scalar("PRAGMA user_version;"));
-        if (version > 3) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
-        if (version is 1 or 2)
+        if (version > 4) { db.Dispose(); throw new InvalidOperationException(T("数据库来自更新版本，请使用更新的应用。")); }
+        if (version is 1 or 2 or 3)
         {
             using var backup = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = System.IO.Path.Combine(Root, $"library-v{version}-backup-" + Guid.NewGuid().ToString("N") + ".db"), Pooling = false }.ToString());
             backup.Open(); db.BackupDatabase(backup);
@@ -80,7 +81,15 @@ public sealed partial class LibraryStore : IDisposable
                 PRAGMA user_version=3;
                 COMMIT;
                 """);
-        Recover();
+        if (version < 4)
+            Execute("""
+                BEGIN IMMEDIATE;
+                CREATE TABLE IF NOT EXISTS TextEdits(EntryId TEXT PRIMARY KEY REFERENCES Items(Id) ON DELETE CASCADE,
+                    StagePath TEXT NOT NULL, OldHash TEXT NOT NULL, NewHash TEXT NOT NULL, Title TEXT NOT NULL);
+                PRAGMA user_version=4;
+                COMMIT;
+                """);
+        RecoverTextEdits(); Recover();
     }
     private SqliteCommand Command(string sql, params object?[] pairs)
     {
@@ -202,7 +211,16 @@ public sealed partial class LibraryStore : IDisposable
     }
     public void EnforceCapacity(int capacity, long now)
     {
-        lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (SELECT Id FROM Items WHERE State=0 ORDER BY AddedAt DESC,rowid DESC LIMIT -1 OFFSET $capacity)", "$now", now, "$capacity", Math.Clamp(capacity, 1, 100));
+        lock (gate) Execute("""
+            UPDATE Items SET State=1,ArchivedAt=$now WHERE Id IN (
+                SELECT Id FROM (
+                    SELECT Id,ROW_NUMBER() OVER (
+                        PARTITION BY lower(substr(Path,-4))='.txt'
+                        ORDER BY AddedAt DESC,rowid DESC) AS ArrivalRank
+                    FROM Items WHERE State=0
+                ) WHERE ArrivalRank>$capacity
+            )
+            """, "$now", now, "$capacity", Clothesline.Core.ShelfZones.TypeCapacity(Math.Clamp(capacity, 1, 100)));
     }
     public void Archive(string id, long now)
     { lock (gate) Execute("UPDATE Items SET State=1,ArchivedAt=$time WHERE Id=$id AND State=0", "$id", id, "$time", now); }

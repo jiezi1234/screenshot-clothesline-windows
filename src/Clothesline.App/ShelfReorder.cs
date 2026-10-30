@@ -31,9 +31,9 @@ internal sealed partial class ShelfController
     }
     internal Task<ReorderExit> BeginLocalReorder(CardWindow source, PixelPoint cursor, bool pollInput = true)
     {
-        if (localReorder is not null || !presented || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
-        var slots = DesktopGeometry.Cards(activeMonitor!.WorkArea, scale, cards.Count, cardScale);
-        var slot = cards.IndexOf(source) - page * slots.Count;
+        if (!textHover.ReleaseCleanPreview() || localReorder is not null || !presented || activeMonitor is null || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
+        var slots = RowSlots;
+        var slot = cards.IndexOf(source) - page * DragCapacity;
         if (slot < 0 || slot >= slots.Count) return Task.FromResult(ReorderExit.Cancelled);
         Native.GetWindowRect(new System.Windows.Interop.WindowInteropHelper(source).Handle, out var sourceBounds);
         var grip = (int)System.Math.Round((cursor.X - sourceBounds.Left) * slots[slot].Width / (double)System.Math.Max(1, sourceBounds.Right - sourceBounds.Left));
@@ -67,15 +67,16 @@ internal sealed partial class ShelfController
             if (disposed || SessionBlocked || !presented) { CancelLocalReorder(); return; }
             gesture.Cursor = cursor;
             var monitor = activeMonitor!;
-            var slots = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count, cardScale);
+            var slots = DragSlots;
             var band = new PixelRect(monitor.Bounds.X, monitor.Bounds.Y, monitor.Bounds.Width, slots[0].Bottom - monitor.Bounds.Y + (int)(52 * scale));
             if (escape) { _ = FinishLocalReorder(ReorderExit.Cancelled); return; }
             if (!band.Contains(cursor)) { _ = FinishLocalReorder(leftDown ? ReorderExit.Export : ReorderExit.Cancelled); return; }
             UpdateDragPage(cursor, monitor, now);
+            slots = DragSlots; // A short final page re-centers the complete mixed row.
             if (gesture.Page != page) { gesture.Page = page; gesture.Slot = -1; }
-            var count = Math.Min(slots.Count, cards.Count - page * slots.Count);
+            var count = Math.Min(slots.Count, DragCards.Count - page * DragCapacity);
             gesture.Slot = ShelfDropGeometry.StableSlot(slots, count, gesture.Slot, cursor.X, (int)(8 * scale));
-            var before = cards.ElementAtOrDefault(page * slots.Count + gesture.Slot)?.Item;
+            var before = DragCards.ElementAtOrDefault(page * DragCapacity + gesture.Slot)?.Item;
             gesture.Before = before?.EntryId ?? before?.Path;
             if (!leftDown) { _ = FinishLocalReorder(ReorderExit.Committed); return; }
             RenderLocalReorder(gesture, cursor, false);
@@ -85,20 +86,20 @@ internal sealed partial class ShelfController
     private void RenderLocalReorder(ReorderGesture gesture, PixelPoint cursor, bool settling)
     {
         var monitor = activeMonitor!;
-        var slots = DesktopGeometry.Cards(monitor.WorkArea, scale, cards.Count, cardScale);
-        var order = cards.ToList();
+        var slots = DragSlots;
+        var order = DragCards;
         if (!settling)
         {
-            var target = cards.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == gesture.Before);
+            var target = order.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == gesture.Before);
             if (target != gesture.Source) { order.Remove(gesture.Source); order.Insert(target is null ? order.Count : order.IndexOf(target), gesture.Source); }
         }
         var sourceIndex = order.IndexOf(gesture.Source);
         ShowDropTarget(monitor, true, T("拖动调整顺序；在左右边缘停留可翻页。"));
         dropTarget.BeginPreviewFrame();
-        for (var i = 0; i < slots.Count && page * slots.Count + i < order.Count; i++)
+        for (var i = 0; i < slots.Count && page * DragCapacity + i < order.Count; i++)
         {
-            var index = page * slots.Count + i; var card = order[index];
-            var originalSlot = cards.IndexOf(card) - page * slots.Count;
+            var index = page * DragCapacity + i; var card = order[index];
+            var originalSlot = DragCards.IndexOf(card) - page * DragCapacity;
             var origin = slots[Math.Clamp(originalSlot, 0, slots.Count - 1)];
             if (card == gesture.Source && !settling) continue;
             // Positive WPF rotation about the pin leans the lower edge left.
@@ -107,9 +108,10 @@ internal sealed partial class ShelfController
         }
         if (!settling)
         {
-            var originalSlot = Math.Clamp(cards.IndexOf(gesture.Source) - page * slots.Count, 0, slots.Count - 1);
+            var originalSlot = Math.Clamp(DragCards.IndexOf(gesture.Source) - page * DragCapacity, 0, slots.Count - 1);
             var origin = slots[originalSlot];
-            var x = Math.Clamp(cursor.X - gesture.GripOffset, dropBounds.X, Math.Max(dropBounds.X, dropBounds.Right - origin.Width));
+            var zone = InteractionArea;
+            var x = Math.Clamp(cursor.X - gesture.GripOffset, zone.X, Math.Max(zone.X, zone.Right - origin.Width));
             dropTarget.Preview(gesture.Source, origin, origin with { X = x, Y = origin.Y - (int)(4 * scale) }, dropBounds, scale, 0, false, true);
         }
         dropTarget.EndPreviewFrame(); HidePreviewCards();
@@ -123,7 +125,7 @@ internal sealed partial class ShelfController
             if (result == ReorderExit.Committed)
             {
                 MoveCardBefore(gesture.Source, gesture.Before, false); gesture.Committed = true;
-                page = cards.IndexOf(gesture.Source) / DisplayCapacity;
+                page = DragCards.IndexOf(gesture.Source) / DragCapacity;
                 Present(); dropTarget.InvalidatePlacement();
             }
             if (result != ReorderExit.Export && presented)
@@ -165,16 +167,17 @@ internal sealed partial class ShelfController
     private void RenderIncomingGap()
     {
         if (cards.Count == 0) return;
-        var slots = DesktopGeometry.Cards(activeMonitor!.WorkArea, scale, cards.Count, cardScale);
-        var count = Math.Min(slots.Count, cards.Count - page * slots.Count);
+        var slots = DragSlots;
+        var count = Math.Min(slots.Count, DragCards.Count - page * DragCapacity);
         var slot = Math.Clamp(hoverSlot, 0, count);
         dropTarget.BeginPreviewFrame();
         for (var i = 0; i < count; i++)
         {
             var rect = slots[i]; var shift = (int)(24 * scale) * (i < slot ? -1 : 1);
-            var x = Math.Clamp(rect.X + shift, dropBounds.X + (int)(12 * scale), Math.Max(dropBounds.X + (int)(12 * scale), dropBounds.Right - rect.Width - (int)(12 * scale)));
+            var zone = InteractionArea;
+            var x = Math.Clamp(rect.X + shift, zone.X, Math.Max(zone.X, zone.Right - rect.Width));
             var angle = !MotionAllowed ? 0 : i == slot - 1 ? 5 : i == slot ? -5 : 0;
-            dropTarget.Preview(cards[page * slots.Count + i], rect, rect with { X = x }, dropBounds, scale, angle, MotionAllowed);
+            dropTarget.Preview(DragCards[page * DragCapacity + i], rect, rect with { X = x }, dropBounds, scale, angle, MotionAllowed);
         }
         dropTarget.EndPreviewFrame(); HidePreviewCards();
     }

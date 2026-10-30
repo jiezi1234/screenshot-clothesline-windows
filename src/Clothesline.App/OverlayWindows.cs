@@ -16,6 +16,18 @@ namespace Clothesline.App;
 internal class OverlayWindow : Window
 {
     private int opacityGeneration;
+    private AnimationClock? entranceClock;
+    private EventHandler? entranceCompleted;
+    private bool overlayClosed;
+    internal bool EntrancePrepared { get; private set; }
+    internal AnimationClock? EntranceClock => entranceClock;
+    internal bool AcceptsKeyboard { get; private set; }
+    internal void SetKeyboardInput(bool enabled)
+    {
+        AcceptsKeyboard = enabled;
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle != 0) Native.SetOverlayKeyboard(handle, enabled);
+    }
     public OverlayWindow(string title, bool passThrough)
     {
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);
@@ -23,6 +35,7 @@ internal class OverlayWindow : Window
         Background = Brushes.Transparent; ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false; ShowActivated = false; Topmost = true;
         SourceInitialized += (_, _) => Native.ConfigureOverlay(this, passThrough);
+        Closed += (_, _) => { overlayClosed = true; EntrancePrepared = false; StopMotion(); };
     }
     public virtual void Present(PixelRect rect, bool animate)
     {
@@ -38,8 +51,48 @@ internal class OverlayWindow : Window
             BeginAnimation(OpacityProperty, fade);
         }
     }
-    public virtual void StopMotion() { opacityGeneration++; BeginAnimation(OpacityProperty, null); Opacity = 1; }
-    public virtual void Dismiss() { StopMotion(); Hide(); }
+    internal void PrepareShelfPresentation(PixelRect rect, MonitorInfo monitor)
+    {
+        ObjectDisposedException.ThrowIf(overlayClosed, this);
+        var entering = !IsVisible || EntrancePrepared;
+        StopMotion();
+        if (entering)
+        {
+            EntrancePrepared = true; Opacity = 0;
+            // Every HWND, DPI transition and layout is ready before any member of the row fades in.
+            Native.MoveAndGetScale(this, monitor);
+            Native.Place(this, rect);
+            DesktopLifecycle.FollowForeground(this);
+            if (!IsVisible) Show();
+        }
+        Native.Place(this, rect); UpdateLayout();
+    }
+    internal virtual void RevealPreparedEntrance(AnimationClock? fade)
+    {
+        if (!EntrancePrepared || !IsVisible) return;
+        EntrancePrepared = false;
+        if (fade is null) { Opacity = 1; return; }
+        entranceClock = fade;
+        entranceCompleted = (_, _) =>
+        {
+            if (!ReferenceEquals(entranceClock, fade)) return;
+            DetachEntranceClock(); BeginAnimation(OpacityProperty, null); Opacity = 1;
+        };
+        fade.Completed += entranceCompleted;
+        ApplyAnimationClock(OpacityProperty, fade);
+        // Keep the zero base value until completion: a newly created clock starts on the next timing tick.
+    }
+    private void DetachEntranceClock()
+    {
+        if (entranceClock is not null && entranceCompleted is not null) entranceClock.Completed -= entranceCompleted;
+        entranceClock = null; entranceCompleted = null;
+    }
+    public virtual void StopMotion()
+    {
+        opacityGeneration++; DetachEntranceClock(); BeginAnimation(OpacityProperty, null);
+        Opacity = EntrancePrepared ? 0 : 1;
+    }
+    public virtual void Dismiss() { Hide(); EntrancePrepared = false; StopMotion(); }
 }
 
 internal sealed class RopeWindow : OverlayWindow
@@ -105,6 +158,7 @@ internal sealed class CardWindow : OverlayWindow
     private Point? down;
     private readonly DispatcherTimer clickTimer;
     private readonly DispatcherTimer holdTimer;
+    private readonly DispatcherTimer feedbackTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
     private readonly TextBlock caption;
     private readonly Border surface;
     private readonly CardMotion motion;
@@ -125,7 +179,7 @@ internal sealed class CardWindow : OverlayWindow
         inside.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         inside.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        var image = new Image { Source = item.Image, Stretch = Stretch.UniformToFill, ClipToBounds = true };
+        var image = new Image { Source = item.Image, Stretch = item.IsText ? Stretch.Uniform : Stretch.UniformToFill, ClipToBounds = true };
         inside.Children.Add(image);
         if (item.IsVideo)
             inside.Children.Add(new TextBlock { Text = "▶", FontSize = 28, Foreground = Brushes.White, Background = DemoAssets.Brush("#203B36"), Padding = new Thickness(8, 0, 8, 0), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false });
@@ -134,12 +188,32 @@ internal sealed class CardWindow : OverlayWindow
         var sub = new TextBlock { Text = item.Subtitle, ToolTip = item.Subtitle, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 9, Foreground = DemoAssets.Brush("#7D8B83"), Margin = new Thickness(2, 3, 0, 0) };
         Grid.SetRow(sub, 2); inside.Children.Add(sub);
         surface.Child = inside; root.Children.Add(surface);
+        if (item.IsText)
+        {
+            var palette = TextPaper.Palette(item.PaperStyle);
+            surface.Background = Brushes.Transparent; surface.BorderThickness = new Thickness(0); surface.Padding = new Thickness(0);
+            surface.CornerRadius = new CornerRadius(0);
+            surface.Child = new TextPaperSurface(item.PaperStyle, true, item.Text ?? T("正在读取文字…"));
+            // Text is the card itself, with no photo frame, duplicate title or metadata footer.
+            inside.Children.Remove(caption); Grid.SetRow(caption, 0);
+            caption.Text = ""; caption.ToolTip = null; caption.Visibility = Visibility.Collapsed;
+            caption.VerticalAlignment = VerticalAlignment.Bottom; caption.HorizontalAlignment = HorizontalAlignment.Center;
+            caption.Margin = new Thickness(12, 0, 12, 13); caption.Padding = new Thickness(6, 3, 6, 3);
+            caption.Background = DemoAssets.Brush(palette.Paper); caption.Foreground = DemoAssets.Brush(palette.Ink); caption.FontSize = 11;
+            root.Children.Add(caption);
+        }
+        feedbackTimer.Tick += (_, _) => { feedbackTimer.Stop(); caption.Visibility = Visibility.Collapsed; };
         var clip = new Border { Width = 14, Height = 28, Background = DemoAssets.Brush("#BC8F58"), CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Center };
         root.Children.Add(clip);
         var remove = new Button { Content = "×", Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 23, 4, 0), Background = DemoAssets.Brush("#F7FAF6"), Foreground = DemoAssets.Brush("#355446"), BorderThickness = new Thickness(0), Focusable = false, ToolTip = T("取下到历史（保留文件）") };
         remove.Click += (_, _) => { clickTimer.Stop(); TakeDown?.Invoke(this); };
         AutomationProperties.SetName(remove, T("取下") + item.Title);
         root.Children.Add(remove);
+        if (item.IsText)
+        {
+            remove.Background = DemoAssets.Brush(TextPaper.Palette(item.PaperStyle).Paper); remove.Opacity = 0;
+            root.MouseEnter += (_, _) => remove.Opacity = .9; root.MouseLeave += (_, _) => remove.Opacity = 0;
+        }
         var layout = new Grid { Width = DesktopGeometry.CardWidth, Height = DesktopGeometry.CardHeight }; layout.Children.Add(root);
         Content = new Viewbox { Child = layout, Stretch = Stretch.Uniform };
         clickTimer.Tick += (_, _) => { clickTimer.Stop(); Copy(); };
@@ -154,13 +228,13 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseLeftButtonUp += Up;
         surface.LostMouseCapture += (_, _) => { down = null; holdTimer.Stop(); };
         MouseEnter += (_, _) => { if (!Retiring) StopMotion(); };
-        surface.MouseEnter += (_, _) => { if (!Busy) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
-        surface.MouseLeave += (_, _) => { if (!Busy) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
+        surface.MouseEnter += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
+        surface.MouseLeave += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
         var menu = new ContextMenu();
-        Add(menu, item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
-        Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
-        if (!item.IsVideo) Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
-        Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
+        Add(menu, item.IsText ? T("复制文字") : item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
+        if (!item.IsText) Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
+        if (!item.IsVideo && !item.IsText) Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
+        if (!item.IsText) Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
         Add(menu, T("在资源管理器中定位"), () => ShellTransfer.Reveal(item.Path));
         Add(menu, T("另存为"), () => ExportRequested?.Invoke(item, false));
         Add(menu, T("保存副本到桌面"), () => ExportRequested?.Invoke(item, true));
@@ -173,7 +247,7 @@ internal sealed class CardWindow : OverlayWindow
         menu.Opened += (_, _) => { StopMotion(); Busy = true; clickTimer.Stop(); holdTimer.Stop(); };
         menu.Closed += (_, _) => Busy = false;
         surface.ContextMenu = menu;
-        Closed += (_, _) => { closed = true; StopMotion(); clickTimer.Stop(); holdTimer.Stop(); };
+        Closed += (_, _) => { closed = true; StopMotion(); clickTimer.Stop(); holdTimer.Stop(); feedbackTimer.Stop(); };
     }
     public override void Present(PixelRect rect, bool animate)
     {
@@ -181,6 +255,12 @@ internal sealed class CardWindow : OverlayWindow
         var entering = !IsVisible;
         base.Present(rect, animate && !InteractionActive);
         if (entering && animate && !InteractionActive && !IsMouseOver) motion.Enter();
+    }
+    internal override void RevealPreparedEntrance(AnimationClock? fade)
+    {
+        var entering = EntrancePrepared && IsVisible;
+        base.RevealPreparedEntrance(fade);
+        if (entering && fade is not null && !Retiring && !closed && !InteractionActive && !IsMouseOver) motion.Enter();
     }
     public override void StopMotion() { base.StopMotion(); motion.Stop(); }
     internal void SetStackEmphasis(PixelRect bounds, bool emphasized, bool animate)
@@ -224,10 +304,10 @@ internal sealed class CardWindow : OverlayWindow
         if (e.ClickCount == 2)
         {
             down = null;
-            try { ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
+            try { if (!Item.IsText) ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
             e.Handled = true; return;
         }
-        down = e.GetPosition(this); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
+        down = e.GetPosition(this); surface.CaptureMouse(); if (!Item.IsText) holdTimer.Start(); e.Handled = true;
     }
     private async void Move(object sender, MouseEventArgs e)
     {
@@ -254,11 +334,16 @@ internal sealed class CardWindow : OverlayWindow
             var data = await ShellTransfer.CopyDataAsync(Item.Path);
             if (closed) return;
             Clipboard.SetDataObject(data, true);
-            Report(Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
+            Report(Item.IsText ? T("已复制文字") : Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
         }
         catch (System.Runtime.InteropServices.COMException) { Report(T("剪贴板正在被占用，请稍后再试。")); }
         catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }
         finally { copying = false; }
     }
-    private void Report(string text) { feedback = text; caption.Text = feedback; Status?.Invoke(text); }
+    private void Report(string text)
+    {
+        feedback = text; caption.Text = feedback;
+        if (Item.IsText) { caption.Visibility = Visibility.Visible; feedbackTimer.Stop(); feedbackTimer.Start(); }
+        Status?.Invoke(text);
+    }
 }

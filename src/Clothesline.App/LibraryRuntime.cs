@@ -38,15 +38,19 @@ internal sealed partial class LibraryRuntime : IDisposable
     private readonly Dictionary<string, int> leases = new(StringComparer.OrdinalIgnoreCase);
     public event Action<string>? Status;
     public event Action? Changed;
-    public int Capacity => Settings.Capacity == 0 ? shelf.DisplayCapacity : Settings.Capacity;
+    public int Capacity => shelf.DisplayCapacity;
+    public int TypeCapacity => ShelfZones.TypeCapacity(Capacity);
     public LibraryRuntime(ShelfController shelf, string? root = null)
     {
-        this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); Settings = Store.LoadSettings();
+        this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); Settings = Store.LoadSettings() with { Capacity = 0 };
+        // Measure before any import/refresh can apply a quota; the controller's initial placeholder is two.
+        shelf.SetCardSize(Settings.CardSizePercent);
         UiText.Language = Settings.Language; shelf.RefreshLanguage();
         if (!Store.HasSettings && root is null) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; Store.SaveSettings(Settings); }
         Videos = new VideoCatalog(Store.Root);
         Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash, ImageDecoder.Hash);
-        clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); });
+        clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); },
+            async text => { if (!disposed && !Settings.Paused) await Collector.ImportText(text, Settings.MaxManagedBytes, closing.Token); });
         refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         refresh.Tick += (_, _) => { if (shelf.Busy || fileOperation > 0) return; refresh.Stop(); RefreshShelf(revealPending); revealPending = false; };
         maintenance = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -58,9 +62,11 @@ internal sealed partial class LibraryRuntime : IDisposable
         shelf.RecycleRequested += item => { if (item.EntryId is not null) Recycle(item.EntryId); };
         shelf.ExportRequested += (item, desktop) => Export(item.Path, desktop);
         shelf.WorkspaceRequested += (item, edit) => { if (item.EntryId is not null) OpenWorkspace(item.EntryId, edit); };
+        shelf.StartTextEdit = CreateTextEditSession;
         shelf.BatchArchiveRequested += (item, scope) => ArchiveBatch(item.EntryId, scope);
         shelf.FilesChanged += () => ScheduleRefresh(false);
         shelf.EnvironmentRecovered += RecoverEnvironment;
+        shelf.DisplayCapacityChanged += RefreshCapacity;
         shelf.ReorderRequested = (id, before) =>
         {
             if (!Store.MoveShelfItems([id], before)) throw new InvalidOperationException(T("图片已变化，请重试。"));
@@ -73,6 +79,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (disposed) return;
         Collector.RequestRescan(); Desktop?.RetryShortcut(); ScheduleRefresh(false);
     }
+    private void RefreshCapacity() => ScheduleRefresh(false);
     public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     public void Start() { shelf.Start(false); ApplySettings(Settings, false); RefreshShelf(false); maintenance.Start(); _ = WarmDecoder(); }
     private async Task WarmDecoder()
@@ -87,7 +94,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (fileOperation > 0) throw new InvalidOperationException(T("文件操作进行中，请稍后再保存设置。"));
         if (shelf.Busy && settings.CardSizePercent != Settings.CardSizePercent) throw new InvalidOperationException(T("图片交互进行中，请稍后再更改卡片大小。"));
         var gestures = ShortcutGesture.ParsePair(settings.ShowShortcut, settings.HideShortcut);
-        settings = settings with { ShowShortcut = gestures.Show.Display, HideShortcut = gestures.Hide.Display };
+        settings = settings with { Capacity = 0, ShowShortcut = gestures.Show.Display, HideShortcut = gestures.Hide.Display };
         LibraryStore.ValidateSettings(settings);
         var all = new[] { settings.ScreenshotFolder, settings.VideoFolder }.Concat(settings.ExtraFolders).Where(p => !string.IsNullOrWhiteSpace(p)).Select(Path.GetFullPath);
         foreach (var folder in all)
@@ -147,7 +154,12 @@ internal sealed partial class LibraryRuntime : IDisposable
                 if (cache.TryGetValue(entry.Id, out var loading) && loading.Signature == "loading:" + signature && (videoLoads.Contains(entry.Id) || imageLoads.Contains(entry.Id))) { items.Add(loading.Item); continue; }
                 if (!cache.TryGetValue(entry.Id, out var cached) || cached.Signature != signature)
                 {
-                    if (MediaFiles.IsVideo(entry.Path))
+                    if (MediaFiles.IsText(entry.Path))
+                    {
+                        cache[entry.Id] = ("loading:" + signature, new DemoItem(entry.Title, T("正在读取文字…"), entry.Path, ImagePlaceholder(), entry.Id));
+                        if (imageLoads.Add(entry.Id)) _ = LoadText(entry, signature);
+                    }
+                    else if (MediaFiles.IsVideo(entry.Path))
                     {
                         if (Videos.TryGet(entry.Path, out var video))
                             cache[entry.Id] = (signature, new DemoItem(entry.Title, T("录像") + " · " + video!.Duration + " · MP4", entry.Path, video.Image(), entry.Id));
@@ -209,7 +221,8 @@ internal sealed partial class LibraryRuntime : IDisposable
     public void Archive(string id) { Store.Archive(id, Now); ScheduleRefresh(false); }
     public void ArchiveBatch(string? anchor = null, ArchiveScope scope = ArchiveScope.All)
     {
-        var ordered = Store.Entries(EntryState.Shelf).Select(e => e.Id).ToArray();
+        var entries = Store.Entries(EntryState.Shelf);
+        var ordered = entries.Select(e => e.Id).ToArray();
         var ids = anchor is null && scope == ArchiveScope.All ? ordered : BatchSelection.Select(ordered, anchor ?? "", scope);
         var count = Store.ArchiveMany(ids, Now);
         Report(T("已取下 {0} 个项目到本地历史，原文件保留。", count)); ScheduleRefresh(false);
@@ -228,12 +241,13 @@ internal sealed partial class LibraryRuntime : IDisposable
     public void OpenWorkspace(string id, bool edit)
     {
         var entry = Store.Find(id); if (entry is null) return;
+        if (MediaFiles.IsText(entry.Path)) { if (!edit) OpenTextPreview(entry); return; }
         if (MediaFiles.IsVideo(entry.Path))
         {
             var video = new VideoWorkspace(entry.Path, AcquireLease);
             workspaces.Add(video); video.Closed += (_, _) => workspaces.Remove(video); video.Show(); video.Activate(); return;
         }
-        var gallery = Store.Entries(entry.State).Where(e => !MediaFiles.IsVideo(e.Path) && !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
+        var gallery = Store.Entries(entry.State).Where(e => MediaFiles.IsImage(e.Path) && !e.Missing && File.Exists(e.Path)).Select(e => new WorkspaceImage(e.Id, e.Path, e.Title, e.Hash)).ToArray();
         var index = Array.FindIndex(gallery, e => e.Id == id);
         if (index < 0) { Report(T("原文件已失效，无法打开。请在历史中检查路径。")); return; }
         var window = new ImageWorkspace(gallery, index, edit, SaveEditedCopy, AcquireLease, ResolveOriginal);
@@ -242,6 +256,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     public bool TryCloseWorkspaces()
     {
         if (fileOperation > 0) { Report(T("文件操作进行中，请稍后再退出。")); return false; }
+        if (!shelf.TryCloseTextEditor()) return false;
         foreach (var window in workspaces.ToArray()) { window.Close(); if (workspaces.Contains(window)) return false; }
         return true;
     }
@@ -356,7 +371,8 @@ internal sealed partial class LibraryRuntime : IDisposable
     }
     public void Dispose()
     {
+        if (disposed) return;
         disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
-        shelf.EnvironmentRecovered -= RecoverEnvironment; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
+        shelf.EnvironmentRecovered -= RecoverEnvironment; shelf.DisplayCapacityChanged -= RefreshCapacity; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

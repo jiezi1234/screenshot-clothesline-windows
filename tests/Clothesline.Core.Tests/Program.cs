@@ -192,4 +192,27 @@ Check(HoverPreviewGeometry.Place(rightAnchor, previewWork, 1, 1600, 900, [rightA
 var narrowWork = new PixelRect(-400, 0, 400, 500); var wideCard = new PixelRect(-390, 20, 380, 190);
 Check(HoverPreviewGeometry.Place(wideCard, narrowWork, 1, 1600, 900, [wideCard]) is PixelRect downPreview && downPreview.Y > wideCard.Bottom && downPreview.Bottom <= narrowWork.Bottom, "hover shrinks below row on narrow work area");
 Check(HoverPreviewGeometry.Place(new PixelRect(0, 0, 50, 50), new PixelRect(0, 0, 50, 50), 2, 1600, 900, []) is null, "no room does not cover source or leave screen");
+foreach (var dpi in new[] { 1.0, 1.25, 1.5, 2.0, 2.5 })
+foreach (var size in new[] { .8, 1.0, 1.2 })
+foreach (var width in new[] { 400, 1920, 3840 })
+foreach (var counts in new[] { (0, 0), (25, 0), (0, 25), (1, 20), (20, 1), (20, 20), (2, 3) })
+{
+    var work = new PixelRect(-1920, -100, width, 1040);
+    var capacity = ShelfZones.DisplayCapacity(work, dpi, size);
+    var all = ShelfZones.Row(work, dpi, counts.Item1 + counts.Item2, size).ToArray();
+    Check(all.Length == Math.Min(capacity, counts.Item1 + counts.Item2)
+        && all.All(r => r.X >= work.X && r.Right <= work.Right && r.Y >= work.Y && r.Bottom <= work.Bottom)
+        && all.Zip(all.Skip(1)).All(p => p.Second.X - p.First.X >= Math.Ceiling(p.First.Width * .6))
+        && all.Zip(all.Skip(1)).Select(p => p.Second.X - p.First.X).Distinct().Count() <= 1
+        && (all.Length == 0 || Math.Abs((all[0].X - work.X) - (work.Right - all[^1].Right)) <= 1),
+        $"shared layout {counts} at {width}px, DPI {dpi}, card {size}");
+}
+var fluidWork = new PixelRect(0, 0, 1920, 1080);
+var fullRow = ShelfZones.Row(fluidWork, 1, 13);
+Check(fullRow[0].X < 960 && fullRow[^1].X > 960, "mixed cards may occupy either side of the screen");
+Check(ShelfZones.Row(fluidWork, 1, 100).Count == ShelfZones.DisplayCapacity(fluidWork, 1), "layout geometry uses the whole row independently of storage quotas");
+var sparseRow = ShelfZones.Row(fluidWork, 1, 2);
+Check(sparseRow[1].X - sparseRow[0].Right == 28 && sparseRow[0].X == 734, "two arbitrary cards form a centered adjacent pair");
+UnifiedShelfChecks.Run(Check);
+PaperStyleChecks.Run(Check);
 Console.WriteLine($"{checks} checks passed.");

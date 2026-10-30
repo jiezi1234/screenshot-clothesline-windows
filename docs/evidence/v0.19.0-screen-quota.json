@@ -1,0 +1,81 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "startup-measures-real-screen-before-applying-quota",
+      "passed": true
+    },
+    {
+      "name": "legacy-fixed-capacity-is-ignored-with-other-preferences-preserved",
+      "passed": true
+    },
+    {
+      "name": "legacy-fixed-choice-saves-as-automatic-screen-capacity",
+      "passed": true
+    },
+    {
+      "name": "upgrade-trims-each-category-independently-to-screen-half",
+      "passed": true
+    },
+    {
+      "name": "upgrade-keeps-newest-arrivals-and-all-original-files",
+      "passed": true
+    },
+    {
+      "name": "card-size-change-recomputes-both-category-quotas",
+      "passed": true
+    },
+    {
+      "name": "more-screen-space-does-not-restore-history-implicitly",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-zh-CN",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-en",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-es",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-fr",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-gl",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-pt-BR",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-ja",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-ko",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-tr",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-az",
+      "passed": true
+    },
+    {
+      "name": "capacity-is-live-readonly-and-localized-in-hi",
+      "passed": true
+    },
+    {
+      "name": "screen-quota-diagnostics-do-not-show-windows",
+      "passed": true
+    }
+  ]
+}

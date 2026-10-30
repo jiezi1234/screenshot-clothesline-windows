@@ -1,0 +1,113 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "persisted-English-applied-before-dashboard",
+      "passed": true
+    },
+    {
+      "name": "appearance-controls-have-accessible-English-names",
+      "passed": true
+    },
+    {
+      "name": "English-dashboard-has-no-untranslated-visible-labels",
+      "passed": true
+    },
+    {
+      "name": "saving-appearance-controls-persists-size-and-sound",
+      "passed": true
+    },
+    {
+      "name": "empty-rope-English-after-language-load",
+      "passed": true
+    },
+    {
+      "name": "card-size-updates-automatic-capacity",
+      "passed": true
+    },
+    {
+      "name": "large-size-overflow-keeps-records-and-files",
+      "passed": true
+    },
+    {
+      "name": "fixed-capacity-independent-of-card-size",
+      "passed": true
+    },
+    {
+      "name": "automatic-zone-limit-refreshes-after-layout-capacity-change",
+      "passed": true
+    },
+    {
+      "name": "card-native-bounds-80",
+      "passed": true
+    },
+    {
+      "name": "scaled-remove-button-inside-card-80",
+      "passed": true
+    },
+    {
+      "name": "card-keeps-base-layout-and-noactivate-80",
+      "passed": true
+    },
+    {
+      "name": "card-captions-stay-inside-view-80",
+      "passed": true
+    },
+    {
+      "name": "card-native-bounds-100",
+      "passed": true
+    },
+    {
+      "name": "scaled-remove-button-inside-card-100",
+      "passed": true
+    },
+    {
+      "name": "card-keeps-base-layout-and-noactivate-100",
+      "passed": true
+    },
+    {
+      "name": "card-captions-stay-inside-view-100",
+      "passed": true
+    },
+    {
+      "name": "card-native-bounds-120",
+      "passed": true
+    },
+    {
+      "name": "scaled-remove-button-inside-card-120",
+      "passed": true
+    },
+    {
+      "name": "card-keeps-base-layout-and-noactivate-120",
+      "passed": true
+    },
+    {
+      "name": "card-captions-stay-inside-view-120",
+      "passed": true
+    },
+    {
+      "name": "English-workspace-loads-generated-image",
+      "passed": true
+    },
+    {
+      "name": "editor-icon-controls-have-accessible-names",
+      "passed": true
+    },
+    {
+      "name": "editor-inputs-have-accessible-names",
+      "passed": true
+    },
+    {
+      "name": "language-change-persists-without-replacing-open-UI",
+      "passed": true
+    },
+    {
+      "name": "language-save-shows-restart-notice",
+      "passed": true
+    },
+    {
+      "name": "Chinese-reconstruction-uses-saved-language",
+      "passed": true
+    }
+  ]
+}

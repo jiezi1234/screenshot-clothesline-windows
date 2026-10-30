@@ -1,0 +1,201 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "clipboard-reads-literal-Unicode-not-html",
+      "passed": true
+    },
+    {
+      "name": "whitespace-only-clipboard-is-ignored",
+      "passed": true
+    },
+    {
+      "name": "text-copy-is-exact-and-marked-against-recollection",
+      "passed": true
+    },
+    {
+      "name": "single-click-copy-delivers-text-not-file-or-bitmap",
+      "passed": true
+    },
+    {
+      "name": "text-cards-use-the-same-image-card-dimensions",
+      "passed": true
+    },
+    {
+      "name": "card-keeps-full-text-with-a-bounded-thumbnail",
+      "passed": true
+    },
+    {
+      "name": "copy-from-persisted-text-keeps-whitespace-and-line-endings",
+      "passed": true
+    },
+    {
+      "name": "native-text-drag-offers-readable-txt-copy-and-retains-source",
+      "passed": true
+    },
+    {
+      "name": "brief-text-hover-does-not-open-preview",
+      "passed": true
+    },
+    {
+      "name": "text-hover-opens-complete-document-without-image-decoding",
+      "passed": true
+    },
+    {
+      "name": "text-preview-does-not-activate-window",
+      "passed": true
+    },
+    {
+      "name": "text-preview-is-directly-editable-without-show-activation",
+      "passed": true
+    },
+    {
+      "name": "text-preview-avoids-cards-and-stays-in-work-area",
+      "passed": true
+    },
+    {
+      "name": "pointer-can-remain-in-scrollable-preview",
+      "passed": true
+    },
+    {
+      "name": "long-text-preview-scrolls-to-last-lines",
+      "passed": true
+    },
+    {
+      "name": "scrollbar-button-press-does-not-dismiss-preview",
+      "passed": true
+    },
+    {
+      "name": "escape-dismisses-text-preview",
+      "passed": true
+    },
+    {
+      "name": "brief-travel-gap-keeps-preview-open",
+      "passed": true
+    },
+    {
+      "name": "leaving-both-card-and-preview-releases-text",
+      "passed": true
+    },
+    {
+      "name": "starting-text-reorder-closes-preview",
+      "passed": true
+    },
+    {
+      "name": "cancelling-text-drag-retains-files-and-cards",
+      "passed": true
+    },
+    {
+      "name": "text-edits-exclusively-in-hover-popup",
+      "passed": true
+    },
+    {
+      "name": "legacy-text-edit-route-does-not-open-another-window",
+      "passed": true
+    },
+    {
+      "name": "text-context-menu-has-no-workspace-or-edit-entry",
+      "passed": true
+    },
+    {
+      "name": "editing-marks-document-dirty",
+      "passed": true
+    },
+    {
+      "name": "save-updates-original-card",
+      "passed": true
+    },
+    {
+      "name": "invalid-edit-keeps-editor-draft-and-saved-file",
+      "passed": true
+    },
+    {
+      "name": "saved-text-refreshes-card-and-title",
+      "passed": true
+    },
+    {
+      "name": "dashboard-text-preview-is-readonly",
+      "passed": true
+    },
+    {
+      "name": "opening-same-text-reuses-readonly-preview",
+      "passed": true
+    },
+    {
+      "name": "open-text-preview-protects-file-from-history-cleanup",
+      "passed": true
+    },
+    {
+      "name": "text-history-restores-with-saved-content",
+      "passed": true
+    },
+    {
+      "name": "text-export-keeps-original-and-identical-content",
+      "passed": true
+    },
+    {
+      "name": "lock-clears-text-preview",
+      "passed": true
+    },
+    {
+      "name": "media-before-text-with-shared-page-allocation",
+      "passed": true
+    },
+    {
+      "name": "text-paging-keeps-media-page-still",
+      "passed": true
+    },
+    {
+      "name": "mixed-stack-pops-text-card-without-changing-order",
+      "passed": true
+    },
+    {
+      "name": "stacked-text-keeps-second-stage-complete-preview",
+      "passed": true
+    },
+    {
+      "name": "reading-stacked-text-keeps-card-emphasized",
+      "passed": true
+    },
+    {
+      "name": "text-drag-can-cross-midpoint-and-keeps-media-visible",
+      "passed": true
+    },
+    {
+      "name": "text-reorder-never-mixes-with-media-order",
+      "passed": true
+    },
+    {
+      "name": "media-borrows-right-space-with-one-note",
+      "passed": true
+    },
+    {
+      "name": "single-note-at-media-boundary-pops-when-overlapped",
+      "passed": true
+    },
+    {
+      "name": "text-borrows-left-space-with-one-image",
+      "passed": true
+    },
+    {
+      "name": "single-image-at-text-boundary-pops-when-overlapped",
+      "passed": true
+    },
+    {
+      "name": "text-only-uses-full-row-capacity",
+      "passed": true
+    },
+    {
+      "name": "short-final-text-page-uses-centered-row",
+      "passed": true
+    },
+    {
+      "name": "incoming-image-before-text-preserves-note-preview",
+      "passed": true
+    },
+    {
+      "name": "text-disposal-releases-all-windows",
+      "passed": true
+    }
+  ]
+}

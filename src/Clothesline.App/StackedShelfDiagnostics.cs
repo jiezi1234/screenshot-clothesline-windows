@@ -31,7 +31,7 @@ internal static class StackedShelfDiagnostics
                 var hashes = assets.Select(a => ImageFiles.Hash(a.Path)).ToArray();
                 var loads = 0;
                 using var shelf = new ShelfController(() => true, (_, _) => { loads++; return Task.FromResult(assets[0].Image); }) { SuppressFullscreen = false, ReduceMotion = true };
-                shelf.SetItems(assets.Select((a, i) => a with { EntryId = "sparse-" + i }), true);
+                shelf.SetItems(assets.Take(1).Select((a, i) => a with { EntryId = "sparse-" + i }), true);
                 CardWindow Card(string id) => app.Windows.OfType<CardWindow>().Single(c => c.Item.EntryId == id);
                 PixelRect Bounds(Window w) { Native.GetWindowRect(new WindowInteropHelper(w).Handle, out var rect); return rect.Pixels; }
                 nint Hit(PixelPoint p) => Native.WindowFromPoint(new Native.Point { X = p.X, Y = p.Y });

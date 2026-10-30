@@ -1,0 +1,121 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "internal-gap-neighbors-lean-outward-around-pins",
+      "passed": true
+    },
+    {
+      "name": "preview-does-not-write-or-reorder-library",
+      "passed": true
+    },
+    {
+      "name": "steady-drag-reuses-hwnd-placement-and-thumbnails",
+      "passed": true
+    },
+    {
+      "name": "preview-does-not-move-real-card-hwnds",
+      "passed": true
+    },
+    {
+      "name": "held-image-follows-pointer-without-easing-lag",
+      "passed": true
+    },
+    {
+      "name": "neighbor-tilt-settles-and-releases-clocks",
+      "passed": true
+    },
+    {
+      "name": "preview-snapshots-contain-visible-card-pixels",
+      "passed": true
+    },
+    {
+      "name": "release-commits-once-and-animates-landing",
+      "passed": true
+    },
+    {
+      "name": "release-completes-and-cleans-preview",
+      "passed": true
+    },
+    {
+      "name": "committed-order-matches-library-and-visible-cards",
+      "passed": true
+    },
+    {
+      "name": "escape-restores-order-and-opacity",
+      "passed": true
+    },
+    {
+      "name": "leaving-rope-hands-off-to-native-copy-without-commit",
+      "passed": true
+    },
+    {
+      "name": "external-image-gap-also-tilts-both-neighbors",
+      "passed": true
+    },
+    {
+      "name": "incoming-preview-defers-library-refresh",
+      "passed": true
+    },
+    {
+      "name": "rapid-reversals-settle-at-latest-gap-without-stale-clocks",
+      "passed": true
+    },
+    {
+      "name": "reduce-motion-updates-existing-incoming-preview",
+      "passed": true
+    },
+    {
+      "name": "hide-restores-all-real-cards",
+      "passed": true
+    },
+    {
+      "name": "hide-cancels-active-gesture-immediately",
+      "passed": true
+    },
+    {
+      "name": "live-input-session-captures-on-stationary-overlay",
+      "passed": true
+    },
+    {
+      "name": "cancel-releases-capture-and-render-listener",
+      "passed": true
+    },
+    {
+      "name": "fast-first-move-outside-band-does-not-capture-after-handoff",
+      "passed": true
+    },
+    {
+      "name": "reduce-motion-has-no-tilt-or-animation-clocks",
+      "passed": true
+    },
+    {
+      "name": "failed-write-cleans-up-with-original-order",
+      "passed": true
+    },
+    {
+      "name": "cross-page-preview-keeps-held-image-visible",
+      "passed": true
+    },
+    {
+      "name": "returning-to-page-stops-real-card-entry-animations",
+      "passed": true
+    },
+    {
+      "name": "cross-page-drop-persists-and-shows-moved-card",
+      "passed": true
+    },
+    {
+      "name": "lock-cancels-without-invisible-cards",
+      "passed": true
+    },
+    {
+      "name": "gesture-tests-preserve-original-files",
+      "passed": true
+    },
+    {
+      "name": "disposal-resolves-active-gesture-and-closes-preview",
+      "passed": true
+    }
+  ]
+}

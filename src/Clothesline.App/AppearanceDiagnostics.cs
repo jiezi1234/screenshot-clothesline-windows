@@ -29,7 +29,7 @@ internal static class AppearanceDiagnostics
             try
             {
                 var root = Path.Combine(directory, "library-" + Guid.NewGuid().ToString("N"));
-                using (var store = new LibraryStore(root)) store.SaveSettings(new LibrarySettings { Language = "en", Capacity = 100 });
+                using (var store = new LibraryStore(root)) store.SaveSettings(new LibrarySettings { ClipboardEnabled = false, Language = "en", Capacity = 100 });
                 using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, root);
                 Check("persisted-English-applied-before-dashboard", UiText.Language == "en");
                 dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true };
@@ -48,17 +48,22 @@ internal static class AppearanceDiagnostics
                 rope = new RopeWindow { ShowEmptyHint = true }; var dpi = Native.MoveAndGetScale(rope, monitor);
                 rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)(100 * dpi)), false); rope.UpdateLayout();
                 Check("empty-rope-English-after-language-load", Descendants(rope).OfType<TextBlock>().Any(t => t.Text == "No images yet"));
-                Check("card-size-updates-automatic-capacity", shelf.DisplayCapacity == DesktopGeometry.Cards(monitor.WorkArea, dpi, 100, 1.2).Count);
+                Check("card-size-updates-automatic-capacity", shelf.DisplayCapacity == ShelfZones.DisplayCapacity(monitor.WorkArea, dpi, 1.2));
                 Render((FrameworkElement)rope.Content, Path.Combine(directory, "empty-en.png")); rope.Close(); rope = null;
                 var fixture = DemoAssets.Create(Path.Combine(directory, "fixtures"))[0] with { Title = "Fixture image.png", Subtitle = "External file · Scroll for pages" };
                 var total = shelf.DisplayCapacity + 3;
                 for (var i = 0; i < total; i++) runtime.Store.Add(fixture.Path, Ownership.External, "Fixture", "size-" + i, LibraryRuntime.Now + i, 100);
                 runtime.ApplySettings(runtime.Settings with { Capacity = 0, CardSizePercent = 120 });
-                Check("large-size-overflow-keeps-records-and-files", runtime.Store.Entries(EntryState.Shelf).Count == shelf.DisplayCapacity && runtime.Store.Entries(EntryState.History).Count == 3 && runtime.Store.Entries().Count == total && File.Exists(fixture.Path));
+                Check("large-size-overflow-keeps-records-and-files", runtime.Store.Entries(EntryState.Shelf).Count == runtime.TypeCapacity && runtime.Store.Entries(EntryState.History).Count == total - runtime.TypeCapacity && runtime.Store.Entries().Count == total && File.Exists(fixture.Path));
                 runtime.ApplySettings(runtime.Settings with { Capacity = 25, CardSizePercent = 80 });
                 foreach (var entry in runtime.Store.Entries(EntryState.History)) runtime.Store.Restore(entry.Id, 25, LibraryRuntime.Now);
                 runtime.ApplySettings(runtime.Settings with { CardSizePercent = 120 });
-                Check("fixed-capacity-independent-of-card-size", runtime.Store.Entries(EntryState.Shelf).Count == total && runtime.Capacity == 25);
+                Check("legacy-fixed-capacity-follows-screen-and-type-quota", runtime.Store.Entries(EntryState.Shelf).Count == runtime.TypeCapacity && runtime.Capacity == shelf.DisplayCapacity && runtime.Settings.Capacity == 0);
+                runtime.ApplySettings(runtime.Settings with { Capacity = 0, CardSizePercent = 80 });
+                var oldCapacity = shelf.DisplayCapacity; var capacityEvents = 0;
+                shelf.DisplayCapacityChanged += () => capacityEvents++;
+                shelf.SetCardSize(120); await Task.Delay(200);
+                Check("category-limit-refreshes-after-layout-capacity-change", runtime.Store.Entries(EntryState.Shelf).Count <= runtime.TypeCapacity && (oldCapacity == shelf.DisplayCapacity || capacityEvents == 1));
                 card = new CardWindow(fixture);
                 foreach (var percent in new[] { 80, 100, 120 })
                 {

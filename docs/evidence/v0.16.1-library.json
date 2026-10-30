@@ -1,0 +1,85 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "native-recycle-generated-fixture",
+      "passed": true
+    },
+    {
+      "name": "100-valid-pngs-collected",
+      "passed": true
+    },
+    {
+      "name": "capacity25-media12-history88",
+      "passed": true
+    },
+    {
+      "name": "source100-files-preserved",
+      "passed": true
+    },
+    {
+      "name": "restore-real-image",
+      "passed": true
+    },
+    {
+      "name": "shelf-thumbnail-count",
+      "passed": true
+    },
+    {
+      "name": "drag-offers-copy-without-move-or-link",
+      "passed": true
+    },
+    {
+      "name": "drag-shell-data-contains-readable-original",
+      "passed": true
+    },
+    {
+      "name": "drag-copy-preserves-original-and-shelf-entry",
+      "passed": true
+    },
+    {
+      "name": "cancelled-drag-preserves-original-and-shelf-entry",
+      "passed": true
+    },
+    {
+      "name": "unexpected-move-result-preserves-original-and-shelf-entry",
+      "passed": true
+    },
+    {
+      "name": "failed-drag-preserves-original-and-shelf-entry",
+      "passed": true
+    },
+    {
+      "name": "thumbnail-bounded-original-unchanged",
+      "passed": true
+    },
+    {
+      "name": "export-never-overwrites",
+      "passed": true
+    },
+    {
+      "name": "clipboard-canonical-png-roundtrip",
+      "passed": true
+    },
+    {
+      "name": "managed-file-readable-original-dimensions",
+      "passed": true
+    },
+    {
+      "name": "clipboard-first-file-duplicate-merges",
+      "passed": true
+    },
+    {
+      "name": "native-recycle-managed-expiry",
+      "passed": true
+    },
+    {
+      "name": "native-sink-rejects-permanent-delete",
+      "passed": true
+    },
+    {
+      "name": "clipboard-privacy-default-off",
+      "passed": true
+    }
+  ]
+}

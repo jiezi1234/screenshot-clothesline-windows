@@ -42,7 +42,7 @@ internal static class DragDropDiagnostics
                 using (var shelf = new ShelfController { SuppressFullscreen = false, ReduceMotion = true })
                 using (var runtime = new LibraryRuntime(shelf, Path.Combine(root, "library")))
                 {
-                    runtime.ApplySettings(new LibrarySettings { Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true });
+                    runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true });
                     shelf.Start(false);
                     var target = app.Windows.OfType<ShelfDropWindow>().Single();
                     var monitor = Native.MonitorAt(Native.Cursor);
@@ -106,6 +106,16 @@ internal static class DragDropDiagnostics
                     var corrupt = Path.Combine(root, "corrupt.png"); File.WriteAllText(corrupt, "invalid image");
                     await runtime.ImportDroppedImages([corrupt, paths[1]], null);
                     Check("bad-image-does-not-stop-following-valid-file", runtime.Store.Entries().Count == 3 && runtime.Store.Entries(EntryState.Shelf).Last().Path == paths[1] && File.Exists(corrupt));
+                    await runtime.Collector.ImportText("Generated note on the left", runtime.Settings.MaxManagedBytes);
+                    await runtime.Collector.ImportText("Generated note on the right", runtime.Settings.MaxManagedBytes);
+                    var notes = runtime.Store.Entries(EntryState.Shelf).Where(e => MediaFiles.IsText(e.Path)).ToArray();
+                    await runtime.ImportDroppedImages([paths[0]], notes[1].Id);
+                    var mixedPaths = runtime.Store.Entries(EntryState.Shelf).Select(e => e.Path).ToArray();
+                    var anchor = Array.IndexOf(mixedPaths, notes[1].Path);
+                    Check("external-image-inserts-between-text-cards", anchor >= 2 && mixedPaths[anchor - 1] == paths[0] && mixedPaths[anchor - 2] == notes[0].Path);
+                    runtime.ArchiveBatch(notes[1].Id, ArchiveScope.Left);
+                    Check("archive-left-follows-mixed-visual-order-and-keeps-files", runtime.Store.Find(notes[0].Id)!.State == EntryState.History
+                        && runtime.Store.Entries(EntryState.Shelf).First().Id == notes[1].Id && mixedPaths.All(File.Exists));
                     shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionLock);
                     var lockedDrop = Event(target, data, DragDrop.PreviewDragOverEvent);
                     Check("session-lock-hides-and-rejects-drop", !target.IsVisible && !shelf.Visible && lockedDrop.Effects == DragDropEffects.None);
@@ -115,11 +125,12 @@ internal static class DragDropDiagnostics
                 using (var shelf = new ShelfController { SuppressFullscreen = false, ReduceMotion = true })
                 using (var runtime = new LibraryRuntime(shelf, Path.Combine(root, "overflow")))
                 {
-                    runtime.ApplySettings(new LibrarySettings { Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true }); shelf.Start(false);
-                    var batch = Enumerable.Range(0, 27).Select(i => Path.Combine(root, $"batch-{i:D2}.png")).ToArray();
+                    runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, Capacity = 25, Paused = true, ShowNew = false, SuppressFullscreen = false, ReduceMotion = true }); shelf.Start(false);
+                    var quota = runtime.TypeCapacity;
+                    var batch = Enumerable.Range(0, quota + 2).Select(i => Path.Combine(root, $"batch-{i:D2}.png")).ToArray();
                     foreach (var path in batch) File.Copy(paths[0], path);
                     await runtime.ImportDroppedImages(batch, null);
-                    Check("overflow-drop-keeps-last-25-in-payload-order", runtime.Store.Entries(EntryState.Shelf).Select(e => e.Path).SequenceEqual(batch.Skip(2)));
+                    Check("overflow-drop-keeps-screen-media-quota-in-payload-order", runtime.Store.Entries(EntryState.Shelf).Select(e => e.Path).SequenceEqual(batch.Skip(2)));
                     Check("overflow-goes-to-history-with-all-files-kept", runtime.Store.Entries(EntryState.History).Count == 2 && batch.All(File.Exists));
                     var monitor = Native.MonitorAt(Native.Cursor);
                     var right = new PixelPoint(monitor.WorkArea.Right - 20, monitor.WorkArea.Y + 70);
@@ -127,13 +138,13 @@ internal static class DragDropDiagnostics
                     shelf.UpdateDropFeedback(right, 0);
                     string FirstVisible() => shelf.OrderedIds.First(id => app.Windows.OfType<CardWindow>().Any(c => c.IsVisible && c.Item.EntryId == id));
                     var firstPage = FirstVisible(); shelf.UpdateDropFeedback(right, 649);
-                    Check("drag-edge-does-not-flip-page-before-dwell", FirstVisible() == firstPage);
+                    Check("drag-edge-keeps-current-row-before-dwell", FirstVisible() == firstPage);
                     shelf.UpdateDropFeedback(right, 650);
-                    Check("drag-edge-dwell-advances-page", FirstVisible() == shelf.OrderedIds[shelf.DisplayCapacity]);
+                    Check("screen-quota-fits-one-row-after-right-edge-dwell", FirstVisible() == firstPage && shelf.OrderedIds.Length == quota);
                     shelf.UpdateDropFeedback(left, 700); shelf.UpdateDropFeedback(left, 1350);
-                    Check("drag-edge-dwell-can-return-to-previous-page", FirstVisible() == firstPage);
+                    Check("screen-quota-fits-one-row-after-left-edge-dwell", FirstVisible() == firstPage);
                     for (var i = 0; i < 40; i++) shelf.UpdateDropFeedback(right, 2000 + i * 650);
-                    Check("drag-page-clamps-at-short-final-page", app.Windows.OfType<CardWindow>().Count(c => c.IsVisible) == (25 - 1) % shelf.DisplayCapacity + 1);
+                    Check("repeated-edge-dwell-preserves-all-retained-cards", app.Windows.OfType<CardWindow>().Count(c => c.IsVisible) == quota);
                     var target = app.Windows.OfType<ShelfDropWindow>().Single();
                     Check("drag-feedback-renders-cards-making-room", target.PreviewCount == app.Windows.OfType<CardWindow>().Count(c => c.IsVisible));
                     shelf.Hide(); Check("manual-hide-dismisses-drop-target", !target.IsVisible);

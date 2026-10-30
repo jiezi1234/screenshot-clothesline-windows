@@ -3,7 +3,7 @@ using Clothesline.Core;
 
 namespace Clothesline.Storage;
 
-public sealed class CollectionEngine : IDisposable
+public sealed partial class CollectionEngine : IDisposable
 {
     private readonly LibraryStore store;
     private readonly Func<string, string> imageHash;
@@ -182,7 +182,17 @@ public sealed class CollectionEngine : IDisposable
         }
         finally { importLock.Release(); }
     }
-    public async Task<bool> ImportClipboard(byte[] png, string hash, long limit, CancellationToken cancellation = default)
+    public Task<bool> ImportClipboard(byte[] png, string hash, long limit, CancellationToken cancellation = default)
+        => ImportManaged(png, hash, limit, null, cancellation);
+    public Task<bool> ImportText(string text, long limit, CancellationToken cancellation = default)
+        => ImportManaged(TextContent.Encode(text), TextContent.Hash(text), limit, text, cancellation);
+    public async Task<string> SaveText(string id, string text, string expectedHash, long limit, CancellationToken cancellation = default)
+    {
+        await importLock.WaitAsync(cancellation).ConfigureAwait(false);
+        try { var hash = await Task.Run(() => store.SaveText(id, text, expectedHash, limit), cancellation).ConfigureAwait(false); Changed?.Invoke(); return hash; }
+        finally { importLock.Release(); }
+    }
+    private async Task<bool> ImportManaged(byte[] png, string hash, long limit, string? text, CancellationToken cancellation)
     {
         await importLock.WaitAsync(cancellation).ConfigureAwait(false);
         try
@@ -190,13 +200,14 @@ public sealed class CollectionEngine : IDisposable
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if (store.Entries().Any(e => e.Source != LibraryStore.OriginalSource && e.Hash == hash && now - e.AddedAt < 5000 && !e.Missing)) return false;
             var used = Directory.EnumerateFiles(store.ManagedFolder).Sum(p => new FileInfo(p).Length);
-            if (used + png.Length > limit) { Status?.Invoke(T("自管图片已达到存储上限，暂停新增剪贴板图片；可导出或清理历史后重试。")); return false; }
-            var id = Guid.NewGuid().ToString("N"); var path = Path.Combine(store.ManagedFolder, $"clip-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{id}.png");
-            store.Add(path, Ownership.Managed, "Clipboard", hash, now, capacity(), EntryState.Pending, id);
+            if (used + png.Length > limit) { Status?.Invoke(T("自管内容空间不足，请增加上限或清理历史后重试。")); return false; }
+            var id = Guid.NewGuid().ToString("N"); var path = Path.Combine(store.ManagedFolder, $"clip-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{id}" + (text is null ? ".png" : ".txt"));
+            store.Add(path, Ownership.Managed, text is null ? "Clipboard" : LibraryStore.TextSource, hash, now, capacity(), EntryState.Pending, id);
             try
             {
                 using (var file = new FileStream(path + ".part", FileMode.CreateNew, FileAccess.Write, FileShare.None)) { await file.WriteAsync(png, cancellation).ConfigureAwait(false); file.Flush(true); }
                 File.Move(path + ".part", path);
+                if (text is not null) store.UpdateTextMetadata(id, text);
                 store.CompleteManaged(id, capacity(), now); Changed?.Invoke(); CaptureAdded?.Invoke(); return true;
             }
             catch (Exception ex) { store.FailManaged(id, T("保存未完成：") + ex.Message); Changed?.Invoke(); throw; }

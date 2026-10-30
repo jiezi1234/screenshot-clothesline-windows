@@ -22,7 +22,7 @@ internal sealed partial class Dashboard : Window
     private readonly TextBlock pageTitle = new(), pageDescription = new(), collectionState = new(), status = new(), draftStatus = new();
     private readonly TextBox screenshot = new(), videoFolder = new(), showShortcut = new(), hideShortcut = new(), historySearch = new();
     private readonly TextBox[] extras = [new(), new(), new()];
-    private readonly CheckBox clipboard = new() { Content = T("收集剪贴板纯图片（默认关闭）") };
+    private readonly CheckBox clipboard = new() { Content = T("收集剪贴板图片和文字（默认开启）") };
     private readonly CheckBox popup = new() { Content = T("新项目加入时短暂展开") };
     private readonly CheckBox full = new() { Content = T("全屏时自动收起") };
     private readonly CheckBox motion = new() { Content = T("减少动画") };
@@ -33,7 +33,7 @@ internal sealed partial class Dashboard : Window
     private static readonly int[] protectionDurations = RevealGate.ProtectionSecondsOptions.ToArray();
     private readonly ComboBox protection = new() { ItemsSource = protectionDurations.Select(seconds => seconds == RevealGate.DefaultProtectionSeconds ? T("{0} 秒（默认）", seconds) : T("{0} 秒", seconds)).ToArray() };
     private readonly ComboBox language = new() { ItemsSource = Clothesline.Core.UiText.Languages, DisplayMemberPath = "Name", SelectedValuePath = "Code" };
-    private readonly ComboBox capacity = new() { ItemsSource = new[] { T("自动：当前屏幕一排"), T("25 项"), T("50 项"), T("100 项") } };
+    private readonly TextBlock capacity = new() { Text = T("自动：当前屏幕一排"), TextWrapping = TextWrapping.Wrap, FontSize = 14 };
     private readonly ComboBox retention = new() { ItemsSource = new[] { T("永久保留（不自动清理）"), T("取下 7 天后清理"), T("取下 30 天后清理") } };
     private readonly ComboBox storage = new() { ItemsSource = new[] { "512 MiB", "1 GiB", "2 GiB" } };
     private readonly TextBlock interactionHint = new();
@@ -111,8 +111,9 @@ internal sealed partial class Dashboard : Window
         capture.Children.Add(new Expander { Header = T("额外目录：最多 3 个，不包含子目录"), Content = extra });
         var video = Stack(); video.Children.Add(FolderRow(videoFolder)); video.Children.Add(Text(T("支持 H.264 视频与 AAC 音频或无音轨，最高 4K、单文件 2 GiB。首次选择不导入旧录像；留空关闭。"), 12, true, new Thickness(0, 10, 0, 0)));
         var behavior = Stack(); foreach (var check in new[] { clipboard, popup, full }) behavior.Children.Add(check);
-        var limits = Stack(); limits.Children.Add(Field(T("晾衣绳容量"), capacity)); limits.Children.Add(Field(T("历史期限"), retention)); limits.Children.Add(Field(T("自管图片上限"), storage));
-        limits.Children.Add(Text(T("取下或超出容量会进入历史。到期时外部原文件保留；应用保存的图片仅尝试移入回收站，失败保留记录。"), 12, true));
+        var limits = Stack(); limits.Children.Add(Field(T("晾衣绳容量"), capacity)); limits.Children.Add(Field(T("历史期限"), retention)); limits.Children.Add(Field(T("自管内容上限"), storage));
+        limits.Children.Add(Text(T("两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。"), 12, true));
+        limits.Children.Add(Text(T("取下或超出容量会进入历史。到期时外部原文件保留；应用保存的内容仅尝试移入回收站，失败保留记录。"), 12, true));
         return Scroll(Card(T("截图目录"), capture), Card(T("录像目录"), video), Card(T("收集行为"), behavior), Card(T("容量与历史"), limits));
     }
     private FrameworkElement DesktopSettingsPanel()
@@ -129,7 +130,7 @@ internal sealed partial class Dashboard : Window
     private FrameworkElement AppearancePanel()
     {
         var visual = Stack(); visual.Children.Add(Field(T("卡片大小"), cardSize)); visual.Children.Add(motion); motion.ToolTip = T("关闭卡片入场、摆动、取下及绳线淡入；Windows 关闭动画时也会自动停用。鼠标进入卡片时立即停稳。");
-        visual.Children.Add(Text(T("大小立即生效；自动容量会随每排可显示数量调整，超出的图片进入历史。"), 12, true, new Thickness(0, 8, 0, 0)));
+        visual.Children.Add(Text(T("大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。"), 12, true, new Thickness(0, 8, 0, 0)));
         var timing = Field(T("展开保护期"), protection); timing.Margin = new Thickness(0, 18, 0, 8); visual.Children.Add(timing);
         visual.Children.Add(Text(T("给鼠标移入晾衣绳预留时间；保存后立即生效，已展开时重新计时。"), 12, true));
         var audio = Stack(); audio.Children.Add(sound); audio.Children.Add(Text(T("连续收集最多每 2 秒播放一次；暂停或当前屏幕全屏时静音。提示音遵循 Windows 声音方案和音量设置。"), 12, true, new Thickness(0, 8, 0, 0)));
@@ -146,7 +147,7 @@ internal sealed partial class Dashboard : Window
         var edit = Button(T("编辑图片…"), () => Selected(e => library?.OpenWorkspace(e.Id, true)));
         var more = More((T("导出…"), () => Selected(e => library?.Export(e.Path))), (T("定位"), () => Selected(e => ShellTransfer.Reveal(e.Path))), (T("移除记录"), () => Selected(e => library?.Forget(e.Id))), (T("回收文件"), () => Selected(e => library?.Recycle(e.Id))));
         foreach (var button in new[] { restore, preview, edit, more }) actions.Children.Add(button);
-        void Selection() { var entry = (history.SelectedItem as HistoryRow)?.Entry; preview.IsEnabled = restore.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && !Clothesline.Core.MediaFiles.IsVideo(entry.Path); }
+        void Selection() { var entry = (history.SelectedItem as HistoryRow)?.Entry; preview.IsEnabled = restore.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && Clothesline.Core.MediaFiles.IsImage(entry.Path); edit.Visibility = entry is not null && Clothesline.Core.MediaFiles.IsText(entry.Path) ? Visibility.Collapsed : Visibility.Visible; }
         history.SelectionChanged += (_, _) => Selection(); Selection();
         history.MouseDoubleClick += (_, _) => Selected(Preview); history.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Selected(Preview); e.Handled = true; } };
         history.ItemTemplate = MediaTemplate(true); panel.Children.Add(ListSurface(history, historyEmpty)); return panel;
@@ -159,7 +160,7 @@ internal sealed partial class Dashboard : Window
         var edit = Button(T("编辑图片…"), () => SelectedShelf(e => library?.OpenWorkspace(e.Id, true)));
         var more = More((T("导出…"), () => SelectedShelf(e => library?.Export(e.Path))), (T("定位"), () => SelectedShelf(e => ShellTransfer.Reveal(e.Path))), (T("取下（保留文件）"), () => SelectedShelf(e => library?.Archive(e.Id))), (T("全部取下"), () => library?.ArchiveBatch()));
         foreach (var button in new[] { copy, preview, edit, more }) actions.Children.Add(button);
-        void Selection() { var entry = shelfList.SelectedItem as LibraryEntry; copy.IsEnabled = preview.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && !Clothesline.Core.MediaFiles.IsVideo(entry.Path); }
+        void Selection() { var entry = shelfList.SelectedItem as LibraryEntry; copy.IsEnabled = preview.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && Clothesline.Core.MediaFiles.IsImage(entry.Path); edit.Visibility = entry is not null && Clothesline.Core.MediaFiles.IsText(entry.Path) ? Visibility.Collapsed : Visibility.Visible; }
         shelfList.SelectionChanged += (_, _) => Selection(); Selection();
         var note = Text(T("方向键选择，Enter 预览，Ctrl+C 复制，Delete 取下到历史。文件保留。"), 11, true, new Thickness(0, 14, 0, 0)); DockPanel.SetDock(note, Dock.Bottom); panel.Children.Add(note);
         AutomationProperties.SetName(shelfList, T("晾衣绳列表")); AutomationProperties.SetHelpText(shelfList, note.Text);

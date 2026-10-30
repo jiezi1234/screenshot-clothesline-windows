@@ -73,7 +73,8 @@ internal static class TextCardDiagnostics
                 Check("text-hover-opens-complete-document-without-image-decoding", popup.IsVisible && popup.PreviewText == longText && !imagePopup.IsVisible);
                 Check("text-preview-does-not-activate-window", Native.GetForegroundWindow() == foreground);
                 var previewStyle = Native.GetWindowLongPtrW(new WindowInteropHelper(popup).Handle, -20).ToInt64();
-                Check("text-preview-is-interactive-nonactivating-toolwindow", (previewStyle & 0x08080080) == 0x08080080 && (previewStyle & 0x20) == 0);
+                Check("text-preview-is-directly-editable-without-show-activation", (previewStyle & 0x80080) == 0x80080 && (previewStyle & 0x20) == 0
+                    && !popup.ShowActivated && popup.IsEditing && !popup.TextView.IsReadOnly);
                 Check("text-preview-avoids-cards-and-stays-in-work-area", Bounds(popup).X >= monitor.WorkArea.X && Bounds(popup).Right <= monitor.WorkArea.Right && Bounds(popup).Bottom <= monitor.WorkArea.Bottom && !HoverPreviewGeometry.Overlaps(Bounds(popup), home));
                 var popupPoint = Center(popup);
                 shelf.TrackHoverPreview(1450, popupPoint, false, false);

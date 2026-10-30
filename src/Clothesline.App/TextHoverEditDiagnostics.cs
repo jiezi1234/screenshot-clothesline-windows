@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Clothesline.Core;
@@ -45,8 +46,21 @@ internal static class TextHoverEditDiagnostics
                 window.SetPreview(Item(original)); Render(window, directory, "preview", 560, 440);
                 var handle = new WindowInteropHelper(window).EnsureHandle();
                 bool NonActivating() => (Native.GetWindowLongPtrW(handle, -20).ToInt64() & 0x08000000) != 0;
-                Check("hover-remains-readonly-without-keyboard-activation", NonActivating() && !window.AcceptsKeyboard && window.TextView.IsReadOnly && !window.TextView.Focusable);
-                Check("edit-starts-in-the-same-paper-preview", window.BeginEdit() && !NonActivating() && window.IsEditing && window.AcceptsKeyboard && !window.TextView.IsReadOnly && window.TextView.Focusable && leases == 1);
+                Check("hover-is-immediately-editable-without-an-edit-button", !NonActivating() && window.IsEditing && window.AcceptsKeyboard && !window.TextView.IsReadOnly && window.TextView.Focusable && leases == 1
+                    && !UiAccessibility.Descendants((FrameworkElement)window.Content).OfType<Button>().Any(b => (string)b.Content == UiText.T("编辑文字")));
+                Check("hover-prepares-input-without-activating-or-focusing", !window.ShowActivated && !window.IsActive && !window.TextView.IsKeyboardFocused);
+                IDataObject? copied = null; window.CopyToClipboard = data => copied = data;
+                var selected = "文字 🧺"; window.TextView.Select(original.IndexOf(selected, StringComparison.Ordinal), selected.Length);
+                ApplicationCommands.Copy.Execute(null, window.TextView);
+                Check("copy-command-copies-only-selection-and-marks-it-against-recollection", copied?.GetData(DataFormats.UnicodeText) as string == selected
+                    && ClipboardPolicy.Select(copied.GetFormats(false), _ => null) == ClipboardContentKind.None && !window.Dirty);
+                var copyMenu = (MenuItem)window.TextView.ContextMenu!.Items[0];
+                Check("right-click-copy-uses-the-same-selection-command", copyMenu.Command == ApplicationCommands.Copy && copyMenu.CommandTarget == window.TextView);
+                window.TextView.Select(0, 0); Check("copy-with-no-selection-is-disabled", !ApplicationCommands.Copy.CanExecute(null, window.TextView));
+                window.TextView.Select(0, 3); window.CopyToClipboard = _ => throw new IOException("Fixture clipboard busy");
+                ApplicationCommands.Cut.Execute(null, window.TextView);
+                Check("failed-selection-cut-keeps-original-text", window.TextView.Text == original);
+                window.CopyToClipboard = data => copied = data;
                 var saved = "在预览里编辑 🧺\r\nSaved in the same note.";
                 window.TextView.Text = saved;
                 Check("typing-marks-inline-draft-dirty", window.Dirty);
@@ -58,9 +72,13 @@ internal static class TextHoverEditDiagnostics
                 Render(window, directory, "editing", 560, 440);
                 Check("save-updates-original-file-and-card-identity", await window.Save() && TextContent.Read(entry.Path) == saved
                     && store.Find(entry.Id)!.AddedAt == entry.AddedAt && store.Find(entry.Id)!.Title == "在预览里编辑 🧺");
-                Check("successful-save-returns-to-nonactivating-preview", NonActivating() && !window.IsEditing && !window.AcceptsKeyboard && window.TextView.IsReadOnly && !window.TextView.Focusable && window.PreviewText == saved && leases == 0);
+                Check("manual-save-keeps-popup-ready-for-further-editing", window.IsEditing && !window.TextView.IsReadOnly && !window.Dirty && leases == 1);
+                Check("leaving-clean-preview-releases-file-and-input", await window.SaveAndDismiss() && NonActivating() && !window.IsEditing && !window.AcceptsKeyboard && window.PreviewText.Length == 0 && leases == 0);
+                window.SetPreview(Item(saved)); window.TextView.Text = saved + "\nAutomatic save.";
+                Check("leaving-dirty-preview-saves-original-and-closes", await window.SaveAndDismiss() && !window.IsEditing && leases == 0 && TextContent.Read(entry.Path) == saved + "\nAutomatic save.");
+                saved += "\nAutomatic save.";
                 window.SetPreview(Item(saved)); window.BeginEdit(); window.TextView.Text = " \r\n";
-                Check("invalid-save-keeps-draft-and-original-file", !await window.Save() && window.Dirty && window.EditStatus.Length > 0 && TextContent.Read(entry.Path) == saved && leases == 1);
+                Check("failed-auto-save-keeps-draft-session-and-original-file", !await window.SaveAndDismiss() && window.SaveFailed && window.Dirty && window.EditStatus.Length > 0 && TextContent.Read(entry.Path) == saved && leases == 1);
                 Check("explicit-cancel-restores-original-preview", window.TryEndEditing(() => true) && window.PreviewText == saved && !window.AcceptsKeyboard && leases == 0);
                 window.SetPreview(Item(saved)); window.BeginEdit(); window.TextView.Text = "stale draft";
                 File.WriteAllText(entry.Path, "external change", TextContent.Encoding);
@@ -73,13 +91,57 @@ internal static class TextHoverEditDiagnostics
                 var completion = new TaskCompletionSource<string>();
                 window.StartEdit = item => Session(item, (_, _) => completion.Task);
                 window.SetPreview(Item("external change")); window.BeginEdit(); window.TextView.Text = "pending write";
-                var pending = window.Save();
+                var pending = window.SaveAndDismiss();
                 Check("pending-save-disables-editing-and-discard", window.Saving && window.TextView.IsReadOnly && !window.TryEndEditing(() => true) && !await window.Save());
                 window.Dismiss();
                 Check("hiding-during-save-does-not-drop-session", window.IsEditing && leases == 1 && window.PreviewText == "pending write");
                 completion.SetResult(TextContent.Hash("pending write"));
                 Check("save-completion-releases-hidden-editor", await pending && !window.IsEditing && leases == 0 && !window.AcceptsKeyboard);
                 window.Dismiss(); Check("finished-preview-clears-on-dismissal", window.PreviewText.Length == 0);
+                completion = new TaskCompletionSource<string>();
+                window.StartEdit = item => Session(item, (_, _) => completion.Task);
+                window.SetPreview(Item(original)); window.TextView.Text = "Manual save then close";
+                var manualSave = window.Save(); var closeDuringSave = window.SaveAndDismiss();
+                completion.SetResult(TextContent.Hash(window.PreviewText));
+                Check("close-during-manual-save-waits-for-the-same-write", await manualSave && await closeDuringSave && !window.IsEditing && leases == 0);
+                using (var hover = new ShelfTextHover())
+                {
+                    var popup = app.Windows.OfType<TextHoverWindow>().Single(w => w != window);
+                    var writes = 0; var write = new TaskCompletionSource<string>();
+                    hover.StartEdit = item => Session(item, (_, _) => { writes++; return write.Task; });
+                    popup.SetPreview(Item(original));
+                    hover.UpdatePointer(1000, false, true, true, true, false);
+                    Check("moving-from-card-to-popup-keeps-travel-grace", hover.UpdatePointer(1200, false, false, false, true, false) && popup.IsEditing);
+                    popup.TextView.Text = "Leave and return";
+                    hover.UpdatePointer(2000, false, false, false, false, false);
+                    hover.UpdatePointer(2100, false, false, false, false, false);
+                    Check("mouse-leave-starts-only-one-save", writes == 1 && popup.Saving && leases == 1);
+                    hover.UpdatePointer(2200, true, false, false, true, false);
+                    write.SetResult(TextContent.Hash(popup.PreviewText)); await Task.Delay(10);
+                    Check("returning-during-save-keeps-popup-editable", popup.IsEditing && !popup.Saving && !popup.Dirty && !popup.TextView.IsReadOnly && leases == 1);
+                    hover.UpdatePointer(3000, false, false, false, false, false);
+                    Check("leaving-after-return-closes-clean-popup", !popup.IsEditing && popup.PreviewText.Length == 0 && leases == 0 && writes == 1);
+                    write = new TaskCompletionSource<string>(); popup.SetPreview(Item(original)); popup.TextView.Text = "Leave twice";
+                    hover.UpdatePointer(4000, false, false, false, false, false);
+                    hover.UpdatePointer(4100, true, false, false, true, false);
+                    hover.UpdatePointer(4200, false, false, false, false, false);
+                    write.SetResult(TextContent.Hash(popup.PreviewText)); await Task.Delay(10);
+                    Check("leaving-again-during-save-still-closes-after-write", !popup.IsEditing && leases == 0);
+                    var failures = 0;
+                    hover.StartEdit = item => Session(item, (_, _) => { failures++; throw new IOException("Fixture save failed"); });
+                    popup.SetPreview(Item(original)); popup.TextView.Text = "Keep failed draft";
+                    hover.UpdatePointer(5000, false, false, false, false, false);
+                    hover.UpdatePointer(6000, false, false, false, false, false);
+                    Check("failed-leave-save-retains-draft-without-retry-loop", failures == 1 && popup.SaveFailed && popup.Dirty && leases == 1);
+                    popup.TextView.Text += " corrected";
+                    hover.UpdatePointer(7000, false, false, false, false, false);
+                    Check("editing-failed-draft-allows-new-save-attempt", failures == 2 && popup.PreviewText.EndsWith("corrected", StringComparison.Ordinal));
+                    popup.TryEndEditing(() => true);
+                    popup.SetPreview(Item(original));
+                    Check("clean-hover-does-not-block-reorder", hover.ReleaseCleanPreview() && !hover.IsEditing && leases == 0);
+                    popup.SetPreview(Item(original)); hover.Hide();
+                    Check("hiding-clean-hover-does-not-leave-a-session-behind", !hover.IsEditing && leases == 0);
+                }
                 foreach (var style in Enum.GetValues<TextPaperStyle>())
                 {
                     var id = Enumerable.Range(0, 100).Select(i => i.ToString("x32")).First(i => TextPaperStyles.ForEntry(i) == style);

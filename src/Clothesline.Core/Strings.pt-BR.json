@@ -380,5 +380,6 @@
   "拖动调整区内顺序；在分区边缘停留可翻页。": "Arraste para ordenar nesta seção; pare nas bordas dela para mudar de página.",
   "图片和录像靠左，文字靠右，自动共享整条绳子的空间。容量为所有类型合计；超额时最旧项目进入历史。": "Imagens e vídeos ficam alinhados à esquerda e textos à direita, compartilhando automaticamente todo o varal. A capacidade é conjunta; ao excedê-la, os itens mais antigos vão para o histórico.",
   "收集剪贴板图片和文字（默认开启）": "Coletar imagens e texto da área de transferência (ativado por padrão)",
-  "取消编辑": "Cancelar edição"
+  "取消编辑": "Cancelar edição",
+  "直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字": "Edite aqui · Afaste o mouse para salvar · Ctrl+C copia a seleção"
 }

@@ -31,7 +31,7 @@ internal sealed partial class ShelfController
         { ResetShelfHover(); return; }
         var hit = Native.WindowFromPoint(new Native.Point { X = cursor.X, Y = cursor.Y });
         var card = cards.FirstOrDefault(c => c.IsVisible && !c.Retiring && c.Opacity > 0 && new WindowInteropHelper(c).Handle == hit);
-        if (!Busy && textHover.Hold(now, cursor, escape, card is not null)) { hoverPreview.Reset(); return; }
+        if (!CardInteractionBusy && textHover.Hold(now, cursor, escape, card)) { hoverPreview.Reset(); return; }
         if (Busy || buttonsDown || Mouse.Captured is not null)
         {
             // Keep the pressed card still until its click/menu/long press finishes.

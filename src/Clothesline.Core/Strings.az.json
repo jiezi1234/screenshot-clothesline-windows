@@ -380,5 +380,6 @@
   "拖动调整区内顺序；在分区边缘停留可翻页。": "Bu bölmədə sıralamaq üçün sürükləyin; səhifəni dəyişmək üçün bölmənin kənarında gözləyin.",
   "图片和录像靠左，文字靠右，自动共享整条绳子的空间。容量为所有类型合计；超额时最旧项目进入历史。": "Şəkillər və videolar sola, mətnlər sağa düzülür və ipin bütün sahəsini avtomatik bölüşür. Tutum bütün növlərin cəmidir; hədd aşıldıqda ən köhnə elementlər tarixçəyə köçürülür.",
   "收集剪贴板图片和文字（默认开启）": "Mübadilə buferindəki şəkilləri və mətni topla (standart olaraq aktiv)",
-  "取消编辑": "Redaktəni ləğv et"
+  "取消编辑": "Redaktəni ləğv et",
+  "直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字": "Birbaşa redaktə edin · Siçanı uzaqlaşdıranda saxlanır · Ctrl+C seçimi köçürür"
 }

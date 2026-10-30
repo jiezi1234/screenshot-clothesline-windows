@@ -127,7 +127,7 @@ internal sealed partial class ShelfController : IDisposable
         card.WorkspaceRequested = (entry, edit) => WorkspaceRequested?.Invoke(entry, edit);
         card.BatchArchiveRequested = (entry, scope) => BatchArchiveRequested?.Invoke(entry, scope);
         card.DragEnded += () => timer.Dispatcher.BeginInvoke((Action)(() => { Prune(); FilesChanged?.Invoke(); }));
-        card.PreviewMouseWheel += (_, e) => { if (!Busy) { var text = card.Item.IsText; var count = Math.Max(1, (ZoneCards(text).Count + ZoneCapacity(text) - 1) / ZoneCapacity(text)); SetZonePage(text, (ZonePage(text) + (e.Delta < 0 ? 1 : count - 1)) % count); Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
+        card.PreviewMouseWheel += (_, e) => { if (!CardInteractionBusy && textHover.ReleaseCleanPreview()) { var text = card.Item.IsText; var count = Math.Max(1, (ZoneCards(text).Count + ZoneCapacity(text) - 1) / ZoneCapacity(text)); SetZonePage(text, (ZonePage(text) + (e.Delta < 0 ? 1 : count - 1)) % count); Present(); gate.Show(clock.ElapsedMilliseconds); e.Handled = true; } };
         cards.Add(card);
     }
     public void ResetSamples()

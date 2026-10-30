@@ -41,7 +41,8 @@ internal sealed partial class LibraryRuntime
         var entry = item.EntryId is null ? null : Store.Find(item.EntryId);
         if (entry is null || !MediaFiles.IsText(entry.Path) || item.Text is null) throw new IOException(T("原文件已失效，无法打开。请在历史中检查路径。"));
         var existing = workspaces.OfType<TextWorkspace>().FirstOrDefault(w => w.EntryId == entry.Id);
-        if (existing is not null) { existing.Show(); existing.Activate(); return null; }
+        // Hover must not activate a separate editor. Double-click still returns to that workspace.
+        if (existing is not null) return null;
         return new TextEditSession(entry.Id, item.Text, (text, hash) => SaveTextEntry(entry.Id, text, hash), AcquireLease(entry.Path));
     }
     private async Task<string> SaveTextEntry(string id, string text, string hash)

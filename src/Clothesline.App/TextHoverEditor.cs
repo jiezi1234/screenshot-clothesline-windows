@@ -21,13 +21,19 @@ internal sealed partial class TextHoverWindow
     private TextEditSession? session;
     private string original = "";
     private bool saving, savedNotice, permanentClose;
+    private Task<bool>? pendingSave;
     private nint previousForeground;
     private readonly TextBlock editStatus = new() { TextWrapping = TextWrapping.Wrap, MaxHeight = 48, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 0, 6), Visibility = Visibility.Collapsed };
-    private Button editButton = null!, saveButton = null!, cancelButton = null!;
+    private Button saveButton = null!, cancelButton = null!;
+    private MenuItem copyItem = null!;
     internal Func<DemoItem, TextEditSession?>? StartEdit { get; set; }
+    internal Action<IDataObject> CopyToClipboard { get; set; } = data => Clipboard.SetDataObject(data, true);
+    internal event Action? CloseRequested;
     internal bool IsEditing => session is not null;
     internal bool Dirty => IsEditing && TextView.Text != original;
     internal bool Saving => saving;
+    internal bool SaveFailed { get; private set; }
+    internal bool PointerInteraction => IsMouseCaptureWithin || TextView.ContextMenu?.IsOpen == true;
     internal string? EditingId => session?.EntryId;
     internal string EditStatus => editStatus.Text;
 
@@ -42,36 +48,39 @@ internal sealed partial class TextHoverWindow
             var button = new Button { Content = T(label), Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 6, 2), BorderThickness = new Thickness(0) };
             button.Click += (_, _) => action(); actions.Children.Add(button); return button;
         }
-        editButton = Action("编辑文字", () => BeginEdit());
         saveButton = Action("保存文字", () => _ = Save());
-        cancelButton = Action("取消编辑", () => TryEndEditing(() => true));
+        cancelButton = Action("取消编辑", () => { if (TryEndEditing(() => true)) Dismiss(); });
         TextView.AcceptsReturn = true; TextView.AcceptsTab = true; TextView.UndoLimit = 100;
-        TextView.TextChanged += (_, _) => { if (IsEditing && !saving) { editStatus.Text = Dirty ? T("未保存修改") : T("Ctrl+S 保存到原卡片 · Esc 关闭"); UpdateEditorTools(); } };
+        TextView.TextChanged += (_, _) => { if (IsEditing && !saving) { SaveFailed = false; editStatus.Text = Dirty ? T("未保存修改") : T("直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字"); UpdateEditorTools(); } };
+        copyItem = new MenuItem { Header = T("复制"), Command = ApplicationCommands.Copy, CommandTarget = TextView, InputGestureText = "Ctrl+C" };
+        TextView.ContextMenu = new ContextMenu(); TextView.ContextMenu.Items.Add(copyItem);
         foreach (var command in new[] { ApplicationCommands.Copy, ApplicationCommands.Cut })
             TextView.CommandBindings.Add(new CommandBinding(command, (_, e) =>
             {
-                try { Clipboard.SetDataObject(ShellTransfer.TextData(TextView.SelectedText), true); if (e.Command == ApplicationCommands.Cut) TextView.SelectedText = ""; }
+                try { CopyToClipboard(ShellTransfer.TextData(TextView.SelectedText)); if (e.Command == ApplicationCommands.Cut) TextView.SelectedText = ""; }
                 catch (Exception ex) { editStatus.Text = ex.Message; editStatus.Visibility = Visibility.Visible; }
                 e.Handled = true;
-            }, (_, e) => { e.CanExecute = IsEditing && !saving && TextView.SelectionLength > 0; e.Handled = true; }));
+            }, (_, e) => { e.CanExecute = TextView.SelectionLength > 0 && (e.Command == ApplicationCommands.Copy || IsEditing && !saving); e.Handled = true; }));
         PreviewKeyDown += (_, e) =>
         {
             if (!IsEditing) return;
             if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { _ = Save(); e.Handled = true; }
-            else if (e.Key == Key.Escape) { TryEndEditing(); e.Handled = true; }
+            else if (e.Key == Key.Escape) { RequestClose(); e.Handled = true; }
         };
         Closing += (_, e) =>
         {
             if (permanentClose) return;
             e.Cancel = true; // Alt+F4 dismisses this reusable popup, rather than destroying it.
-            if (TryEndEditing()) Dismiss();
+            RequestClose();
         };
         UiAccessibility.LiveStatus(this, editStatus); UpdateEditorTools();
     }
     internal void SetPreview(DemoItem item)
     {
         if (IsEditing) return;
-        savedNotice = false; SetText(item.Text ?? "", item.PaperStyle); previewItem = item; UpdateEditorTools();
+        savedNotice = false; SaveFailed = false; SetText(item.Text ?? "", item.PaperStyle); previewItem = item;
+        if (!BeginEdit()) { TextView.Focusable = true; SetKeyboardInput(true); }
+        UpdateEditorTools();
     }
     internal bool BeginEdit()
     {
@@ -81,12 +90,12 @@ internal sealed partial class TextHoverWindow
         {
             session = StartEdit(previewItem); if (session is null) return false;
             original = TextView.Text; savedNotice = false;
-            previousForeground = IsVisible ? Native.GetForegroundWindow() : 0;
+            previousForeground = Native.GetForegroundWindow();
             TextView.IsUndoEnabled = false; TextView.IsUndoEnabled = true;
             TextView.IsReadOnly = false; TextView.Focusable = true; SetKeyboardInput(true);
-            editStatus.Text = T("Ctrl+S 保存到原卡片 · Esc 关闭"); UpdateEditorTools(); FocusEditor(); return true;
+            editStatus.Text = T("直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字"); UpdateEditorTools(); return true;
         }
-        catch (Exception ex) { if (session is not null) FinishEdit(); editStatus.Text = ex.Message; editStatus.Visibility = Visibility.Visible; return false; }
+        catch (Exception ex) { if (session is not null) FinishEdit(); savedNotice = true; editStatus.Text = ex.Message; UpdateEditorTools(); return false; }
     }
     internal void FocusEditor()
     {
@@ -97,29 +106,42 @@ internal sealed partial class TextHoverWindow
     {
         var palette = TextPaper.Palette(PaperStyle);
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(UiText.Language);
-        editButton.Content = T("编辑文字"); saveButton.Content = T("保存文字"); cancelButton.Content = T("取消编辑");
+        copyItem.Header = T("复制"); saveButton.Content = T("保存文字"); cancelButton.Content = T("取消编辑");
         heading.Text = IsEditing ? T("编辑文字") : T("文字预览 · 滚轮查看全文");
-        foreach (var button in new[] { editButton, saveButton, cancelButton })
+        foreach (var button in new[] { saveButton, cancelButton })
         { button.Background = DemoAssets.Brush(palette.Edge); button.Foreground = DemoAssets.Brush(palette.Ink); }
         editStatus.Foreground = DemoAssets.Brush(palette.Ink);
-        editButton.Visibility = !IsEditing && previewItem is not null && StartEdit is not null ? Visibility.Visible : Visibility.Collapsed;
-        saveButton.Visibility = cancelButton.Visibility = IsEditing ? Visibility.Visible : Visibility.Collapsed;
+        saveButton.Visibility = cancelButton.Visibility = Dirty || SaveFailed ? Visibility.Visible : Visibility.Collapsed;
         saveButton.IsEnabled = Dirty && !saving; cancelButton.IsEnabled = !saving;
         editStatus.Visibility = IsEditing || savedNotice ? Visibility.Visible : Visibility.Collapsed;
     }
-    internal async Task<bool> Save()
+    internal Task<bool> Save()
     {
-        if (session is null || saving) return false;
-        if (!Dirty) { FinishEdit(); return true; }
+        if (session is null || saving) return Task.FromResult(false);
+        return pendingSave = SaveCore();
+    }
+    private async Task<bool> SaveCore()
+    {
+        if (!Dirty) return true;
         saving = true; TextView.IsReadOnly = true; UpdateEditorTools();
         try
         {
-            var text = TextView.Text; await session.Save(text); original = text;
+            var text = TextView.Text; await session!.Save(text); original = text;
             if (previewItem is not null) previewItem = previewItem with { Text = text, Title = TextContent.Title(text) };
-            FinishEdit(); savedNotice = true; editStatus.Text = T("文字已保存，原卡片已更新。"); return true;
+            SaveFailed = false; savedNotice = true; editStatus.Text = T("文字已保存，原卡片已更新。"); return true;
         }
-        catch (Exception ex) { editStatus.Text = ex.Message; return false; }
+        catch (Exception ex) { SaveFailed = true; editStatus.Text = ex.Message; return false; }
         finally { saving = false; TextView.IsReadOnly = !IsEditing; UpdateEditorTools(); }
+    }
+    private void RequestClose()
+    {
+        if (CloseRequested is { } close) close(); else _ = SaveAndDismiss();
+    }
+    internal async Task<bool> SaveAndDismiss(Func<bool>? shouldClose = null)
+    {
+        if (IsEditing && !await (saving && pendingSave is not null ? pendingSave : Save())) return false;
+        if (shouldClose is not null && !shouldClose()) return false;
+        FinishEdit(); Dismiss(); return true;
     }
     internal bool TryEndEditing(Func<bool>? confirmDiscard = null)
     {
@@ -130,7 +152,7 @@ internal sealed partial class TextHoverWindow
     }
     private void FinishEdit()
     {
-        var previous = session; session = null; previous?.Dispose();
+        var previous = session; session = null; previous?.Dispose(); SaveFailed = false;
         TextView.IsReadOnly = true; TextView.Focusable = false; SetKeyboardInput(false);
         var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         if (previousForeground != 0 && previousForeground != handle && Native.GetForegroundWindow() == handle)

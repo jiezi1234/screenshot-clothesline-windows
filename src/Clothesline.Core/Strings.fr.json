@@ -380,5 +380,6 @@
   "拖动调整区内顺序；在分区边缘停留可翻页。": "Faites glisser pour réorganiser cette section ; restez près de ses bords pour changer de page.",
   "图片和录像靠左，文字靠右，自动共享整条绳子的空间。容量为所有类型合计；超额时最旧项目进入历史。": "Les images et vidéos s’alignent à gauche, le texte à droite, et partagent automatiquement toute la corde. La capacité est commune à tous les types ; les éléments les plus anciens passent à l’historique en cas de dépassement.",
   "收集剪贴板图片和文字（默认开启）": "Collecter les images et le texte du presse-papiers (activé par défaut)",
-  "取消编辑": "Annuler les modifications"
+  "取消编辑": "Annuler les modifications",
+  "直接编辑 · 移开自动保存 · Ctrl+C 复制所选文字": "Modifiez ici · Éloignez la souris pour enregistrer · Ctrl+C copie la sélection"
 }

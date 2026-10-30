@@ -5,6 +5,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Threading.Tasks;
 using Clothesline.Core;
 
 namespace Clothesline.App;
@@ -44,7 +45,8 @@ internal sealed class ShelfTextHover : IDisposable
     private CardWindow? candidate, suppressed;
     private long entered, lastInside;
     private PixelRect travel;
-    private bool attempted, disposed;
+    private bool attempted, disposed, closing, closeRequested, forceClose;
+    internal ShelfTextHover() { window.CloseRequested += () => _ = ClosePreview(true); }
     internal bool IsEditing => window.IsEditing;
     internal string? EditingId => window.EditingId;
     internal Func<DemoItem, TextEditSession?>? StartEdit { set => window.StartEdit = value; }
@@ -61,13 +63,37 @@ internal sealed class ShelfTextHover : IDisposable
         return Native.WindowFromPoint(new Native.Point { X = cursor.X, Y = cursor.Y }) == handle;
     }
     internal bool KeepsShelfOpen(long now, PixelPoint cursor) => (window.IsEditing && window.IsVisible) || Contains(cursor) || (window.IsVisible && now - lastInside <= 450 && travel.Contains(cursor));
-    internal bool Hold(long now, PixelPoint cursor, bool escape, bool overCard)
+    internal bool Hold(long now, PixelPoint cursor, bool escape, CardWindow? overCard)
     {
         if (!window.IsVisible) return false;
-        if (window.IsEditing) return true; // Keyboard handling owns Esc while editing; leaving never loses a draft.
-        if (escape) { var previous = candidate; Clear(); suppressed = previous; return false; }
-        if (Contains(cursor)) { lastInside = now; return true; }
-        return !overCard && now - lastInside <= 450 && travel.Contains(cursor);
+        return UpdatePointer(now, Contains(cursor), overCard is not null && overCard == candidate,
+            overCard is not null, travel.Contains(cursor), escape);
+    }
+    // Kept separate from native hit testing so selection/save races can be checked offscreen.
+    internal bool UpdatePointer(long now, bool inside, bool overSource, bool overCard, bool inTravel, bool escape)
+    {
+        if (disposed) return false;
+        if (escape) { _ = ClosePreview(true); return window.IsEditing; }
+        if (inside || overSource || window.PointerInteraction)
+        { lastInside = now; closeRequested = false; return true; }
+        if (!overCard && now - lastInside <= 450 && inTravel) { closeRequested = false; return true; }
+        closeRequested = true;
+        if (window.Saving || closing || window.SaveFailed) return true;
+        _ = ClosePreview(false);
+        return window.IsEditing;
+    }
+    private async Task ClosePreview(bool force)
+    {
+        if (disposed) return;
+        if (closing) { forceClose |= force; return; }
+        closing = true; closeRequested = true; forceClose = force;
+        var previous = candidate;
+        try
+        {
+            if (await window.SaveAndDismiss(() => !disposed && (forceClose || closeRequested)))
+            { candidate = null; attempted = false; if (forceClose) suppressed = previous; }
+        }
+        finally { closing = false; forceClose = false; }
     }
     internal void Track(CardWindow? card, MonitorInfo monitor, IReadOnlyList<PixelRect> occupied, long now, bool escape, bool animate)
     {
@@ -87,9 +113,14 @@ internal sealed class ShelfTextHover : IDisposable
         var left = Math.Min(rect.X, anchor.Left); var top = Math.Min(rect.Y, anchor.Top);
         travel = new(left, top, Math.Max(rect.Right, anchor.Right) - left, Math.Max(rect.Bottom, anchor.Bottom) - top);
     }
-    internal void ClearFor(CardWindow card) { if (candidate == card || suppressed == card) Reset(); }
+    internal void ClearFor(CardWindow card) { if (candidate == card || suppressed == card) _ = ClosePreview(true); }
+    internal bool ReleaseCleanPreview()
+    {
+        if (window.Dirty || window.Saving) return false;
+        window.TryEndEditing(); Clear(); return true;
+    }
     internal void Reset() { if (disposed || window.IsEditing) return; Clear(); suppressed = null; }
-    internal void Hide() { if (window.IsEditing) window.Dismiss(); else Reset(); }
+    internal void Hide() { if (window.Dirty || window.Saving) window.Dismiss(); else ReleaseCleanPreview(); }
     internal void Resume(MonitorInfo monitor)
     {
         if (!window.IsEditing || window.IsVisible) return;

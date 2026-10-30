@@ -31,7 +31,7 @@ internal sealed partial class ShelfController
     }
     internal Task<ReorderExit> BeginLocalReorder(CardWindow source, PixelPoint cursor, bool pollInput = true)
     {
-        if (textHover.IsEditing || localReorder is not null || !presented || activeMonitor is null || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
+        if (!textHover.ReleaseCleanPreview() || localReorder is not null || !presented || activeMonitor is null || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
         var slots = ZoneSlots(source.Item.IsText);
         var slot = ZoneCards(source.Item.IsText).IndexOf(source) - ZonePage(source.Item.IsText) * ZoneCapacity(source.Item.IsText);
         if (slot < 0 || slot >= slots.Count) return Task.FromResult(ReorderExit.Cancelled);

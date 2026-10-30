@@ -214,7 +214,8 @@ internal sealed partial class ShelfController : IDisposable
         var monitor = activeMonitor ?? Native.MonitorAt(Native.Cursor);
         Prepare(monitor);
         rope.ShowEmptyHint = cards.Count == 0;
-        rope.Present(new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)((cards.Count == 0 ? 100 : 70) * scale)), MotionAllowed);
+        var placements = new List<(OverlayWindow Window, PixelRect Bounds)>
+        { (rope, new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width, (int)((cards.Count == 0 ? 100 : 70) * scale))) };
         if (cards.Count == 0)
         {
             mediaPage = textPage = 0;
@@ -229,12 +230,13 @@ internal sealed partial class ShelfController : IDisposable
             var positions = row.ToDictionary(pair => pair.Card, pair => pair.Rect);
             foreach (var card in cards)
             {
-                if (positions.TryGetValue(card, out var rect)) { if (!card.IsVisible) Native.MoveAndGetScale(card, monitor); card.Present(rect, MotionAllowed); }
+                if (positions.TryGetValue(card, out var rect)) placements.Add((card, rect));
                 else card.Dismiss();
             }
             shelfArea = new PixelRect(monitor.WorkArea.X, monitor.WorkArea.Y, monitor.WorkArea.Width,
                 row.Max(pair => pair.Rect.Bottom) - monitor.WorkArea.Y + (int)(14 * scale));
         }
+        ShelfPresentation.Present(placements, monitor, MotionAllowed);
         textHover.Resume(monitor);
         presented = true; LastShowMilliseconds = watch.Elapsed.TotalMilliseconds;
     }

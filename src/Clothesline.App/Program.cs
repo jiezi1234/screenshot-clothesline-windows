@@ -17,6 +17,7 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--image-server") return ImageDecoder.Serve(args[1]);
         if (args.Length == 5 && args[0] == "--image-worker") { Clothesline.Core.UiText.Language = args[4]; return ImageDecoder.Worker(args[1], args[2], args[3]); }
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        if (args.Length == 2 && args[0] == "--shelf-entrance-test") return ShelfEntranceDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--text-hover-edit-test") return TextHoverEditDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--paper-style-test") return PaperStyleDiagnostics.Run(app, args[1]);
         if (args.Length == 2 && args[0] == "--text-card-test") return TextCardDiagnostics.Run(app, args[1]);

@@ -1,0 +1,129 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "bounded-frozen-thumbnail-Sticky",
+      "passed": true
+    },
+    {
+      "name": "card-is-paper-without-photo-caption-Sticky",
+      "passed": true
+    },
+    {
+      "name": "card-retains-full-text-and-stable-style-Sticky",
+      "passed": true
+    },
+    {
+      "name": "paper-renders-at-small-large-and-high-dpi-sizes-Sticky",
+      "passed": true
+    },
+    {
+      "name": "preview-matches-card-font-and-style-Sticky",
+      "passed": true
+    },
+    {
+      "name": "long-preview-keeps-and-scrolls-complete-text-Sticky",
+      "passed": true
+    },
+    {
+      "name": "dismissal-clears-full-text-Sticky",
+      "passed": true
+    },
+    {
+      "name": "bounded-frozen-thumbnail-Journal",
+      "passed": true
+    },
+    {
+      "name": "card-is-paper-without-photo-caption-Journal",
+      "passed": true
+    },
+    {
+      "name": "card-retains-full-text-and-stable-style-Journal",
+      "passed": true
+    },
+    {
+      "name": "paper-renders-at-small-large-and-high-dpi-sizes-Journal",
+      "passed": true
+    },
+    {
+      "name": "preview-matches-card-font-and-style-Journal",
+      "passed": true
+    },
+    {
+      "name": "long-preview-keeps-and-scrolls-complete-text-Journal",
+      "passed": true
+    },
+    {
+      "name": "dismissal-clears-full-text-Journal",
+      "passed": true
+    },
+    {
+      "name": "bounded-frozen-thumbnail-Notebook",
+      "passed": true
+    },
+    {
+      "name": "card-is-paper-without-photo-caption-Notebook",
+      "passed": true
+    },
+    {
+      "name": "card-retains-full-text-and-stable-style-Notebook",
+      "passed": true
+    },
+    {
+      "name": "paper-renders-at-small-large-and-high-dpi-sizes-Notebook",
+      "passed": true
+    },
+    {
+      "name": "preview-matches-card-font-and-style-Notebook",
+      "passed": true
+    },
+    {
+      "name": "long-preview-keeps-and-scrolls-complete-text-Notebook",
+      "passed": true
+    },
+    {
+      "name": "dismissal-clears-full-text-Notebook",
+      "passed": true
+    },
+    {
+      "name": "bounded-frozen-thumbnail-Index",
+      "passed": true
+    },
+    {
+      "name": "card-is-paper-without-photo-caption-Index",
+      "passed": true
+    },
+    {
+      "name": "card-retains-full-text-and-stable-style-Index",
+      "passed": true
+    },
+    {
+      "name": "paper-renders-at-small-large-and-high-dpi-sizes-Index",
+      "passed": true
+    },
+    {
+      "name": "preview-matches-card-font-and-style-Index",
+      "passed": true
+    },
+    {
+      "name": "long-preview-keeps-and-scrolls-complete-text-Index",
+      "passed": true
+    },
+    {
+      "name": "dismissal-clears-full-text-Index",
+      "passed": true
+    },
+    {
+      "name": "four-styles-have-distinct-rendered-surfaces",
+      "passed": true
+    },
+    {
+      "name": "paper-decorations-do-not-enter-copied-text",
+      "passed": true
+    },
+    {
+      "name": "diagnostics-do-not-show-windows",
+      "passed": true
+    }
+  ]
+}

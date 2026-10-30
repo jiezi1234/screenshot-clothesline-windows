@@ -16,6 +16,11 @@ namespace Clothesline.App;
 internal class OverlayWindow : Window
 {
     private int opacityGeneration;
+    private AnimationClock? entranceClock;
+    private EventHandler? entranceCompleted;
+    private bool overlayClosed;
+    internal bool EntrancePrepared { get; private set; }
+    internal AnimationClock? EntranceClock => entranceClock;
     internal bool AcceptsKeyboard { get; private set; }
     internal void SetKeyboardInput(bool enabled)
     {
@@ -30,6 +35,7 @@ internal class OverlayWindow : Window
         Background = Brushes.Transparent; ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false; ShowActivated = false; Topmost = true;
         SourceInitialized += (_, _) => Native.ConfigureOverlay(this, passThrough);
+        Closed += (_, _) => { overlayClosed = true; EntrancePrepared = false; StopMotion(); };
     }
     public virtual void Present(PixelRect rect, bool animate)
     {
@@ -45,8 +51,48 @@ internal class OverlayWindow : Window
             BeginAnimation(OpacityProperty, fade);
         }
     }
-    public virtual void StopMotion() { opacityGeneration++; BeginAnimation(OpacityProperty, null); Opacity = 1; }
-    public virtual void Dismiss() { StopMotion(); Hide(); }
+    internal void PrepareShelfPresentation(PixelRect rect, MonitorInfo monitor)
+    {
+        ObjectDisposedException.ThrowIf(overlayClosed, this);
+        var entering = !IsVisible || EntrancePrepared;
+        StopMotion();
+        if (entering)
+        {
+            EntrancePrepared = true; Opacity = 0;
+            // Every HWND, DPI transition and layout is ready before any member of the row fades in.
+            Native.MoveAndGetScale(this, monitor);
+            Native.Place(this, rect);
+            DesktopLifecycle.FollowForeground(this);
+            if (!IsVisible) Show();
+        }
+        Native.Place(this, rect); UpdateLayout();
+    }
+    internal virtual void RevealPreparedEntrance(AnimationClock? fade)
+    {
+        if (!EntrancePrepared || !IsVisible) return;
+        EntrancePrepared = false;
+        if (fade is null) { Opacity = 1; return; }
+        entranceClock = fade;
+        entranceCompleted = (_, _) =>
+        {
+            if (!ReferenceEquals(entranceClock, fade)) return;
+            DetachEntranceClock(); BeginAnimation(OpacityProperty, null); Opacity = 1;
+        };
+        fade.Completed += entranceCompleted;
+        ApplyAnimationClock(OpacityProperty, fade);
+        // Keep the zero base value until completion: a newly created clock starts on the next timing tick.
+    }
+    private void DetachEntranceClock()
+    {
+        if (entranceClock is not null && entranceCompleted is not null) entranceClock.Completed -= entranceCompleted;
+        entranceClock = null; entranceCompleted = null;
+    }
+    public virtual void StopMotion()
+    {
+        opacityGeneration++; DetachEntranceClock(); BeginAnimation(OpacityProperty, null);
+        Opacity = EntrancePrepared ? 0 : 1;
+    }
+    public virtual void Dismiss() { Hide(); EntrancePrepared = false; StopMotion(); }
 }
 
 internal sealed class RopeWindow : OverlayWindow
@@ -209,6 +255,12 @@ internal sealed class CardWindow : OverlayWindow
         var entering = !IsVisible;
         base.Present(rect, animate && !InteractionActive);
         if (entering && animate && !InteractionActive && !IsMouseOver) motion.Enter();
+    }
+    internal override void RevealPreparedEntrance(AnimationClock? fade)
+    {
+        var entering = EntrancePrepared && IsVisible;
+        base.RevealPreparedEntrance(fade);
+        if (entering && fade is not null && !Retiring && !closed && !InteractionActive && !IsMouseOver) motion.Enter();
     }
     public override void StopMotion() { base.StopMotion(); motion.Stop(); }
     internal void SetStackEmphasis(PixelRect bounds, bool emphasized, bool animate)

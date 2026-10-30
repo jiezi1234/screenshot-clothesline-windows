@@ -392,5 +392,16 @@
   "图片编辑画布": "Image editing canvas",
   "正在保存…": "Saving…",
   "笔画粗细": "Stroke width",
-  "颜色": "Color"
+  "颜色": "Color",
+  "图片": "Image",
+  "黄色": "Yellow",
+  "字号": "Font size",
+  "缩放比例": "Zoom",
+  "已自动保存": "Saved automatically",
+  "拖动框选裁剪区域": "Drag to select the crop area",
+  "马赛克大小": "Mosaic size",
+  "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + wheel to zoom; scroll bars to explore the image",
+  "上一步": "Undo",
+  "下一步": "Redo",
+  "重试": "Retry"
 }

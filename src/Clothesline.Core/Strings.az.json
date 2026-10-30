@@ -392,5 +392,16 @@
   "图片编辑画布": "Şəkil redaktəsi sahəsi",
   "正在保存…": "Saxlanılır…",
   "笔画粗细": "Xətt qalınlığı",
-  "颜色": "Rəng"
+  "颜色": "Rəng",
+  "图片": "Şəkil",
+  "黄色": "Sarı",
+  "字号": "Şrift ölçüsü",
+  "缩放比例": "Miqyas",
+  "已自动保存": "Avtomatik saxlanıldı",
+  "拖动框选裁剪区域": "Kəsiləcək sahəni seçmək üçün sürükləyin",
+  "马赛克大小": "Mozaika ölçüsü",
+  "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + təkər ilə miqyası dəyişin; sürüşdürmə zolaqları ilə gəzin",
+  "上一步": "Geri al",
+  "下一步": "Yenidən et",
+  "重试": "Yenidən cəhd et"
 }

@@ -392,5 +392,16 @@
   "图片编辑画布": "Lenzo de edición de imaxes",
   "正在保存…": "Gardando…",
   "笔画粗细": "Grosor do trazo",
-  "颜色": "Cor"
+  "颜色": "Cor",
+  "图片": "Imaxe",
+  "黄色": "Amarelo",
+  "字号": "Tamaño da letra",
+  "缩放比例": "Zoom",
+  "已自动保存": "Gardado automaticamente",
+  "拖动框选裁剪区域": "Arrastra para seleccionar a área de recorte",
+  "马赛克大小": "Tamaño do mosaico",
+  "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + roda para ampliar; barras para percorrer a imaxe",
+  "上一步": "Desfacer",
+  "下一步": "Refacer",
+  "重试": "Tentar de novo"
 }

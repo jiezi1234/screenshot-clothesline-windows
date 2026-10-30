@@ -25,7 +25,7 @@ internal sealed partial class HoverPreviewWindow : OverlayWindow
         Content = frame; InitializeEditor(out undo, out redo, out retry);
     }
     internal void SetImage(BitmapSource source) => image.Source = source;
-    public override void Dismiss() { base.Dismiss(); if (!IsEditing) image.Source = null; }
+    public override void Dismiss() { zoomPicker.IsDropDownOpen = false; base.Dismiss(); if (!IsEditing) image.Source = null; }
 }
 
 /// One transient preview; only the current hover may finish an asynchronous load.
@@ -116,7 +116,7 @@ internal sealed class ShelfHoverPreview : IDisposable
                 {
                     if (disposed || request != generation || candidate != card || cancellation.IsCancellationRequested) { session.Dispose(); return; }
                     Show(session.Document.Original, anchor, work, scale, occupied, animate);
-                    window.SetSession(session); return;
+                    window.SetSession(session, card.Item.Title); return;
                 }
             }
             var image = await load(card.Item.Path, cancellation);

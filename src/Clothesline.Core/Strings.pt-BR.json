@@ -392,5 +392,16 @@
   "图片编辑画布": "Tela de edição de imagem",
   "正在保存…": "Salvando…",
   "笔画粗细": "Espessura do traço",
-  "颜色": "Cor"
+  "颜色": "Cor",
+  "图片": "Imagem",
+  "黄色": "Amarelo",
+  "字号": "Tamanho da fonte",
+  "缩放比例": "Zoom",
+  "已自动保存": "Salvo automaticamente",
+  "拖动框选裁剪区域": "Arraste para selecionar a área de recorte",
+  "马赛克大小": "Tamanho do mosaico",
+  "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + roda para ampliar; barras para percorrer a imagem",
+  "上一步": "Desfazer",
+  "下一步": "Refazer",
+  "重试": "Tentar novamente"
 }

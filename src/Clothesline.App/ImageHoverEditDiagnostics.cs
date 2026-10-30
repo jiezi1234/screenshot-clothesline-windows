@@ -49,7 +49,8 @@ internal static class ImageHoverEditDiagnostics
                 bounded.Clear(); Check("runtime-exit-releases-retained-history", bounded.Count == 0 && bounded.RetainedBytes == 0);
                 ImageEditSession Session(Func<BitmapSource, Task> save)
                 { held++; return new(new(bitmap), save, new Lease(() => held--)); }
-                window.SetSession(Session(image => { saved = image; writes++; return Task.CompletedTask; }));
+                window.SetSession(Session(image => { saved = image; writes++; return Task.CompletedTask; }), "山间一刻.png");
+                ImageHoverChromeDiagnostics.Check(window, output, Check);
                 var doc = window.Document!; var initial = doc.State;
                 Check("hover-editor-ready-without-showing-a-window", window.IsEditing && !window.IsVisible && held == 1 && !window.Dirty);
                 Mark(doc); var arrow = doc.State; await Until(() => writes == 1 && !window.Saving);
@@ -174,9 +175,14 @@ internal static class ImageHoverEditDiagnostics
                     Check("desktop-hover-opens-inline-editor-without-workspace-or-focus-steal", !app.Windows.OfType<ImageWorkspace>().Any() && Native.GetForegroundWindow() == foreground && shelf.Busy);
                     shelf.TrackHoverPreview(500, Center(popup), true, false);
                     Check("desktop-editing-mouse-press-keeps-popup-and-shelf-open", popup.IsEditing && popup.IsVisible && shelf.Visible);
+                    var scale = UiAccessibility.Descendants((FrameworkElement)popup.Content).OfType<System.Windows.Controls.ComboBox>().Single();
+                    scale.IsDropDownOpen = true; await Task.Delay(100);
+                    var area = Native.MonitorAt(Center(card)).WorkArea;
+                    shelf.TrackHoverPreview(1200, new PixelPoint(area.X + 2, area.Bottom - 2), false, false);
+                    Check("desktop-open-zoom-menu-keeps-editor-and-shelf-open", scale.IsDropDownOpen && popup.PointerInteraction && popup.IsEditing && popup.IsVisible && shelf.Visible);
+                    scale.IsDropDownOpen = false;
                     Mark(popup.Document!); await popup.Save(); popup.Undo(); await popup.Save();
                     Check("desktop-undo-saves-and-retains-redo", !popup.Dirty && popup.Document!.CanRedo && held == 1);
-                    var area = Native.MonitorAt(Center(card)).WorkArea;
                     shelf.TrackHoverPreview(1500, new PixelPoint(area.X + 2, area.Bottom - 2), false, false);
                     await Until(() => !popup.IsEditing && !popup.IsVisible);
                     Check("desktop-leaving-dismisses-popup-and-releases-busy", !shelf.Busy && held == 0);
@@ -184,7 +190,9 @@ internal static class ImageHoverEditDiagnostics
                     await Until(() => popup.IsEditing);
                     Check("desktop-rehover-resumes-previous-editing-history", popup.Document!.CanRedo && !popup.Dirty);
                     Mark(popup.Document!);
+                    scale.IsDropDownOpen = true;
                     shelf.Hide();
+                    Check("desktop-hiding-shelf-closes-zoom-menu", !scale.IsDropDownOpen);
                     Check("desktop-hide-removes-popup-without-dropping-unsaved-draft", !popup.IsVisible && popup.Dirty && held == 1);
                     await Until(() => !popup.Saving && !popup.Dirty);
                     Check("desktop-hidden-save-releases-clean-session", !popup.IsEditing && held == 0);

@@ -26,11 +26,11 @@ internal sealed partial class HoverPreviewWindow
     private readonly ImageSurface canvas = new() { Focusable = true, Tool = EditorTool.Pan };
     private readonly ScrollViewer viewport = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly DockPanel editor = new() { LastChildFill = true };
-    private readonly WrapPanel tools = new();
+    private readonly Grid tools = new();
     private readonly Dictionary<EditorTool, ToggleButton> toolButtons = new();
-    private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4), MaxHeight = 48, FontSize = 12 };
+    private readonly TextBlock status = new() { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
     private readonly Button undo, redo, retry;
-    private readonly TextBox annotation = new() { Width = 140, MaxLength = 300, Margin = new Thickness(3), ToolTip = T("文字内容") };
+    private readonly TextBox annotation = new() { MaxLength = 300, ToolTip = T("文字内容") };
     private readonly DispatcherTimer autoSave = new() { Interval = TimeSpan.FromMilliseconds(600) };
     private Task<bool>? pendingSave;
     private bool saving, permanentClose, confirming, fit = true;
@@ -43,42 +43,14 @@ internal sealed partial class HoverPreviewWindow
     internal ImageDocument? Document => session?.Document;
     internal ImageSurface Canvas => canvas;
     internal string EditStatus => status.Text;
-    internal bool PointerInteraction => IsMouseCaptureWithin || canvas.Drawing || canvas.Processing;
+    internal bool PointerInteraction => IsMouseCaptureWithin || canvas.Drawing || canvas.Processing || zoomPicker.IsDropDownOpen;
     internal event Action? CloseRequested;
     internal event Action? Saved;
 
     // Called by the preview constructor. This is the same popup HWND throughout the session.
     private void InitializeEditor(out Button previous, out Button next, out Button tryAgain)
     {
-        var commands = new WrapPanel();
-        Button Add(string text, Action action)
-        {
-            var button = new Button { Content = T(text), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(2) };
-            button.Click += (_, _) => action(); commands.Children.Add(button); return button;
-        }
-        previous = Add("上一步", Undo); next = Add("下一步", Redo);
-        previous.ToolTip = "Ctrl+Z"; next.ToolTip = "Ctrl+Y";
-        Add("适应窗口", () => { fit = true; ResizeCanvas(); });
-        Add("100%", () => { fit = false; zoom = 1 / VisualTreeHelper.GetDpi(this).DpiScaleX; ResizeCanvas(); });
-        tryAgain = Add("重试", () => _ = Save()); tryAgain.Visibility = Visibility.Collapsed;
-        foreach (var (tool, name) in new[] { (EditorTool.Pan, "浏览"), (EditorTool.Crop, "裁剪"), (EditorTool.Pen, "画笔"), (EditorTool.Arrow, "箭头"), (EditorTool.Rectangle, "矩形"), (EditorTool.Text, "文字"), (EditorTool.Mosaic, "马赛克") })
-        {
-            var button = new ToggleButton { Content = T(name), Margin = new Thickness(2), Padding = new Thickness(6, 3, 6, 3) };
-            button.Click += (_, _) => SelectTool(tool); tools.Children.Add(button); toolButtons.Add(tool, button);
-        }
-        var options = new WrapPanel();
-        foreach (var color in new[] { Colors.Crimson, Colors.Orange, Colors.ForestGreen, Colors.DodgerBlue, Colors.Black, Colors.White })
-        {
-            var swatch = new Button { Width = 20, Height = 20, Background = new SolidColorBrush(color), Margin = new Thickness(3), ToolTip = T("颜色") + " " + color };
-            AutomationProperties.SetName(swatch, swatch.ToolTip.ToString()); swatch.Click += (_, _) => canvas.Ink = color; options.Children.Add(swatch);
-        }
-        var size = new Slider { Minimum = 1, Maximum = 24, Value = 4, Width = 90, Margin = new Thickness(6), ToolTip = T("笔画粗细") };
-        AutomationProperties.SetName(size, T("笔画粗细")); size.ValueChanged += (_, _) => canvas.StrokeSize = size.Value; options.Children.Add(size);
-        AutomationProperties.SetName(annotation, T("文字内容")); annotation.TextChanged += (_, _) => canvas.Annotation = annotation.Text; options.Children.Add(annotation);
-        var header = new StackPanel(); header.Children.Add(commands); header.Children.Add(tools); header.Children.Add(options);
-        DockPanel.SetDock(header, Dock.Top); editor.Children.Add(header);
-        DockPanel.SetDock(status, Dock.Bottom); editor.Children.Add(status);
-        viewport.Content = canvas; editor.Children.Add(viewport);
+        BuildEditorChrome(out previous, out next, out tryAgain);
         viewport.SizeChanged += (_, _) => ResizeCanvas();
         viewport.PreviewMouseWheel += (_, e) =>
         {
@@ -93,7 +65,7 @@ internal sealed partial class HoverPreviewWindow
         PreviewKeyDown += (_, e) =>
         {
             if (e.SystemKey == Key.C && (Keyboard.Modifiers & ModifierKeys.Alt) != 0) { canvas.Focus(); e.Handled = true; return; }
-            if (e.Key == Key.Escape) { if (!canvas.Cancel()) CloseRequested?.Invoke(); e.Handled = true; }
+            if (e.Key == Key.Escape) { if (zoomPicker.IsDropDownOpen) zoomPicker.IsDropDownOpen = false; else if (!canvas.Cancel()) CloseRequested?.Invoke(); e.Handled = true; }
             else if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
             {
                 if (e.Key == Key.S) { _ = Save(); e.Handled = true; }
@@ -104,11 +76,13 @@ internal sealed partial class HoverPreviewWindow
         Closing += (_, e) => { if (!permanentClose) { e.Cancel = true; CloseRequested?.Invoke(); } };
         UiAccessibility.LiveStatus(this, status);
     }
-    internal void SetSession(ImageEditSession value)
+    internal void SetSession(ImageEditSession value, string? title = null)
     {
         session = value; canvas.Document = value.Document; fit = true; SaveFailed = false;
         previousForeground = Native.GetForegroundWindow(); SetKeyboardInput(true);
+        frame.Padding = new Thickness(0); frame.CornerRadius = new CornerRadius(18);
         frame.Child = editor; image.Source = value.Document.Original;
+        filename.Text = string.IsNullOrWhiteSpace(title) ? T("图片") : title; filename.ToolTip = filename.Text;
         value.Document.Changed += DocumentChanged;
         SelectTool(EditorTool.Pan); DocumentChanged();
     }
@@ -117,12 +91,12 @@ internal sealed partial class HoverPreviewWindow
         if (canvas.Processing) return;
         canvas.Cancel(); canvas.Tool = tool;
         foreach (var pair in toolButtons) pair.Value.IsChecked = pair.Key == tool;
-        annotation.Visibility = tool == EditorTool.Text ? Visibility.Visible : Visibility.Collapsed;
+        UpdateToolOptions();
     }
     private void DocumentChanged()
     {
         ResizeCanvas(); canvas.InvalidateVisual();
-        if (!saving) status.Text = Dirty ? T("未保存修改") : T("图片修改后自动保存 · 原图保留");
+        if (!saving && !SaveFailed) status.Text = Dirty ? T("未保存修改") : T("已自动保存");
         UpdateActions(); ScheduleSave();
     }
     private void ResizeCanvas()
@@ -131,6 +105,7 @@ internal sealed partial class HoverPreviewWindow
         var crop = document.State.Crop; canvas.Width = crop.Width; canvas.Height = crop.Height;
         if (fit) zoom = Math.Clamp(Math.Min(Math.Max(1, viewport.ActualWidth - 20) / crop.Width, Math.Max(1, viewport.ActualHeight - 20) / crop.Height), .001, 1);
         canvas.LayoutTransform = new ScaleTransform(zoom, zoom);
+        UpdateZoomDisplay();
     }
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     {
@@ -144,6 +119,7 @@ internal sealed partial class HoverPreviewWindow
         redo.IsEnabled = Document?.CanRedo == true && !canvas.Processing;
         tools.IsEnabled = !canvas.Processing;
         retry.Visibility = SaveFailed ? Visibility.Visible : Visibility.Collapsed;
+        UpdateSaveIndicator();
     }
     internal void Undo() { if (!canvas.Processing) { canvas.Cancel(); Document?.Undo(); SaveFailed = false; ScheduleSave(); } }
     internal void Redo() { if (!canvas.Processing) { canvas.Cancel(); Document?.Redo(); SaveFailed = false; ScheduleSave(); } }
@@ -157,14 +133,14 @@ internal sealed partial class HoverPreviewWindow
     private async Task<bool> SaveCore()
     {
         if (!Dirty) return true;
-        saving = true; status.Text = T("正在保存…");
+        saving = true; status.Text = T("正在保存…"); UpdateSaveIndicator();
         var active = session!; var snapshot = active.Document.State; var checkpoint = active.Document.SavedCheckpoint();
         try
         {
             var rendered = await active.Document.RenderAsync(); await active.Save(rendered, checkpoint);
             // Editing remains available while encoding/writing. Only acknowledge this exact snapshot.
             active.Document.MarkSaved(snapshot); SaveFailed = false;
-            status.Text = Dirty ? T("未保存修改") : T("图片已保存，原卡片已更新。"); return true;
+            status.Text = Dirty ? T("未保存修改") : T("已自动保存"); return true;
         }
         catch (Exception ex) { SaveFailed = true; status.Text = ex.Message; return false; }
         finally { saving = false; UpdateActions(); ScheduleSave(); if (!SaveFailed) Saved?.Invoke(); }
@@ -193,9 +169,9 @@ internal sealed partial class HoverPreviewWindow
     }
     private void FinishEdit()
     {
-        autoSave.Stop(); canvas.Cancel();
+        autoSave.Stop(); canvas.Cancel(); zoomPicker.IsDropDownOpen = false;
         if (session is { } previous) { previous.Document.Changed -= DocumentChanged; session = null; previous.Dispose(); }
-        canvas.Document = null; canvas.InvalidateVisual(); frame.Child = image; SaveFailed = false; SetKeyboardInput(false);
+        canvas.Document = null; canvas.InvalidateVisual(); frame.Child = image; frame.Padding = new Thickness(5); frame.CornerRadius = new CornerRadius(10); SaveFailed = false; SetKeyboardInput(false);
         var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         if (previousForeground != 0 && previousForeground != handle && Native.GetForegroundWindow() == handle) Native.SetForegroundWindow(previousForeground);
         previousForeground = 0;

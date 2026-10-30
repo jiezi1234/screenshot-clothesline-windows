@@ -392,5 +392,16 @@
   "图片编辑画布": "Zone de retouche d’image",
   "正在保存…": "Enregistrement…",
   "笔画粗细": "Épaisseur du trait",
-  "颜色": "Couleur"
+  "颜色": "Couleur",
+  "图片": "Image",
+  "黄色": "Jaune",
+  "字号": "Taille du texte",
+  "缩放比例": "Zoom",
+  "已自动保存": "Enregistré automatiquement",
+  "拖动框选裁剪区域": "Faites glisser pour sélectionner la zone à recadrer",
+  "马赛克大小": "Taille de la mosaïque",
+  "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + molette pour zoomer ; barres pour parcourir l’image",
+  "上一步": "Annuler",
+  "下一步": "Rétablir",
+  "重试": "Réessayer"
 }

@@ -392,5 +392,16 @@
   "图片编辑画布": "Görüntü düzenleme tuvali",
   "正在保存…": "Kaydediliyor…",
   "笔画粗细": "Çizgi kalınlığı",
-  "颜色": "Renk"
+  "颜色": "Renk",
+  "图片": "Görüntü",
+  "黄色": "Sarı",
+  "字号": "Yazı boyutu",
+  "缩放比例": "Yakınlaştırma",
+  "已自动保存": "Otomatik kaydedildi",
+  "拖动框选裁剪区域": "Kırpılacak alanı seçmek için sürükleyin",
+  "马赛克大小": "Mozaik boyutu",
+  "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + tekerlek ile yakınlaştırın; kaydırma çubuklarıyla gezinin",
+  "上一步": "Geri al",
+  "下一步": "Yinele",
+  "重试": "Yeniden dene"
 }

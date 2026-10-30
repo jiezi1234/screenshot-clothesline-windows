@@ -28,21 +28,17 @@ internal sealed partial class LibraryRuntime
         }
         finally { imageLoads.Remove(entry.Id); if (!disposed) ScheduleRefresh(false); }
     }
-    private void OpenTextWorkspace(LibraryEntry entry)
+    private void OpenTextPreview(LibraryEntry entry)
     {
-        if (shelf.FocusTextEditor(entry.Id)) return;
-        var existing = workspaces.OfType<TextWorkspace>().FirstOrDefault(w => w.EntryId == entry.Id);
-        if (existing is not null) { existing.Show(); existing.Activate(); return; }
-        var window = new TextWorkspace(entry.Id, entry.Path, (text, hash) => SaveTextEntry(entry.Id, text, hash), AcquireLease(entry.Path));
+        var existing = workspaces.OfType<TextPreviewWindow>().FirstOrDefault(w => w.EntryId == entry.Id);
+        if (existing is not null) { _ = existing.RefreshText(); existing.Show(); existing.Activate(); return; }
+        var window = new TextPreviewWindow(entry.Id, entry.Path, AcquireLease(entry.Path));
         workspaces.Add(window); window.Closed += (_, _) => workspaces.Remove(window); window.Show(); window.Activate();
     }
     private TextEditSession? CreateTextEditSession(DemoItem item)
     {
         var entry = item.EntryId is null ? null : Store.Find(item.EntryId);
         if (entry is null || !MediaFiles.IsText(entry.Path) || item.Text is null) throw new IOException(T("原文件已失效，无法打开。请在历史中检查路径。"));
-        var existing = workspaces.OfType<TextWorkspace>().FirstOrDefault(w => w.EntryId == entry.Id);
-        // Hover must not activate a separate editor. Double-click still returns to that workspace.
-        if (existing is not null) return null;
         return new TextEditSession(entry.Id, item.Text, (text, hash) => SaveTextEntry(entry.Id, text, hash), AcquireLease(entry.Path));
     }
     private async Task<string> SaveTextEntry(string id, string text, string hash)

@@ -242,7 +242,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     public void OpenWorkspace(string id, bool edit)
     {
         var entry = Store.Find(id); if (entry is null) return;
-        if (MediaFiles.IsText(entry.Path)) { OpenTextWorkspace(entry); return; }
+        if (MediaFiles.IsText(entry.Path)) { if (!edit) OpenTextPreview(entry); return; }
         if (MediaFiles.IsVideo(entry.Path))
         {
             var video = new VideoWorkspace(entry.Path, AcquireLease);

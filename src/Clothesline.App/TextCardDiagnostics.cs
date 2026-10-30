@@ -47,7 +47,8 @@ internal static class TextCardDiagnostics
                 CardWindow? Find(string id) => app.Windows.OfType<CardWindow>().FirstOrDefault(c => !c.Retiring && c.Item.EntryId == id && c.Item.Text is not null);
                 await Until(() => Find(first.Id) is not null && Find(second.Id) is not null);
                 shelf.Show();
-                await Until(() => Find(first.Id)!.IsVisible && ((FrameworkElement)Find(first.Id)!.Content).ActualWidth > 0 && ((FrameworkElement)Find(second.Id)!.Content).ActualWidth > 0);
+                await Until(() => Find(first.Id)!.IsVisible && Find(first.Id)!.Opacity == 1 && Find(second.Id)!.Opacity == 1
+                    && ((FrameworkElement)Find(first.Id)!.Content).ActualWidth > 0 && ((FrameworkElement)Find(second.Id)!.Content).ActualWidth > 0);
                 var card = Find(second.Id)!; var shortCard = Find(first.Id)!;
                 PixelRect Bounds(Window w) { Native.GetWindowRect(new WindowInteropHelper(w).Handle, out var r); return r.Pixels; }
                 PixelPoint Center(Window w) { var r = Bounds(w); return new(r.X + r.Width / 2, r.Y + r.Height / 2); }
@@ -67,6 +68,7 @@ internal static class TextCardDiagnostics
                 });
                 Check("native-text-drag-offers-readable-txt-copy-and-retains-source", nativeCopy && File.Exists(first.Path) && library.Store.Find(first.Id)!.State == EntryState.Shelf);
                 var popup = app.Windows.OfType<TextHoverWindow>().Single(); var imagePopup = app.Windows.OfType<HoverPreviewWindow>().Single(); var foreground = Native.GetForegroundWindow();
+                await Until(() => Native.WindowFromPoint(new Native.Point { X = point.X, Y = point.Y }) == new WindowInteropHelper(card).Handle);
                 shelf.TrackHoverPreview(1000, point, false, false); shelf.TrackHoverPreview(1399, point, false, false);
                 Check("brief-text-hover-does-not-open-preview", !popup.IsVisible);
                 shelf.TrackHoverPreview(1400, point, false, false); popup.UpdateLayout();
@@ -99,25 +101,32 @@ internal static class TextCardDiagnostics
                 Check("starting-text-reorder-closes-preview", !popup.IsVisible);
                 shelf.UpdateLocalReorder(point, true, true, 22500); await gesture;
                 Check("cancelling-text-drag-retains-files-and-cards", File.Exists(first.Path) && File.Exists(second.Path) && shelf.Count == 2);
-                shelf.Hide(); library.OpenWorkspace(first.Id, true);
-                var editor = app.Windows.OfType<TextWorkspace>().Single(); await Until(() => !editor.Loading);
-                Check("text-opens-in-editable-in-app-workspace", editor.Editor.Text == text && !editor.Editor.IsReadOnly && !editor.Dirty);
-                library.OpenWorkspace(first.Id, false);
-                Check("opening-same-card-reuses-existing-editor", app.Windows.OfType<TextWorkspace>().Count() == 1);
-                editor.Editor.Text = "新的文字\r\nEdited in the same card.";
-                Check("editing-marks-document-dirty", editor.Dirty);
+                var shortPoint = Center(shortCard);
+                shelf.TrackHoverPreview(23000, outside, false, false); shelf.TrackHoverPreview(23100, shortPoint, false, false); shelf.TrackHoverPreview(23500, shortPoint, false, false);
+                Check("text-edits-exclusively-in-hover-popup", popup.IsVisible && popup.IsEditing && popup.TextView.Text == text && !popup.TextView.IsReadOnly);
+                var windowCount = app.Windows.Count; library.OpenWorkspace(first.Id, true);
+                Check("legacy-text-edit-route-does-not-open-another-window", app.Windows.Count == windowCount && popup.IsEditing);
+                var textMenu = UiAccessibility.Descendants((FrameworkElement)shortCard.Content).OfType<FrameworkElement>().Select(e => e.ContextMenu).First(m => m is not null)!;
+                Check("text-context-menu-has-no-workspace-or-edit-entry", !textMenu.Items.OfType<MenuItem>().Any(m => (m.Header as string) == T("编辑文字…") || (m.Header as string) == T("打开文字")));
+                popup.TextView.Text = "新的文字\r\nEdited in the same card.";
+                Check("editing-marks-document-dirty", popup.Dirty);
                 var added = library.Store.Find(first.Id)!.AddedAt; var oldOrder = library.Store.Entries(EntryState.Shelf).Select(e => e.Id).ToArray();
-                Check("save-updates-original-card", await editor.Save() && !editor.Dirty && TextContent.Read(first.Path) == editor.Editor.Text && library.Store.Find(first.Id)!.AddedAt == added && library.Store.Entries(EntryState.Shelf).Select(e => e.Id).SequenceEqual(oldOrder));
-                library.RefreshShelf(false); await Until(() => Find(first.Id)?.Item.Text == editor.Editor.Text);
+                Check("save-updates-original-card", await popup.Save() && !popup.Dirty && TextContent.Read(first.Path) == popup.TextView.Text && library.Store.Find(first.Id)!.AddedAt == added && library.Store.Entries(EntryState.Shelf).Select(e => e.Id).SequenceEqual(oldOrder));
+                var saved = popup.TextView.Text; Capture(popup, Path.Combine(directory, "text-editor.png"));
+                popup.TextView.Text = " \r\n";
+                Check("invalid-edit-keeps-editor-draft-and-saved-file", !await popup.Save() && popup.Dirty && TextContent.Read(first.Path) == saved);
+                popup.TextView.Text = saved; await popup.SaveAndDismiss();
+                library.RefreshShelf(false); await Until(() => Find(first.Id)?.Item.Text == saved);
                 Check("saved-text-refreshes-card-and-title", Find(first.Id)!.Item.Title == "新的文字");
-                Capture(editor, Path.Combine(directory, "text-editor.png"));
-                var saved = editor.Editor.Text; editor.Editor.Text = " \r\n";
-                Check("invalid-edit-keeps-editor-draft-and-saved-file", !await editor.Save() && editor.Dirty && TextContent.Read(first.Path) == saved);
-                editor.Editor.Text = saved;
+                shelf.Hide(); library.OpenWorkspace(first.Id, false);
+                var preview = app.Windows.OfType<TextPreviewWindow>().Single(); await Until(() => !preview.Loading && preview.TextView.Text == saved);
+                Check("dashboard-text-preview-is-readonly", preview.TextView.IsReadOnly && preview.TextView.Text == saved);
+                library.OpenWorkspace(first.Id, false);
+                Check("opening-same-text-reuses-readonly-preview", app.Windows.OfType<TextPreviewWindow>().Count() == 1);
                 library.Store.Archive(first.Id, LibraryRuntime.Now - (long)TimeSpan.FromDays(8).TotalMilliseconds);
                 library.ApplySettings(library.Settings with { RetentionDays = 7 }, false); library.Cleanup();
-                Check("open-text-editor-protects-file-from-history-cleanup", library.Store.Find(first.Id) is not null && File.Exists(first.Path));
-                editor.Close(); library.Restore(first.Id); library.RefreshShelf(true);
+                Check("open-text-preview-protects-file-from-history-cleanup", library.Store.Find(first.Id) is not null && File.Exists(first.Path));
+                preview.Close(); library.Restore(first.Id); library.RefreshShelf(true);
                 await Until(() => Find(first.Id) is not null);
                 Check("text-history-restores-with-saved-content", library.Store.Find(first.Id)!.State == EntryState.Shelf && TextContent.Read(first.Path) == saved);
                 var export = ImageFiles.Export(first.Path, Path.Combine(directory, "exported-text.txt"));
@@ -143,6 +152,7 @@ internal static class TextCardDiagnostics
                     Check("text-paging-keeps-media-page-still", Visible(false).Select(c => c.Item.EntryId).SequenceEqual(mediaPage) && !Visible(true).Select(c => c.Item.EntryId).SequenceEqual(notesPage));
                     Visible(true)[0].RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, 120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
                     var targetBounds = Bounds(target); var exposed = new PixelPoint(targetBounds.X + 20, targetBounds.Y + targetBounds.Height / 2);
+                    await Until(() => Native.WindowFromPoint(new Native.Point { X = exposed.X, Y = exposed.Y }) == new WindowInteropHelper(target).Handle);
                     mixed.TrackHoverPreview(30000, exposed, false, false);
                     Check("mixed-stack-pops-text-card-without-changing-order", mixed.EmphasizedCard == target && mixed.Count == 25);
                     mixed.TrackHoverPreview(30400, Center(target), false, false);
@@ -186,7 +196,7 @@ internal static class TextCardDiagnostics
                     Check("incoming-image-before-text-preserves-note-preview", drop.PreviewCount == 1 && drop.PreviewState(target.Item.EntryId!).TargetAngle == 0);
                     mixed.Hide();
                 }
-                Check("text-disposal-releases-all-windows", !app.Windows.OfType<OverlayWindow>().Any() && !app.Windows.OfType<TextWorkspace>().Any());
+                Check("text-disposal-releases-all-windows", !app.Windows.OfType<OverlayWindow>().Any() && !app.Windows.OfType<TextPreviewWindow>().Any());
                 ImageDecoder.StopIdleWorkers();
             }
             catch (Exception ex) { passed = false; checks.Add(new { name = "text-card-diagnostics-completed", passed = false, error = ex.ToString() }); }

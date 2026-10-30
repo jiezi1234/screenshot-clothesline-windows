@@ -232,8 +232,8 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseLeave += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
         var menu = new ContextMenu();
         Add(menu, item.IsText ? T("复制文字") : item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
-        Add(menu, item.IsText ? T("打开文字") : item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
-        if (!item.IsVideo) Add(menu, item.IsText ? T("编辑文字…") : T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
+        if (!item.IsText) Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
+        if (!item.IsVideo && !item.IsText) Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
         if (!item.IsText) Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
         Add(menu, T("在资源管理器中定位"), () => ShellTransfer.Reveal(item.Path));
         Add(menu, T("另存为"), () => ExportRequested?.Invoke(item, false));
@@ -304,10 +304,10 @@ internal sealed class CardWindow : OverlayWindow
         if (e.ClickCount == 2)
         {
             down = null;
-            try { if (Item.IsText) WorkspaceRequested?.Invoke(Item, true); else ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
+            try { if (!Item.IsText) ShellTransfer.Open(Item.Path); } catch (Exception ex) { Report(ex.Message); }
             e.Handled = true; return;
         }
-        down = e.GetPosition(this); surface.CaptureMouse(); holdTimer.Start(); e.Handled = true;
+        down = e.GetPosition(this); surface.CaptureMouse(); if (!Item.IsText) holdTimer.Start(); e.Handled = true;
     }
     private async void Move(object sender, MouseEventArgs e)
     {

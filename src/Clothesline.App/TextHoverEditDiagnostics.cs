@@ -246,6 +246,24 @@ internal static class TextHoverEditDiagnostics
                 window.Close(); window.SetPreview(Item(original));
                 Check("user-close-leaves-preview-reusable", window.BeginEdit() && window.PreviewText == original);
                 window.TryEndEditing(() => true);
+                var previewLeases = 1;
+                var readonlyPreview = new TextPreviewWindow(entry.Id, entry.Path, new Lease(() => previewLeases--));
+                try
+                {
+                    await readonlyPreview.RefreshText();
+                    var persisted = TextContent.Read(entry.Path);
+                    readonlyPreview.TextView.Select(0, Math.Min(8, persisted.Length));
+                    IDataObject? previewCopy = null; readonlyPreview.CopyToClipboard = data => previewCopy = data;
+                    ApplicationCommands.Copy.Execute(null, readonlyPreview.TextView);
+                    Check("readonly-history-preview-keeps-full-text-and-marked-selection-copy", readonlyPreview.TextView.IsReadOnly
+                        && readonlyPreview.TextView.Text == persisted && previewCopy?.GetData(DataFormats.UnicodeText) as string == readonlyPreview.TextView.SelectedText
+                        && ClipboardPolicy.Select(previewCopy!.GetFormats(false), _ => null) == ClipboardContentKind.None);
+                    System.Windows.Documents.EditingCommands.Delete.Execute(null, readonlyPreview.TextView);
+                    Check("readonly-preview-does-not-offer-editing-or-write-back", readonlyPreview.TextView.Text == persisted
+                        && !ApplicationCommands.Cut.CanExecute(null, readonlyPreview.TextView) && TextContent.Read(entry.Path) == persisted);
+                }
+                finally { readonlyPreview.Close(); }
+                Check("readonly-preview-releases-file-protection-on-close", previewLeases == 0);
                 foreach (var language in UiText.Languages)
                 {
                     UiText.Language = language.Code;

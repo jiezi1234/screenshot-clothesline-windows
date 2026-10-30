@@ -52,14 +52,8 @@ internal sealed class ShelfTextHover : IDisposable
         window.Saved += () => { if (!disposed && hiddenByShelf && !window.Dirty) ReleaseCleanPreview(); };
     }
     internal bool IsEditing => window.IsEditing;
-    internal string? EditingId => window.EditingId;
     internal Func<DemoItem, TextEditSession?>? StartEdit { set => window.StartEdit = value; }
     internal bool TryCloseEditor() => window.TryEndEditing();
-    internal bool FocusEditor(string id)
-    {
-        if (!window.IsEditing || window.EditingId != id) return false;
-        window.FocusEditor(); return true;
-    }
     internal bool Contains(PixelPoint cursor)
     {
         if (!window.IsVisible) return false;

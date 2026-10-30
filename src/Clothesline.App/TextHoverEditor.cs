@@ -106,11 +106,6 @@ internal sealed partial class TextHoverWindow
         }
         catch (Exception ex) { if (session is not null) FinishEdit(); savedNotice = true; editStatus.Text = ex.Message; UpdateEditorTools(); return false; }
     }
-    internal void FocusEditor()
-    {
-        if (!IsVisible || !IsEditing) return;
-        Activate(); TextView.Focus(); Keyboard.Focus(TextView);
-    }
     private void UpdateEditorTools()
     {
         var palette = TextPaper.Palette(PaperStyle);

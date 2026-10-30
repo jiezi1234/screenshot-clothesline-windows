@@ -40,11 +40,6 @@ internal sealed partial class ShelfController : IDisposable
     public bool Busy => CardInteractionBusy || textHover.IsEditing;
     internal Func<DemoItem, TextEditSession?>? StartTextEdit { set => textHover.StartEdit = value; }
     internal bool TryCloseTextEditor() => textHover.TryCloseEditor();
-    internal bool FocusTextEditor(string id)
-    {
-        if (textHover.EditingId != id) return false;
-        Show(); return textHover.FocusEditor(id);
-    }
     public event Action<DemoItem>? Archived;
     public event Action<DemoItem>? RecycleRequested;
     public event Action<DemoItem, bool>? ExportRequested;

@@ -147,7 +147,7 @@ internal sealed partial class Dashboard : Window
         var edit = Button(T("编辑图片…"), () => Selected(e => library?.OpenWorkspace(e.Id, true)));
         var more = More((T("导出…"), () => Selected(e => library?.Export(e.Path))), (T("定位"), () => Selected(e => ShellTransfer.Reveal(e.Path))), (T("移除记录"), () => Selected(e => library?.Forget(e.Id))), (T("回收文件"), () => Selected(e => library?.Recycle(e.Id))));
         foreach (var button in new[] { restore, preview, edit, more }) actions.Children.Add(button);
-        void Selection() { var entry = (history.SelectedItem as HistoryRow)?.Entry; preview.IsEnabled = restore.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && !Clothesline.Core.MediaFiles.IsVideo(entry.Path); edit.Content = entry is not null && Clothesline.Core.MediaFiles.IsText(entry.Path) ? T("编辑文字…") : T("编辑图片…"); AutomationProperties.SetName(edit, edit.Content.ToString()); }
+        void Selection() { var entry = (history.SelectedItem as HistoryRow)?.Entry; preview.IsEnabled = restore.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && Clothesline.Core.MediaFiles.IsImage(entry.Path); edit.Visibility = entry is not null && Clothesline.Core.MediaFiles.IsText(entry.Path) ? Visibility.Collapsed : Visibility.Visible; }
         history.SelectionChanged += (_, _) => Selection(); Selection();
         history.MouseDoubleClick += (_, _) => Selected(Preview); history.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Selected(Preview); e.Handled = true; } };
         history.ItemTemplate = MediaTemplate(true); panel.Children.Add(ListSurface(history, historyEmpty)); return panel;
@@ -160,7 +160,7 @@ internal sealed partial class Dashboard : Window
         var edit = Button(T("编辑图片…"), () => SelectedShelf(e => library?.OpenWorkspace(e.Id, true)));
         var more = More((T("导出…"), () => SelectedShelf(e => library?.Export(e.Path))), (T("定位"), () => SelectedShelf(e => ShellTransfer.Reveal(e.Path))), (T("取下（保留文件）"), () => SelectedShelf(e => library?.Archive(e.Id))), (T("全部取下"), () => library?.ArchiveBatch()));
         foreach (var button in new[] { copy, preview, edit, more }) actions.Children.Add(button);
-        void Selection() { var entry = shelfList.SelectedItem as LibraryEntry; copy.IsEnabled = preview.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && !Clothesline.Core.MediaFiles.IsVideo(entry.Path); edit.Content = entry is not null && Clothesline.Core.MediaFiles.IsText(entry.Path) ? T("编辑文字…") : T("编辑图片…"); AutomationProperties.SetName(edit, edit.Content.ToString()); }
+        void Selection() { var entry = shelfList.SelectedItem as LibraryEntry; copy.IsEnabled = preview.IsEnabled = more.IsEnabled = entry is not null; edit.IsEnabled = entry is not null && Clothesline.Core.MediaFiles.IsImage(entry.Path); edit.Visibility = entry is not null && Clothesline.Core.MediaFiles.IsText(entry.Path) ? Visibility.Collapsed : Visibility.Visible; }
         shelfList.SelectionChanged += (_, _) => Selection(); Selection();
         var note = Text(T("方向键选择，Enter 预览，Ctrl+C 复制，Delete 取下到历史。文件保留。"), 11, true, new Thickness(0, 14, 0, 0)); DockPanel.SetDock(note, Dock.Bottom); panel.Children.Add(note);
         AutomationProperties.SetName(shelfList, T("晾衣绳列表")); AutomationProperties.SetHelpText(shelfList, note.Text);

@@ -383,6 +383,6 @@
   "取消编辑": "Düzenlemeyi iptal et",
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Doğrudan düzenle · Değişiklikler otomatik kaydedilir · Ctrl+C ile seçimi kopyala",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "Bu ekran en fazla {0} kart alır: {1} görsel/video ve {1} metin kartı.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。布局共用整条绳子，图片在文字左侧。": "Her tür ekran kapasitesinin yarısıyla sınırlıdır. Sınır aşılınca yalnızca aynı türün en eski öğesi geçmişe taşınır. Satır paylaşılır; görseller metinlerin solundadır.",
-  "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "Boyut hemen uygulanır. Kotalar ekrana ve kart boyutuna göre değişir; sınırı aşan türün en eski öğeleri geçmişe taşınır."
+  "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "Boyut hemen uygulanır. Kotalar ekrana ve kart boyutuna göre değişir; sınırı aşan türün en eski öğeleri geçmişe taşınır.",
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Her tür, geçerli ekran kapasitesinin yarısıyla sınırlıdır. Sınır aşılınca yalnızca aynı türdeki en eski öğe geçmişe taşınır. Görseller ve metinler tüm ipi paylaşır; serbestçe karıştırılabilir ve sürüklenerek yeniden sıralanabilir."
 }

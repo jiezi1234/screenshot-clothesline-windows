@@ -144,12 +144,11 @@ internal static class TextCardDiagnostics
                     await Until(() => target.IsVisible);
                     CardWindow[] Visible(bool text) => app.Windows.OfType<CardWindow>().Where(c => c.IsVisible && c.Item.IsText == text).OrderBy(c => Bounds(c).X).ToArray();
                     var work = Native.MonitorAt(Center(target)).WorkArea;
-                    Check("media-before-text-with-shared-page-allocation", Visible(false).Length == mixed.ZoneCapacity(false) && Visible(true).Length == mixed.ZoneCapacity(true)
-                        && Visible(false).Length + Visible(true).Length == mixed.DisplayCapacity && Bounds(Visible(false)[^1]).X < Bounds(Visible(true)[0]).X);
+                    string[] RowIds() => Visible(false).Concat(Visible(true)).OrderBy(c => Bounds(c).X).Select(c => c.Item.EntryId!).ToArray();
+                    Check("mixed-row-keeps-interleaved-input-order", RowIds().SequenceEqual(Enumerable.Range(0, mixed.DisplayCapacity).Select(i => "mixed-" + i)));
                     await Task.Delay(50); CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "shared-shelf.png"));
-                    var mediaPage = Visible(false).Select(c => c.Item.EntryId).ToArray(); var notesPage = Visible(true).Select(c => c.Item.EntryId).ToArray();
                     target.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
-                    Check("text-paging-keeps-media-page-still", Visible(false).Select(c => c.Item.EntryId).SequenceEqual(mediaPage) && !Visible(true).Select(c => c.Item.EntryId).SequenceEqual(notesPage));
+                    Check("paging-keeps-a-single-shared-order-for-both-types", RowIds().SequenceEqual(Enumerable.Range(mixed.DisplayCapacity, Math.Min(mixed.DisplayCapacity, 25 - mixed.DisplayCapacity)).Select(i => "mixed-" + i)));
                     Visible(true)[0].RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, 120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
                     var targetBounds = Bounds(target); var exposed = new PixelPoint(targetBounds.X + 20, targetBounds.Y + targetBounds.Height / 2);
                     await Until(() => Native.WindowFromPoint(new Native.Point { X = exposed.X, Y = exposed.Y }) == new WindowInteropHelper(target).Handle);
@@ -163,11 +162,13 @@ internal static class TextCardDiagnostics
                     var gestureText = mixed.BeginLocalReorder(target, Center(target), false);
                     mixed.UpdateLocalReorder(new PixelPoint(work.X + 100, Center(target).Y), true, false, 31000);
                     var drop = app.Windows.OfType<ShelfDropWindow>().Single(); var dropDpi = Native.GetDpiForWindow(new WindowInteropHelper(drop).Handle) / 96.0;
-                    Check("text-drag-can-cross-midpoint-and-keeps-media-visible", drop.PreviewState(target.Item.EntryId!).X * dropDpi + Bounds(drop).X < work.X + work.Width / 2
-                        && mediaPage.All(id => drop.PreviewState(id!).TargetAngle == 0) && drop.PreviewCount > mixed.ZoneCapacity(true));
+                    Check("text-drag-preview-includes-the-complete-mixed-row", drop.PreviewState(target.Item.EntryId!).X * dropDpi + Bounds(drop).X < work.X + work.Width / 2
+                        && drop.PreviewCount == mixed.DisplayCapacity);
                     mixed.UpdateLocalReorder(Center(target), true, true, 31100); await gestureText;
+                    mixed.MoveCardBefore(Visible(false)[0], target.Item.EntryId);
+                    Check("image-can-move-before-text-in-the-shared-row", mixed.OrderedIds.Take(3).SequenceEqual(new[] { "mixed-1", "mixed-0", "mixed-2" }));
                     mixed.MoveCardBefore(target, null);
-                    Check("text-reorder-never-mixes-with-media-order", mixed.OrderedIds.Take(12).All(id => int.Parse(id[6..]) % 2 == 1) && mixed.OrderedIds[^1] == "mixed-0");
+                    Check("text-can-cross-images-to-the-end-without-regrouping", mixed.OrderedIds.SequenceEqual(Enumerable.Range(1, 24).Select(i => "mixed-" + i).Append("mixed-0")));
                     var note = target.Item;
                     mixed.SetItems(Enumerable.Range(0, mixed.DisplayCapacity - 1).Select(i => photo with { EntryId = "photo-" + i }).Append(note), true);
                     await Task.Delay(50);

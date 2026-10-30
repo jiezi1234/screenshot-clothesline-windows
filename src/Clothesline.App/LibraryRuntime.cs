@@ -222,8 +222,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     public void ArchiveBatch(string? anchor = null, ArchiveScope scope = ArchiveScope.All)
     {
         var entries = Store.Entries(EntryState.Shelf);
-        var anchorEntry = entries.FirstOrDefault(e => e.Id == anchor);
-        var ordered = entries.Where(e => scope == ArchiveScope.All || anchorEntry is null || MediaFiles.IsText(e.Path) == MediaFiles.IsText(anchorEntry.Path)).Select(e => e.Id).ToArray();
+        var ordered = entries.Select(e => e.Id).ToArray();
         var ids = anchor is null && scope == ArchiveScope.All ? ordered : BatchSelection.Select(ordered, anchor ?? "", scope);
         var count = Store.ArchiveMany(ids, Now);
         Report(T("已取下 {0} 个项目到本地历史，原文件保留。", count)); ScheduleRefresh(false);

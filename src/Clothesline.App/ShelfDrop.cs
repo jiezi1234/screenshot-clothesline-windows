@@ -77,7 +77,7 @@ internal sealed partial class ShelfController
         if (dropMonitor != monitor.Handle || !dropTarget.IsVisible) { dropScale = Native.MoveAndGetScale(dropTarget, monitor); dropMonitor = monitor.Handle; }
         if (expanded)
         {
-            var slots = ShelfZones.Plan(monitor.WorkArea, dropScale, 1, 0, cardScale).Media;
+            var slots = ShelfZones.Row(monitor.WorkArea, dropScale, 1, cardScale);
             var height = Math.Min(monitor.WorkArea.Height, slots[0].Bottom - monitor.WorkArea.Y + (int)(24 * dropScale));
             dropBounds = new(monitor.WorkArea.X + (int)(8 * dropScale), monitor.WorkArea.Y, Math.Max(1, monitor.WorkArea.Width - (int)(16 * dropScale)), height);
         }
@@ -151,10 +151,10 @@ internal sealed partial class ShelfController
     {
         if (!cards.Contains(source)) return;
         if ((source.Item.EntryId ?? source.Item.Path) == beforeId) return;
-        var target = beforeId is null ? null : cards.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == beforeId && c.Item.IsText == source.Item.IsText);
+        var target = beforeId is null ? null : cards.FirstOrDefault(c => (c.Item.EntryId ?? c.Item.Path) == beforeId);
         beforeId = target?.Item.EntryId ?? target?.Item.Path;
         if (source.Item.EntryId is string id) ReorderRequested?.Invoke(id, beforeId);
-        cards.Remove(source); cards.Insert(target is null ? cards.Count : cards.IndexOf(target), source); NormalizeZones();
+        cards.Remove(source); cards.Insert(target is null ? cards.Count : cards.IndexOf(target), source);
         if (present && presented) Present();
     }
 }

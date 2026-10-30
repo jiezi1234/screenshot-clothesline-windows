@@ -199,11 +199,8 @@ foreach (var counts in new[] { (0, 0), (25, 0), (0, 25), (1, 20), (20, 1), (20, 
 {
     var work = new PixelRect(-1920, -100, width, 1040);
     var capacity = ShelfZones.DisplayCapacity(work, dpi, size);
-    var layout = ShelfZones.Plan(work, dpi, counts.Item1, counts.Item2, size);
-    var all = layout.Media.Concat(layout.Text).ToArray();
+    var all = ShelfZones.Row(work, dpi, counts.Item1 + counts.Item2, size).ToArray();
     Check(all.Length == Math.Min(capacity, counts.Item1 + counts.Item2)
-        && layout.Media.Count <= counts.Item1 && layout.Text.Count <= counts.Item2
-        && (counts.Item1 == 0 || layout.Media.Count > 0) && (counts.Item2 == 0 || layout.Text.Count > 0)
         && all.All(r => r.X >= work.X && r.Right <= work.Right && r.Y >= work.Y && r.Bottom <= work.Bottom)
         && all.Zip(all.Skip(1)).All(p => p.Second.X - p.First.X >= Math.Ceiling(p.First.Width * .6))
         && all.Zip(all.Skip(1)).Select(p => p.Second.X - p.First.X).Distinct().Count() <= 1
@@ -211,12 +208,11 @@ foreach (var counts in new[] { (0, 0), (25, 0), (0, 25), (1, 20), (20, 1), (20, 
         $"shared layout {counts} at {width}px, DPI {dpi}, card {size}");
 }
 var fluidWork = new PixelRect(0, 0, 1920, 1080);
-var mediaHeavy = ShelfZones.Plan(fluidWork, 1, 12, 1); var textHeavy = ShelfZones.Plan(fluidWork, 1, 1, 12);
-Check(mediaHeavy.Media[^1].X > 960 && textHeavy.Text[0].X < 960, "both types can extend beyond the screen midpoint as counts change");
-Check(ShelfZones.Plan(fluidWork, 1, 100, 0).Media.Count == ShelfZones.DisplayCapacity(fluidWork, 1)
-    && ShelfZones.Plan(fluidWork, 1, 0, 100).Text.Count == ShelfZones.DisplayCapacity(fluidWork, 1), "layout geometry uses the whole row independently of storage quotas");
-var sparseRow = ShelfZones.Plan(fluidWork, 1, 1, 1);
-Check(sparseRow.Text[0].X - sparseRow.Media[0].Right == 28 && sparseRow.Media[0].X == 734, "one image and one note form a centered adjacent pair");
+var fullRow = ShelfZones.Row(fluidWork, 1, 13);
+Check(fullRow[0].X < 960 && fullRow[^1].X > 960, "mixed cards may occupy either side of the screen");
+Check(ShelfZones.Row(fluidWork, 1, 100).Count == ShelfZones.DisplayCapacity(fluidWork, 1), "layout geometry uses the whole row independently of storage quotas");
+var sparseRow = ShelfZones.Row(fluidWork, 1, 2);
+Check(sparseRow[1].X - sparseRow[0].Right == 28 && sparseRow[0].X == 734, "two arbitrary cards form a centered adjacent pair");
 UnifiedShelfChecks.Run(Check);
 PaperStyleChecks.Run(Check);
 Console.WriteLine($"{checks} checks passed.");

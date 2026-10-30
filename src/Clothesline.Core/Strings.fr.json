@@ -383,6 +383,6 @@
   "取消编辑": "Annuler les modifications",
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Modifiez ici · Enregistrement automatique · Ctrl+C copie la sélection",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "Cet écran peut afficher {0} cartes : au plus {1} images/vidéos et {1} textes.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。布局共用整条绳子，图片在文字左侧。": "Chaque type est limité à la moitié de la capacité. Seul le plus ancien élément du même type est archivé en cas de dépassement. La rangée est partagée, images avant textes.",
-  "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "La taille est appliquée immédiatement. Les limites suivent l’écran et la taille des cartes ; les plus anciens éléments du type excédentaire sont archivés."
+  "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "La taille est appliquée immédiatement. Les limites suivent l’écran et la taille des cartes ; les plus anciens éléments du type excédentaire sont archivés.",
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Chaque type est limité à la moitié de la capacité de l’écran actuel. En cas de dépassement, seul l’élément le plus ancien du même type est déplacé dans l’historique. Images et textes partagent toute la corde et peuvent être mélangés et réorganisés par glisser-déposer."
 }

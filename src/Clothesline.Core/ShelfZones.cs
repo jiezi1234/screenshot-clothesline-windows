@@ -1,7 +1,5 @@
 namespace Clothesline.Core;
 
-public sealed record ShelfLayout(IReadOnlyList<PixelRect> Media, IReadOnlyList<PixelRect> Text);
-
 public static class ShelfZones
 {
     private sealed record Metrics(int Width, int Height, int Y, int Margin, int Capacity, int NormalStep);
@@ -12,7 +10,7 @@ public static class ShelfZones
         var margin = Math.Min((int)(16 * scale), Math.Max(0, (work.Width - width) / 2));
         if (baseline.Count == 1 && work.Width >= 2)
         {
-            // Very narrow desktops still expose both types instead of hiding one behind the other.
+            // Keep at least two usable slots on narrow desktops for the per-category quotas.
             margin = Math.Min((int)(16 * scale), (work.Width - 2) / 4);
             width = Math.Max(1, (int)((work.Width - 2 * margin) / 1.6));
             height = Math.Max(1, (int)Math.Round(card.Height * width / (double)card.Width));
@@ -23,26 +21,14 @@ public static class ShelfZones
     }
     public static int DisplayCapacity(PixelRect work, double scale, double cardScale = 1) => Measure(work, scale, cardScale).Capacity;
     public static int TypeCapacity(int displayCapacity) => Math.Max(0, displayCapacity / 2);
-    public static (int Media, int Text) Allocate(int capacity, int media, int text)
+    public static IReadOnlyList<PixelRect> Row(PixelRect work, double scale, int requestedCount, double cardScale = 1)
     {
-        if (capacity < 1 || media < 0 || text < 0) throw new ArgumentOutOfRangeException();
-        if ((long)media + text <= capacity) return (media, text);
-        if (media == 0) return (0, Math.Min(capacity, text));
-        if (text == 0) return (Math.Min(capacity, media), 0);
-        if (capacity == 1) return media >= text ? (1, 0) : (0, 1);
-        var left = Math.Clamp((int)Math.Round(capacity * (double)media / ((long)media + text)), 1, capacity - 1);
-        return (left, capacity - left);
-    }
-    public static ShelfLayout Plan(PixelRect work, double scale, int mediaCount, int textCount, double cardScale = 1)
-    {
-        var size = Measure(work, scale, cardScale); var (media, text) = Allocate(size.Capacity, mediaCount, textCount);
-        var count = media + text;
+        if (requestedCount < 0) throw new ArgumentOutOfRangeException(nameof(requestedCount));
+        var size = Measure(work, scale, cardScale); var count = Math.Min(requestedCount, size.Capacity);
         var step = count <= 1 ? 0 : Math.Min(size.NormalStep, (work.Width - 2 * size.Margin - size.Width) / (count - 1));
-        // Place one continuous row before assigning its slots to media and text.
-        // The type boundary must have exactly the same spacing as every other pair.
+        // Slots follow persisted order; media type never affects position or spacing.
         var rowWidth = size.Width + Math.Max(0, count - 1) * step;
         var start = work.X + (work.Width - rowWidth) / 2;
-        var row = Enumerable.Range(0, count).Select(i => new PixelRect(start + i * step, size.Y, size.Width, size.Height)).ToArray();
-        return new(row.Take(media).ToArray(), row.Skip(media).ToArray());
+        return Enumerable.Range(0, count).Select(i => new PixelRect(start + i * step, size.Y, size.Width, size.Height)).ToArray();
     }
 }

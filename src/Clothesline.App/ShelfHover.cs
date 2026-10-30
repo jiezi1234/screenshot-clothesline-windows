@@ -37,7 +37,7 @@ internal sealed partial class ShelfController
             // Keep the pressed card still until its click/menu/long press finishes.
             hoverPreview.Reset(); textHover.Reset(); return;
         }
-        var row = ZoneRow(false).Concat(ZoneRow(true)).ToArray();
+        var row = VisibleRow().ToArray();
         var home = row.FirstOrDefault(pair => pair.Card == card).Rect;
         var stacked = card is not null && row.Any(pair => pair.Card != card && pair.Rect.X < home.Right && pair.Rect.Right > home.X);
         if (!stacked) ResetStackEmphasis();

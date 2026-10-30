@@ -32,8 +32,8 @@ internal sealed partial class ShelfController
     internal Task<ReorderExit> BeginLocalReorder(CardWindow source, PixelPoint cursor, bool pollInput = true)
     {
         if (!textHover.ReleaseCleanPreview() || localReorder is not null || !presented || activeMonitor is null || !cards.Contains(source)) return Task.FromResult(ReorderExit.Cancelled);
-        var slots = ZoneSlots(source.Item.IsText);
-        var slot = ZoneCards(source.Item.IsText).IndexOf(source) - ZonePage(source.Item.IsText) * ZoneCapacity(source.Item.IsText);
+        var slots = RowSlots;
+        var slot = cards.IndexOf(source) - page * DragCapacity;
         if (slot < 0 || slot >= slots.Count) return Task.FromResult(ReorderExit.Cancelled);
         Native.GetWindowRect(new System.Windows.Interop.WindowInteropHelper(source).Handle, out var sourceBounds);
         var grip = (int)System.Math.Round((cursor.X - sourceBounds.Left) * slots[slot].Width / (double)System.Math.Max(1, sourceBounds.Right - sourceBounds.Left));
@@ -95,7 +95,7 @@ internal sealed partial class ShelfController
         }
         var sourceIndex = order.IndexOf(gesture.Source);
         ShowDropTarget(monitor, true, T("拖动调整顺序；在左右边缘停留可翻页。"));
-        dropTarget.BeginPreviewFrame(); if (DragText) PreviewOtherZone(true);
+        dropTarget.BeginPreviewFrame();
         for (var i = 0; i < slots.Count && page * DragCapacity + i < order.Count; i++)
         {
             var index = page * DragCapacity + i; var card = order[index];
@@ -106,7 +106,6 @@ internal sealed partial class ShelfController
             var angle = settling || !MotionAllowed ? 0 : index == sourceIndex - 1 ? 5 : index == sourceIndex + 1 ? -5 : 0;
             dropTarget.Preview(card, origin, slots[i], dropBounds, scale, angle, MotionAllowed);
         }
-        if (!DragText) PreviewOtherZone(false);
         if (!settling)
         {
             var originalSlot = Math.Clamp(DragCards.IndexOf(gesture.Source) - page * DragCapacity, 0, slots.Count - 1);
@@ -171,7 +170,7 @@ internal sealed partial class ShelfController
         var slots = DragSlots;
         var count = Math.Min(slots.Count, DragCards.Count - page * DragCapacity);
         var slot = Math.Clamp(hoverSlot, 0, count);
-        dropTarget.BeginPreviewFrame(); if (DragText) PreviewOtherZone(true);
+        dropTarget.BeginPreviewFrame();
         for (var i = 0; i < count; i++)
         {
             var rect = slots[i]; var shift = (int)(24 * scale) * (i < slot ? -1 : 1);
@@ -180,7 +179,6 @@ internal sealed partial class ShelfController
             var angle = !MotionAllowed ? 0 : i == slot - 1 ? 5 : i == slot ? -5 : 0;
             dropTarget.Preview(DragCards[page * DragCapacity + i], rect, rect with { X = x }, dropBounds, scale, angle, MotionAllowed);
         }
-        if (!DragText) PreviewOtherZone(false);
         dropTarget.EndPreviewFrame(); HidePreviewCards();
     }
 }

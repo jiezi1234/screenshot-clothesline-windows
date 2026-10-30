@@ -383,6 +383,6 @@
   "取消编辑": "Cancelar edição",
   "直接编辑 · 修改后自动保存 · Ctrl+C 复制所选文字": "Edite aqui · Alterações salvas automaticamente · Ctrl+C copia a seleção",
   "当前屏幕最多 {0} 项：图片与录像最多 {1} 项，文字最多 {1} 项。": "Esta tela comporta {0} cartões: até {1} imagens/vídeos e {1} textos.",
-  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。布局共用整条绳子，图片在文字左侧。": "Cada tipo fica limitado à metade da capacidade. Ao exceder, apenas o item mais antigo do mesmo tipo vai para o histórico. A linha é compartilhada, com imagens antes dos textos.",
-  "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "O tamanho é aplicado imediatamente. As cotas seguem a tela e o tamanho dos cartões; o excesso mais antigo do mesmo tipo vai para o histórico."
+  "大小立即生效；每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。": "O tamanho é aplicado imediatamente. As cotas seguem a tela e o tamanho dos cartões; o excesso mais antigo do mesmo tipo vai para o histórico.",
+  "两类各限当前屏幕容量的一半，超额仅将同类最早加入的项目移入历史。图片与文字共用整条绳子，可自由混排和拖动排序。": "Cada tipo ocupa no máximo metade da capacidade da tela atual. Ao exceder o limite, apenas o item mais antigo do mesmo tipo vai para o histórico. Imagens e textos compartilham todo o varal e podem ser misturados e reordenados ao arrastar."
 }

@@ -106,6 +106,16 @@ internal static class DragDropDiagnostics
                     var corrupt = Path.Combine(root, "corrupt.png"); File.WriteAllText(corrupt, "invalid image");
                     await runtime.ImportDroppedImages([corrupt, paths[1]], null);
                     Check("bad-image-does-not-stop-following-valid-file", runtime.Store.Entries().Count == 3 && runtime.Store.Entries(EntryState.Shelf).Last().Path == paths[1] && File.Exists(corrupt));
+                    await runtime.Collector.ImportText("Generated note on the left", runtime.Settings.MaxManagedBytes);
+                    await runtime.Collector.ImportText("Generated note on the right", runtime.Settings.MaxManagedBytes);
+                    var notes = runtime.Store.Entries(EntryState.Shelf).Where(e => MediaFiles.IsText(e.Path)).ToArray();
+                    await runtime.ImportDroppedImages([paths[0]], notes[1].Id);
+                    var mixedPaths = runtime.Store.Entries(EntryState.Shelf).Select(e => e.Path).ToArray();
+                    var anchor = Array.IndexOf(mixedPaths, notes[1].Path);
+                    Check("external-image-inserts-between-text-cards", anchor >= 2 && mixedPaths[anchor - 1] == paths[0] && mixedPaths[anchor - 2] == notes[0].Path);
+                    runtime.ArchiveBatch(notes[1].Id, ArchiveScope.Left);
+                    Check("archive-left-follows-mixed-visual-order-and-keeps-files", runtime.Store.Find(notes[0].Id)!.State == EntryState.History
+                        && runtime.Store.Entries(EntryState.Shelf).First().Id == notes[1].Id && mixedPaths.All(File.Exists));
                     shelf.HandleSession(Microsoft.Win32.SessionSwitchReason.SessionLock);
                     var lockedDrop = Event(target, data, DragDrop.PreviewDragOverEvent);
                     Check("session-lock-hides-and-rejects-drop", !target.IsVisible && !shelf.Visible && lockedDrop.Effects == DragDropEffects.None);

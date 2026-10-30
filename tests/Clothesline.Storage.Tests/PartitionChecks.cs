@@ -18,10 +18,13 @@ internal static class PartitionChecks
             var shelf = store.Entries(EntryState.Shelf);
             check(shelf.Count == 24 && shelf.Count(e => MediaFiles.IsText(e.Path)) == 12, "odd screen capacity gives both categories the same rounded-down quota");
             check(store.Entries(EntryState.History).Count == 6 && store.Entries().All(e => File.Exists(e.Path)), "separate overflow archives oldest arrivals without deleting files");
-            check(shelf.Take(12).All(e => !MediaFiles.IsText(e.Path)) && shelf.Skip(12).All(e => MediaFiles.IsText(e.Path)), "library shelf orders media left and text right");
+            check(shelf.Select(e => e.Id).SequenceEqual(Enumerable.Range(3, 12).Reverse().SelectMany(i => new[] { "text-" + i, "media-" + i })), "new items use arrival order without grouping by type");
             check(shelf.Any(e => MediaFiles.IsVideo(e.Path)), "video shares the image quota");
-            check(store.MoveShelfItems(["media-3"], "media-14") && store.MoveShelfItems(["text-3"], null), "each zone supports independent persistent ordering");
-            check(!store.MoveShelfItems(["media-3"], "text-3") && !store.MoveShelfItems(["media-3", "text-3"], null), "storage rejects cross-zone sorting and mixed moving groups");
+            check(store.MoveShelfItems(["media-3"], "media-14") && store.MoveShelfItems(["text-3"], null), "any retained item can move to another position or the row end");
+            check(store.MoveShelfItems(["media-3"], "text-3") && store.MoveShelfItems(["media-3", "text-3"], "text-14"), "storage accepts cross-type sorting and mixed moving groups");
+            var ordered = store.Entries(EntryState.Shelf).Select(e => e.Id).ToArray();
+            check(ordered.Take(3).SequenceEqual(new[] { "media-3", "text-3", "text-14" }), "mixed group retains requested order before a text anchor");
+            using (var snapshot = new LibraryStore(root)) check(snapshot.Entries(EntryState.Shelf).Select(e => e.Id).SequenceEqual(ordered), "mixed positions survive reopening the database");
             var textOrder = store.Entries(EntryState.Shelf).Where(e => MediaFiles.IsText(e.Path)).Select(e => e.Id).ToArray();
             store.Restore("media-0", 25, 1000);
             check(store.Find("media-3")!.State == EntryState.History && store.Find("media-0")!.State == EntryState.Shelf, "restoring an image evicts the oldest image even when reordered");
@@ -47,12 +50,13 @@ internal static class PartitionChecks
         check(await engine.ImportClipboard([1, 2, 3], "retained-image", 1024 * 1024), "twenty-slot example collects the first image");
         var photo = example.Entries(EntryState.Shelf).Single();
         for (var i = 0; i < 10; i++) check(await engine.ImportText("Copied text " + i, 1024 * 1024), "twenty-slot example collects note " + i);
-        var oldest = example.Entries(EntryState.Shelf).Last();
+        var oldest = example.Entries(EntryState.Shelf).Last(e => MediaFiles.IsText(e.Path));
         example.MoveShelfItems([oldest.Id], example.Entries(EntryState.Shelf).First(e => MediaFiles.IsText(e.Path)).Id);
         await engine.ImportText("Copied text 10", 1024 * 1024);
         check(example.Entries(EntryState.Shelf).Count == 11 && example.Entries(EntryState.Shelf).Count(e => MediaFiles.IsText(e.Path)) == 10,
             "one image plus ten notes stays at eleven cards after another text copy");
         check(example.Find(photo.Id)!.State == EntryState.Shelf && File.Exists(photo.Path), "new text never evicts the older image");
+        check(TextContent.Read(example.Entries(EntryState.Shelf).First().Path) == "Copied text 10", "new text arrives at the global front after custom mixed ordering");
         check(example.Find(oldest.Id)!.State == EntryState.History && TextContent.Read(oldest.Path) == "Copied text 0", "eleventh note archives first copied note regardless of visual order");
         var remaining = example.Entries(EntryState.Shelf).Where(e => MediaFiles.IsText(e.Path)).Select(e => e.Id).ToArray();
         for (var i = 0; i < 10; i++) await engine.ImportClipboard([1, 2, 3], "new-image-" + i, 1024 * 1024);

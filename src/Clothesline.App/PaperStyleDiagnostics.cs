@@ -106,8 +106,9 @@ internal static class PaperStyleDiagnostics
             TextCardImage.Create(sample, TextPaperStyle.Sticky), paperId, sample);
         foreach (var (media, text, name) in new[] { (5, 1, "five-photos-one-note"), (1, 5, "one-photo-five-notes"), (1, 1, "one-photo-one-note"), (12, 12, "crowded-mixed-row") })
         {
-            var layout = ShelfZones.Plan(new PixelRect(0, 0, 1920, 1080), 1, media, text);
-            var slots = layout.Media.Concat(layout.Text).ToArray();
+            var slots = ShelfZones.Row(new PixelRect(0, 0, 1920, 1080), 1, media + text).ToArray();
+            var kinds = Enumerable.Range(0, Math.Max(media, text)).SelectMany(i =>
+                (i < media ? new[] { false } : Array.Empty<bool>()).Concat(i < text ? new[] { true } : Array.Empty<bool>())).ToArray();
             var visual = new DrawingVisual();
             using (var dc = visual.RenderOpen())
             {
@@ -115,7 +116,7 @@ internal static class PaperStyleDiagnostics
                 dc.DrawLine(new Pen(DemoAssets.Brush("#8B9C86"), 1.5), new Point(8, 27), new Point(1912, 27));
                 for (var i = 0; i < slots.Length; i++)
                 {
-                    var card = new CardWindow(i < layout.Media.Count ? photos[i % photos.Count] : note with { EntryId = i.ToString("x32") });
+                    var card = new CardWindow(!kinds[i] ? photos[i % photos.Count] : note with { EntryId = i.ToString("x32") });
                     try
                     {
                         var bounds = slots[i];

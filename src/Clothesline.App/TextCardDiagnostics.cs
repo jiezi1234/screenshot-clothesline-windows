@@ -161,7 +161,7 @@ internal static class TextCardDiagnostics
                     mixed.SetItems(Enumerable.Range(0, mixed.DisplayCapacity - 1).Select(i => photo with { EntryId = "photo-" + i }).Append(note), true);
                     await Task.Delay(50);
                     Check("media-borrows-right-space-with-one-note", Visible(false).Length == mixed.DisplayCapacity - 1 && Bounds(Visible(false)[^1]).X > work.X + work.Width / 2
-                        && Visible(true).Length == 1 && Bounds(Visible(true)[0]).Right > work.Right - 50);
+                        && Visible(true).Length == 1 && Bounds(Visible(false)[^1]).X < Bounds(Visible(true)[0]).X);
                     CaptureRow(Visible(false).Concat(Visible(true)).ToArray(), Path.Combine(directory, "fluid-media-heavy.png"));
                     mixed.TrackHoverPreview(31200, Center(Visible(true)[0]), false, false);
                     Check("single-note-at-media-boundary-pops-when-overlapped", mixed.EmphasizedCard == Visible(true)[0]);
@@ -174,12 +174,15 @@ internal static class TextCardDiagnostics
                     Check("single-image-at-text-boundary-pops-when-overlapped", mixed.EmphasizedCard == onlyImage);
                     mixed.SetItems(Enumerable.Range(0, mixed.DisplayCapacity + 1).Select(i => note with { EntryId = "only-note-" + i }), true);
                     var noteTotal = mixed.DisplayCapacity + 1;
-                    Check("text-only-uses-full-row-capacity", Visible(true).Length == mixed.DisplayCapacity && Bounds(Visible(true)[0]).X < work.X + 50);
+                    Check("text-only-uses-full-row-capacity", Visible(true).Length == mixed.DisplayCapacity
+                        && Bounds(Visible(true)[0]).X < work.X + work.Width / 2 && Bounds(Visible(true)[^1]).Right > work.X + work.Width / 2);
                     Visible(true)[0].RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
-                    Check("short-final-text-page-remains-right-aligned", Visible(true).Length == 1 && Visible(true)[0].Item.EntryId == "only-note-" + (noteTotal - 1) && Bounds(Visible(true)[0]).Right > work.Right - 50);
+                    var finalNote = Bounds(Visible(true)[0]);
+                    Check("short-final-text-page-uses-centered-row", Visible(true).Length == 1 && Visible(true)[0].Item.EntryId == "only-note-" + (noteTotal - 1)
+                        && Math.Abs((finalNote.X - work.X) - (work.Right - finalNote.Right)) <= 1);
                     mixed.SetItems([note], true);
                     mixed.UpdateDropFeedback(new PixelPoint(work.X + 100, work.Y + 70), 32000);
-                    Check("incoming-image-into-empty-left-zone-preserves-right-preview", drop.PreviewCount == 1 && drop.PreviewState(target.Item.EntryId!).TargetAngle == 0);
+                    Check("incoming-image-before-text-preserves-note-preview", drop.PreviewCount == 1 && drop.PreviewState(target.Item.EntryId!).TargetAngle == 0);
                     mixed.Hide();
                 }
                 Check("text-disposal-releases-all-windows", !app.Windows.OfType<OverlayWindow>().Any() && !app.Windows.OfType<TextWorkspace>().Any());

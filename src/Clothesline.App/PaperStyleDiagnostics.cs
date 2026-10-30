@@ -83,6 +83,7 @@ internal static class PaperStyleDiagnostics
                     }
                     var row = new RenderTargetBitmap(1856, 468, 192, 192, PixelFormats.Pbgra32); row.Render(gallery);
                     DemoAssets.Save(row, Path.Combine(directory, "four-paper-styles.png"));
+                    RenderUnifiedRows(directory);
                     Check("diagnostics-do-not-show-windows", app.Windows.Cast<Window>().All(window => !window.IsVisible));
                 }
                 finally { preview.Close(); }
@@ -95,6 +96,38 @@ internal static class PaperStyleDiagnostics
             }
         }));
         return app.Run();
+    }
+    private static void RenderUnifiedRows(string directory)
+    {
+        var photos = DemoAssets.Create(Path.Combine(directory, "generated-photos"));
+        var paperId = "00000000000000000000000000000000";
+        const string sample = "把想法，留在手边。\n\n图片与文字，\n现在排在同一行。";
+        var note = new DemoItem("Example note", "Example subtitle", Path.Combine(directory, "sample.txt"),
+            TextCardImage.Create(sample, TextPaperStyle.Sticky), paperId, sample);
+        foreach (var (media, text, name) in new[] { (5, 1, "five-photos-one-note"), (1, 5, "one-photo-five-notes"), (1, 1, "one-photo-one-note"), (12, 12, "crowded-mixed-row") })
+        {
+            var layout = ShelfZones.Plan(new PixelRect(0, 0, 1920, 1080), 1, media, text);
+            var slots = layout.Media.Concat(layout.Text).ToArray();
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                dc.DrawRectangle(DemoAssets.Brush("#EDF0E8"), null, new Rect(0, 0, 1920, 240));
+                dc.DrawLine(new Pen(DemoAssets.Brush("#8B9C86"), 1.5), new Point(8, 27), new Point(1912, 27));
+                for (var i = 0; i < slots.Length; i++)
+                {
+                    var card = new CardWindow(i < layout.Media.Count ? photos[i % photos.Count] : note with { EntryId = i.ToString("x32") });
+                    try
+                    {
+                        var bounds = slots[i];
+                        var bitmap = Render((FrameworkElement)card.Content, bounds.Width, bounds.Height, 1);
+                        dc.DrawImage(bitmap, new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+                    }
+                    finally { card.Close(); }
+                }
+            }
+            var row = new RenderTargetBitmap(1920, 240, 96, 96, PixelFormats.Pbgra32); row.Render(visual);
+            DemoAssets.Save(row, Path.Combine(directory, name + ".png"));
+        }
     }
     private static BitmapSource Render(FrameworkElement content, double width, double height, double scale)
     {

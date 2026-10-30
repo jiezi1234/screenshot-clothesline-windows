@@ -72,7 +72,7 @@ internal sealed partial class ShelfController
             if (escape) { _ = FinishLocalReorder(ReorderExit.Cancelled); return; }
             if (!band.Contains(cursor)) { _ = FinishLocalReorder(leftDown ? ReorderExit.Export : ReorderExit.Cancelled); return; }
             UpdateDragPage(cursor, monitor, now);
-            slots = DragSlots; // A short final page has different spacing and right anchoring.
+            slots = DragSlots; // A short final page re-centers the complete mixed row.
             if (gesture.Page != page) { gesture.Page = page; gesture.Slot = -1; }
             var count = Math.Min(slots.Count, DragCards.Count - page * DragCapacity);
             gesture.Slot = ShelfDropGeometry.StableSlot(slots, count, gesture.Slot, cursor.X, (int)(8 * scale));

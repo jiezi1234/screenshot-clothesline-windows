@@ -37,8 +37,11 @@ public static class ShelfZones
         var size = Measure(work, scale, cardScale); var (media, text) = Allocate(size.Capacity, mediaCount, textCount);
         var count = media + text;
         var step = count <= 1 ? 0 : Math.Min(size.NormalStep, (work.Width - 2 * size.Margin - size.Width) / (count - 1));
-        var left = work.X + size.Margin; var right = work.Right - size.Margin - size.Width;
-        return new(Enumerable.Range(0, media).Select(i => new PixelRect(left + i * step, size.Y, size.Width, size.Height)).ToArray(),
-            Enumerable.Range(0, text).Select(i => new PixelRect(right - (text - 1 - i) * step, size.Y, size.Width, size.Height)).ToArray());
+        // Place one continuous row before assigning its slots to media and text.
+        // The type boundary must have exactly the same spacing as every other pair.
+        var rowWidth = size.Width + Math.Max(0, count - 1) * step;
+        var start = work.X + (work.Width - rowWidth) / 2;
+        var row = Enumerable.Range(0, count).Select(i => new PixelRect(start + i * step, size.Y, size.Width, size.Height)).ToArray();
+        return new(row.Take(media).ToArray(), row.Skip(media).ToArray());
     }
 }

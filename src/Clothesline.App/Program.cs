@@ -34,6 +34,8 @@ internal static class Program
         if (args.Length == 2 && args[0] == "--compatibility-functional-test") return CompatibilityDiagnostics.Run(app, args[1], false, foregroundChecks: false);
         if (args.Length == 2 && args[0] == "--performance-test") return CompatibilityDiagnostics.Run(app, args[1], true);
         if (args.Length == 2 && args[0] == "--soak-test") return CompatibilityDiagnostics.Run(app, args[1], false, true);
+        if (args.Length == 3 && args[0] == "--long-soak-test" && int.TryParse(args[2], out var soakHours) && soakHours is >= 1 and <= 24)
+            return CompatibilityDiagnostics.Run(app, args[1], false, true, true, TimeSpan.FromHours(soakHours));
         if (args.Length == 2 && args[0] == "--image-format-test") return ImageFormatDiagnostics.Run(app, args[1]);
         if (args.Length == 4 && args[0] == "--video-probe") { Clothesline.Core.UiText.Language = args[3]; return VideoCatalog.Probe(app, args[1], args[2]); }
         if (args.Length == 2 && args[0] == "--video-test") return VideoDiagnostics.Run(app, args[1]);

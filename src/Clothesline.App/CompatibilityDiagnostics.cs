@@ -34,7 +34,7 @@ internal static class CompatibilityDiagnostics
         else Native.Place(window, mode == "fullscreen" ? monitor.Bounds : new(monitor.WorkArea.X + 60, monitor.WorkArea.Y + 60, Math.Max(100, monitor.WorkArea.Width - 120), Math.Max(100, monitor.WorkArea.Height - 120)));
         window.Activate(); window.Closed += (_, _) => app.Shutdown(); return app.Run();
     }
-    internal static int Run(Application app, string directory, bool performance, bool soak = false, bool foregroundChecks = true)
+    internal static int Run(Application app, string directory, bool performance, bool soak = false, bool foregroundChecks = true, TimeSpan? soakDuration = null)
     {
         directory = Path.GetFullPath(directory); Directory.CreateDirectory(directory);
         var checks = new List<object>(); var measurements = new List<object>(); var passed = true;
@@ -45,7 +45,7 @@ internal static class CompatibilityDiagnostics
             try
             {
                 var run = Path.Combine(directory, "run-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(run);
-                if (soak) await Soak(run, Check, measurements);
+                if (soak) await Soak(run, Check, measurements, soakDuration);
                 else if (performance) await Measure(run, Check, measurements);
                 else
                 {
@@ -248,7 +248,7 @@ internal static class CompatibilityDiagnostics
         for (var y = 0; y < height; y++) for (var x = 0; x < width; x++) { var i = (y * width + x) * 4; pixels[i] = (byte)(x / 8 + value); pixels[i + 1] = (byte)(y / 16 + value / 256); pixels[i + 2] = (byte)((x ^ y) % 128); pixels[i + 3] = 255; }
         var image = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4); image.Freeze(); File.WriteAllBytes(path, ImageFiles.Png(image));
     }
-    private static async Task Soak(string run, Action<string, bool, object?> check, List<object> measurements)
+    private static async Task Soak(string run, Action<string, bool, object?> check, List<object> measurements, TimeSpan? duration = null)
     {
         using var shelf = new ShelfController(); using var runtime = new LibraryRuntime(shelf, Path.Combine(run, "library"));
         runtime.ApplySettings(new LibrarySettings { ClipboardEnabled = false, ShowNew = false, ReduceMotion = true, Capacity = 25, ShowShortcut = "", HideShortcut = "" }); runtime.Start();
@@ -256,21 +256,28 @@ internal static class CompatibilityDiagnostics
         runtime.ArchiveBatch(); runtime.RefreshShelf(false); var baselineWindows = Application.Current.Windows.Count;
         var ids = runtime.Store.Entries().Select(e => e.Id).ToArray(); var watch = Stopwatch.StartNew();
         using var process = Process.GetCurrentProcess(); var memory = new List<double>();
-        for (var cycle = 0; cycle < 60; cycle++)
+        var cycle = 0; var interval = duration is null ? 2 : 10;
+        while (duration is null ? cycle < 60 : watch.Elapsed < duration.Value)
         {
             foreach (var id in ids) runtime.Restore(id);
             runtime.RefreshShelf(false);
-            if (shelf.Count != 10) throw new InvalidOperationException("Soak restore lost a card.");
+            if (shelf.Count != Math.Min(ids.Length, runtime.TypeCapacity)) throw new InvalidOperationException("Soak restore lost a card or exceeded this screen's image capacity.");
             runtime.ArchiveBatch(); runtime.RefreshShelf(false);
             if (shelf.Count != 0 || Application.Current.Windows.Count != baselineWindows) throw new InvalidOperationException("Soak archive left card windows alive.");
-            if (cycle % 10 == 0) { GC.Collect(); GC.WaitForPendingFinalizers(); process.Refresh(); memory.Add(process.PrivateMemorySize64 / 1048576.0); }
-            await Task.Delay(2000);
+            if (cycle % (duration is null ? 10 : 180) == 0)
+            {
+                GC.Collect(); GC.WaitForPendingFinalizers(); process.Refresh(); memory.Add(process.PrivateMemorySize64 / 1048576.0);
+                if (duration is not null) File.WriteAllText(Path.Combine(Path.GetDirectoryName(run)!, "long-soak-progress.json"), JsonSerializer.Serialize(new { cycles = cycle, elapsedSeconds = watch.Elapsed.TotalSeconds, privateMiB = memory[^1], records = runtime.Store.Entries().Count, shelfCards = shelf.Count, targetHours = duration.Value.TotalHours }));
+            }
+            cycle++;
+            await Task.Delay(TimeSpan.FromSeconds(interval));
         }
-        check("60-restore-archive-cycles-release-all-card-windows", Application.Current.Windows.Count == baselineWindows && shelf.Count == 0, null);
+        process.Refresh(); memory.Add(process.PrivateMemorySize64 / 1048576.0);
+        check("restore-archive-cycles-release-all-card-windows", Application.Current.Windows.Count == baselineWindows && shelf.Count == 0, new { cycles = cycle });
         check("soak-retains-ten-original-files-and-records", runtime.Store.Entries().Count == 10 && runtime.Store.Entries().All(e => File.Exists(e.Path)), null);
         check("soak-thumbnail-cache-remains-bounded", ImageDecoder.CacheCount <= 64, null);
         check("soak-private-memory-growth-below-64MiB", memory[^1] - memory[0] < 64, memory);
-        measurements.Add(new { name = "hidden-restore-archive-soak", cycles = 60, cardsPerCycle = 10, seconds = watch.Elapsed.TotalSeconds, privateMiBEveryTenCycles = memory, note = "Synthetic isolated library. Does not establish overnight reliability or real cross-application drag behavior." });
+        measurements.Add(new { name = "hidden-restore-archive-soak", cycles = cycle, cardsPerCycle = 10, seconds = watch.Elapsed.TotalSeconds, privateMiBSamples = memory, requestedHours = duration?.TotalHours, note = "Synthetic isolated library. Does not establish real cross-application drag behavior or user-driven editing." });
     }
     private sealed class Release : IDisposable { public void Dispose() { } }
     private static void SaveWindow(Window window, string path)

@@ -56,7 +56,7 @@ internal static class PreferencesDiagnostics
                 using (var probe = new HotKey(() => { }, candidateKey)) Check("second-conflict-releases-first-prepared-key", probe.Registered);
                 keys[0].Dispose(); keys.Clear();
                 var registration = new FakeLogin();
-                var preferences = new DesktopPreferences(pair, registration, () => "\"C:\\Clothesline Test\\Clothesline.exe\" --startup");
+                var preferences = new DesktopPreferences(pair, registration, () => "\"C:\\Cordnote Test\\Cordnote.exe\" --startup");
                 var settings = new LibrarySettings { ClipboardEnabled = false, ShowShortcut = candidateKey, HideShortcut = candidateHide, RunAtLogin = true };
                 var persistenceFailed = false;
                 try { preferences.Apply(settings, _ => throw new IOException("fixture database error")); } catch (IOException) { persistenceFailed = true; }
@@ -83,10 +83,10 @@ internal static class PreferencesDiagnostics
                     Check("startup-conflict-keeps-available-action-working", partial.ShowRegistered && !partial.HideRegistered && !partial.Retry());
                     occupied.Dispose(); Check("retry-recovers-only-missing-registration", partial.Retry() && partial.ShowRegistered && partial.HideRegistered);
                 }
-                var command = LoginRegistration.LaunchCommand(@"C:\Program Files\Clothesline\Clothesline.exe", "unused");
-                Check("startup-command-quotes-executable-path", command == "\"C:\\Program Files\\Clothesline\\Clothesline.exe\" --startup");
-                var hosted = LoginRegistration.LaunchCommand(@"C:\Dotnet Runtime\dotnet.exe", @"D:\My App\Clothesline.dll");
-                Check("framework-dependent-startup-quotes-host-and-assembly", hosted == "\"C:\\Dotnet Runtime\\dotnet.exe\" \"D:\\My App\\Clothesline.dll\" --startup");
+                var command = LoginRegistration.LaunchCommand(@"C:\Program Files\Cordnote\Cordnote.exe", "unused");
+                Check("startup-command-quotes-executable-path", command == "\"C:\\Program Files\\Cordnote\\Cordnote.exe\" --startup");
+                var hosted = LoginRegistration.LaunchCommand(@"C:\Dotnet Runtime\dotnet.exe", @"D:\My App\Cordnote.dll");
+                Check("framework-dependent-startup-quotes-host-and-assembly", hosted == "\"C:\\Dotnet Runtime\\dotnet.exe\" \"D:\\My App\\Cordnote.dll\" --startup");
                 var invalid = false; try { LoginRegistration.LaunchCommand("relative.exe", "unused"); } catch (ArgumentException) { invalid = true; }
                 Check("startup-rejects-relative-path", invalid);
                 var tooLong = false; try { LoginRegistration.LaunchCommand(@"C:\" + new string('a', 260) + ".exe", "unused"); } catch (ArgumentException) { tooLong = true; }
@@ -97,6 +97,12 @@ internal static class PreferencesDiagnostics
                 isolated.Write(command); Check("isolated-registry-roundtrip", isolated.Read() == command);
                 isolated.Write(null);
                 using (var fixture = Registry.CurrentUser.OpenSubKey(registryPath)) Check("disable-removes-only-owned-registry-value", isolated.Read() is null && fixture!.GetValue("Unrelated") as string == "keep");
+                var migrating = new LoginRegistration(registryPath, "CordnoteTest", "ScreenshotClotheslineTest");
+                using (var fixture = Registry.CurrentUser.CreateSubKey(registryPath)) fixture.SetValue("ScreenshotClotheslineTest", command);
+                Check("renamed-login-entry-reads-legacy-value", migrating.Read() == command);
+                migrating.Write(command);
+                using (var fixture = Registry.CurrentUser.OpenSubKey(registryPath)) Check("renamed-login-entry-migrates-to-cordnote", fixture!.GetValue("CordnoteTest") as string == command && fixture.GetValue("ScreenshotClotheslineTest") is null);
+                migrating.Write(null);
                 Check("real-login-registration-untouched-by-diagnostics", actual.Read() == before);
                 using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "settings-" + Guid.NewGuid().ToString("N")));
                 runtime.ApplySettings(runtime.Settings with { ClipboardEnabled = false });

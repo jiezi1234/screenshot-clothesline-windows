@@ -50,7 +50,7 @@ internal sealed partial class Dashboard : Window
     public Dashboard(ShelfController controller, bool shortcutRegistered, Action quit, LibraryRuntime? library = null)
     {
         this.library = library; Resources = DashboardTheme.Create();
-        Title = T("Screenshot Clothesline · 截图与历史"); Width = 1060; Height = 780; MinWidth = 840; MinHeight = 620;
+        Title = T("绳笺 Cordnote · 截图与历史"); Width = 1060; Height = 780; MinWidth = 840; MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = Brush("CanvasBrush"); Foreground = Brush("TextBrush");
         FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI"); FontSize = 13; UseLayoutRounding = true;
         save = Button(T("保存设置"), SaveSettings, "PrimaryButton"); discard = Button(T("撤销更改"), () => { FillSettings(); SetStatus(""); }, "QuietButton");

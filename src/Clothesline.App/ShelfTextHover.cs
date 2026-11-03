@@ -20,7 +20,7 @@ internal sealed partial class TextHoverWindow : OverlayWindow
     private readonly TextBlock heading = new() { Text = T("文字预览 · 滚轮查看全文"), Margin = new Thickness(0, 0, 0, 16), FontSize = 12 };
     internal TextPaperStyle PaperStyle => paper.PaperStyle;
     internal string PreviewText => TextView.Text;
-    internal TextHoverWindow() : base("Clothesline · Text Preview", false)
+    internal TextHoverWindow() : base("Cordnote · Text Preview", false)
     {
         DockPanel.SetDock(heading, Dock.Top); panel.Children.Add(heading); panel.Children.Add(TextView);
         paper.Children.Add(panel); paper.Margin = new Thickness(4); paper.TrackTextLines(TextView); Content = paper;

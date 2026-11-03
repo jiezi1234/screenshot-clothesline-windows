@@ -98,13 +98,13 @@ internal class OverlayWindow : Window
 internal sealed class RopeWindow : OverlayWindow
 {
     private readonly Border emptyHint;
-    public void RefreshLanguage() { Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language); Title = T("Clothesline · 绳线"); ((TextBlock)emptyHint.Child).Text = T("暂时没有图片"); }
+    public void RefreshLanguage() { Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language); Title = T("绳笺 Cordnote · 绳线"); ((TextBlock)emptyHint.Child).Text = T("暂时没有图片"); }
     public bool ShowEmptyHint
     {
         get => emptyHint.Visibility == Visibility.Visible;
         set => emptyHint.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
-    public RopeWindow() : base(T("Clothesline · 绳线"), true)
+    public RopeWindow() : base(T("绳笺 Cordnote · 绳线"), true)
     {
         var content = new Grid();
         content.Children.Add(new RopeVisual());
@@ -167,7 +167,7 @@ internal sealed class CardWindow : OverlayWindow
     internal bool MotionRunning => motion.Running || HasAnimatedProperties;
     private string feedback = "";
 
-    public CardWindow(DemoItem item) : base("Clothesline · " + item.Title, false)
+    public CardWindow(DemoItem item) : base("Cordnote · " + item.Title, false)
     {
         Item = item; Width = DesktopGeometry.CardWidth; Height = DesktopGeometry.CardHeight;
         clickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(Native.GetDoubleClickTime()) };

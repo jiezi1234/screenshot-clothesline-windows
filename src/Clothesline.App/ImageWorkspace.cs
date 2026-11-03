@@ -57,7 +57,7 @@ internal sealed class ImageWorkspace : Window
         this.gallery = gallery; index = start; this.save = save; this.acquireLease = acquireLease;
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);
         this.resolveOriginal = resolveOriginal ?? ((_, _) => null);
-        Title = T("图片工作台 · Screenshot Clothesline"); Width = 1100; Height = 800; MinWidth = 820; MinHeight = 620;
+        Title = T("图片工作台 · 绳笺 Cordnote"); Width = 1100; Height = 800; MinWidth = 820; MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = DemoAssets.Brush("#F4F5EE");
         Foreground = DemoAssets.Brush("#294535"); FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI");
         var root = new DockPanel { Margin = new Thickness(20, 16, 20, 16) }; Content = root;

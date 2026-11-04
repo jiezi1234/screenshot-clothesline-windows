@@ -73,7 +73,7 @@ internal static class CompatibilityDiagnostics
                     try
                     {
                         dashboard.ShowShelfList(); dashboard.UpdateLayout();
-                        var list = UiAccessibility.Descendants(dashboard).OfType<ListBox>().Single(c => AutomationProperties.GetName(c) == T("晾衣绳列表"));
+                        var list = UiAccessibility.Descendants(dashboard).OfType<ListBox>().Single(c => c.SelectedItem is LibraryEntry);
                         Check("keyboard-shelf-lists-real-records", list.Items.Count == 1 && list.SelectedItem is LibraryEntry);
                         Check("keyboard-shelf-has-selection-automation-peer", UIElementAutomationPeer.CreatePeerForElement(list)?.GetPattern(PatternInterface.Selection) is not null);
                         Check("dashboard-status-is-polite-live-region", UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(c => AutomationProperties.GetLiveSetting(c) == AutomationLiveSetting.Polite));

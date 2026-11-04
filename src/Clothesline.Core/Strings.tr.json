@@ -403,5 +403,7 @@
   "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + tekerlek ile yakınlaştırın; kaydırma çubuklarıyla gezinin",
   "上一步": "Geri al",
   "下一步": "Yinele",
-  "重试": "Yeniden dene"
+  "重试": "Yeniden dene",
+  "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "WeChat ekran görüntüsü klasörü izleme durdu; toplamayı yeniden etkinleştirin veya uygulamayı yeniden başlatın.",
+  "微信截图暂未收集：": "WeChat ekran görüntüsü toplanamadı: "
 }

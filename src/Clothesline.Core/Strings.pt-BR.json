@@ -403,5 +403,7 @@
   "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + roda para ampliar; barras para percorrer a imagem",
   "上一步": "Desfazer",
   "下一步": "Refazer",
-  "重试": "Tentar novamente"
+  "重试": "Tentar novamente",
+  "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "O monitoramento da pasta de capturas do WeChat foi interrompido; reative a coleta ou reinicie o aplicativo.",
+  "微信截图暂未收集：": "A captura do WeChat não foi coletada: "
 }

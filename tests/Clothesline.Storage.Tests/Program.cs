@@ -58,8 +58,14 @@ using (var store = new LibraryStore(Path.Combine(root, "library")))
     Check(store.Find("recycle-gone") is null, "completed recycle journal reconciles missing source");
 }
 Check(ClipboardPolicy.Accept(["PNG"], _ => null), "pure PNG accepted");
-foreach (var blocked in new[] { "UnicodeText", "Text", "FileDrop", "HTML Format", "Rich Text Format", "ScreenshotClothesline.OwnCopy", "ExcludeClipboardContentFromMonitorProcessing", "ClipboardViewerIgnore" })
+foreach (var blocked in new[] { "UnicodeText", "Text", "HTML Format", "Rich Text Format", "ScreenshotClothesline.OwnCopy", "ExcludeClipboardContentFromMonitorProcessing", "ClipboardViewerIgnore" })
     Check(!ClipboardPolicy.Accept(["PNG", blocked], _ => null), "clipboard excludes " + blocked);
+foreach (var marker in new[] { "WeChat_RichEdit_Format", "QQ_Unicode_RichEdit_Format", "x-application-mimetype-xwechat" })
+    Check(ClipboardPolicy.Accept([marker, "HTML Format", "FileDrop", "Bitmap", "DeviceIndependentBitmap", "Format17"], _ => null), "WeChat screenshot bitmap overrides its file and rich-text representations: " + marker);
+Check(ClipboardPolicy.Accept(["HTML Format", "FileDrop", "DeviceIndependentBitmap"], _ => null), "WeChat screenshot without a product marker is recognized by bitmap plus temporary file");
+Check(!ClipboardPolicy.Accept(["WeChat_RichEdit_Format", "HTML Format", "FileDrop"], _ => null), "WeChat rich content without a bitmap is not mistaken for a screenshot");
+Check(!ClipboardPolicy.Accept(["FileDrop"], _ => null), "ordinary file copy without a bitmap remains excluded");
+Check(!ClipboardPolicy.Accept(["WeChat_RichEdit_Format", "FileDrop", "Bitmap", "ScreenshotClothesline.OwnCopy"], _ => null), "own-copy marker still blocks WeChat-shaped clipboard data");
 Check(!ClipboardPolicy.Accept(["PNG"], name => name == "CanIncludeInClipboardHistory" ? false : null), "clipboard respects privacy DWORD");
 Check(!ClipboardPolicy.Accept(["Text"], _ => null), "text-only clipboard rejected");
 Check(!ClipboardPolicy.Accept(["PNG"], name => name == "CanUploadToCloudClipboard" ? false : null), "clipboard respects no-cloud flag conservatively");

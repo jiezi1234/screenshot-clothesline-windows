@@ -11,6 +11,9 @@ internal static class TextChecks
         check(ClipboardPolicy.Select(["UnicodeText", "HTML Format"], _ => null) == ClipboardContentKind.Text, "rich clipboard uses its plain Unicode text representation");
         check(ClipboardPolicy.Select(["Text"], _ => null) == ClipboardContentKind.Text, "legacy plain text has a text route");
         check(ClipboardPolicy.Select(["PNG", "UnicodeText"], _ => null) == ClipboardContentKind.Text, "mixed image and text clipboard makes one text card");
+        check(ClipboardPolicy.Select(["WeChat_RichEdit_Format", "UnicodeText"], _ => null) == ClipboardContentKind.Text, "WeChat text remains text when no bitmap is present");
+        check(ClipboardPolicy.Select(["WeChat_RichEdit_Format", "UnicodeText", "FileDrop", "DeviceIndependentBitmap"], _ => null) == ClipboardContentKind.Image, "WeChat screenshot bitmap takes precedence over companion text and file formats");
+        check(ClipboardPolicy.Select(["UnicodeText", "FileDrop", "DeviceIndependentBitmap"], _ => null) == ClipboardContentKind.Image, "unmarked WeChat screenshot bitmap takes precedence over companion text and file formats");
         foreach (var flag in new[] { "ScreenshotClothesline.OwnCopy", "ExcludeClipboardContentFromMonitorProcessing", "ClipboardViewerIgnore", "FileDrop" })
             check(ClipboardPolicy.Select(["UnicodeText", flag], _ => null) == ClipboardContentKind.None, "text rejects own copy privacy or file-drop marker: " + flag);
         foreach (var flag in new[] { "CanIncludeInClipboardHistory", "CanUploadToCloudClipboard" })

@@ -16,18 +16,33 @@ internal sealed class LoginRegistration : ILoginRegistration
 {
     private readonly string keyPath;
     private readonly string valueName;
-    public LoginRegistration(string keyPath = @"Software\Microsoft\Windows\CurrentVersion\Run", string valueName = "ScreenshotClothesline")
-    { this.keyPath = keyPath; this.valueName = valueName; }
+    private readonly string? legacyValueName;
+    public LoginRegistration(string keyPath = @"Software\Microsoft\Windows\CurrentVersion\Run", string valueName = "Cordnote", string? legacyValueName = null)
+    {
+        this.keyPath = keyPath; this.valueName = valueName;
+        this.legacyValueName = legacyValueName ?? (valueName == "Cordnote" ? "ScreenshotClothesline" : null);
+    }
     public string? Read()
     {
         using var key = Registry.CurrentUser.OpenSubKey(keyPath);
-        return key?.GetValue(valueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
+        return key?.GetValue(valueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string
+            ?? (legacyValueName is null ? null : key?.GetValue(legacyValueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string);
     }
     public void Write(string? command)
     {
         if (command is not null && command.Length > 260) throw new ArgumentException(T("启动命令超过 Windows 的 260 字符限制，请将应用移到更短的路径。"));
-        if (command is null) { using var existing = Registry.CurrentUser.OpenSubKey(keyPath, writable: true); existing?.DeleteValue(valueName, false); }
-        else { using var key = Registry.CurrentUser.CreateSubKey(keyPath, writable: true); key.SetValue(valueName, command, RegistryValueKind.String); }
+        if (command is null)
+        {
+            using var existing = Registry.CurrentUser.OpenSubKey(keyPath, writable: true);
+            existing?.DeleteValue(valueName, false);
+            if (legacyValueName is not null) existing?.DeleteValue(legacyValueName, false);
+        }
+        else
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(keyPath, writable: true);
+            key.SetValue(valueName, command, RegistryValueKind.String);
+            if (legacyValueName is not null) key.DeleteValue(legacyValueName, false);
+        }
         if (!string.Equals(Read(), command, StringComparison.Ordinal)) throw new IOException(T("登录启动设置写入后校验失败。"));
     }
     public static string LaunchCommand(string executable, string assembly)

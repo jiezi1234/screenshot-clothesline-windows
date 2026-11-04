@@ -16,7 +16,7 @@ internal sealed partial class HoverPreviewWindow : OverlayWindow
     private readonly Image image = new() { Stretch = Stretch.Uniform, IsHitTestVisible = false };
     private readonly Border frame;
     internal BitmapSource? PreviewImage => image.Source as BitmapSource;
-    public HoverPreviewWindow() : base("Clothesline · Preview", false)
+    public HoverPreviewWindow() : base("Cordnote · Preview", false)
     {
         RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
         frame = new Border { Margin = new Thickness(6), Padding = new Thickness(5), CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1),

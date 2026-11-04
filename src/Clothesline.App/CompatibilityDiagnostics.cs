@@ -150,7 +150,7 @@ internal static class CompatibilityDiagnostics
                             dashboard.ShowAppearance(); dashboard.UpdateLayout();
                             Check("language-picker-" + locale.Code, UiAccessibility.Descendants(dashboard).OfType<ComboBox>().Any(c => c.Items.Count == 11));
                             Check("window-language-" + locale.Code, dashboard.Language.IetfLanguageTag.Equals(locale.Code, StringComparison.OrdinalIgnoreCase));
-                            Check("localized-title-" + locale.Code, dashboard.Title == T("Screenshot Clothesline · 截图与历史"));
+                            Check("localized-title-" + locale.Code, dashboard.Title == T("绳笺 Cordnote · 截图与历史"));
                             Check("language-selection-persists-" + locale.Code, runtime.Store.LoadSettings().Language == locale.Code && UiAccessibility.Descendants(dashboard).OfType<ComboBox>().Any(c => c.SelectedValue as string == locale.Code));
                             SaveWindow(dashboard, Path.Combine(directory, "language-" + locale.Code + ".png"));
                         }

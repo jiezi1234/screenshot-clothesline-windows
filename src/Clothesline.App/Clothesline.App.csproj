@@ -7,7 +7,12 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyName>Clothesline</AssemblyName>
+    <AssemblyName>Cordnote</AssemblyName>
+    <RootNamespace>Clothesline.App</RootNamespace>
+    <AssemblyTitle>绳笺 Cordnote</AssemblyTitle>
+    <Product>绳笺 Cordnote</Product>
+    <Description>把图片、文字和录像临时夹在桌面绳线上。</Description>
+    <ApplicationIcon>Assets\Cordnote.ico</ApplicationIcon>
     <Version>0.21.3</Version>
     <!-- WPF owns startup and PMv2 via manifest; WinForms is used only for NotifyIcon. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -15,4 +20,5 @@
   <ItemGroup><ProjectReference Include="../Clothesline.Core/Clothesline.Core.csproj" /></ItemGroup>
   <ItemGroup><ProjectReference Include="../Clothesline.Storage/Clothesline.Storage.csproj" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/*" Exclude="Fixtures/*.md" LogicalName="Clothesline.Fixtures.%(Filename)%(Extension)" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Assets/Cordnote.ico" LogicalName="Cordnote.ico" /></ItemGroup>
 </Project>

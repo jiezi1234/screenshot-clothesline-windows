@@ -42,11 +42,21 @@ internal sealed partial class LibraryRuntime : IDisposable
     public int TypeCapacity => ShelfZones.TypeCapacity(Capacity);
     public LibraryRuntime(ShelfController shelf, string? root = null)
     {
-        this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); Settings = Store.LoadSettings() with { Capacity = 0 };
+        this.shelf = shelf; Store = new LibraryStore(root ?? DefaultRoot); var hasSettings = Store.HasSettings; Settings = Store.LoadSettings() with { Capacity = 0 };
         // Measure before any import/refresh can apply a quota; the controller's initial placeholder is two.
         shelf.SetCardSize(Settings.CardSizePercent);
         UiText.Language = Settings.Language; shelf.RefreshLanguage();
-        if (!Store.HasSettings && root is null) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; Store.SaveSettings(Settings); }
+        if (root is null)
+        {
+            var saveDefaults = false;
+            if (!hasSettings) { Settings = Settings with { ScreenshotFolder = ScreenshotFolder() }; saveDefaults = true; }
+            if (!Settings.VideoFolderInitialized)
+            {
+                var videoFolder = VideoFolder();
+                if (videoFolder.Length > 0) { Settings = Settings with { VideoFolder = videoFolder, VideoFolderInitialized = true }; saveDefaults = true; }
+            }
+            if (saveDefaults) Store.SaveSettings(Settings);
+        }
         Videos = new VideoCatalog(Store.Root);
         Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash, ImageDecoder.Hash);
         clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); },
@@ -369,6 +379,19 @@ internal sealed partial class LibraryRuntime : IDisposable
         var result = SHGetKnownFolderPath(id, 0x4000, 0, out var text);
         try { return result >= 0 ? Marshal.PtrToStringUni(text)! : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots"); }
         finally { if (text != 0) Marshal.FreeCoTaskMem(text); }
+    }
+    private static string VideoFolder()
+    {
+        var videos = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+        if (string.IsNullOrWhiteSpace(videos)) return "";
+        try
+        {
+            var captures = Path.Combine(videos, "Captures");
+            Directory.CreateDirectory(captures);
+            return captures;
+        }
+        catch (IOException) { return ""; }
+        catch (UnauthorizedAccessException) { return ""; }
     }
     public void Dispose()
     {

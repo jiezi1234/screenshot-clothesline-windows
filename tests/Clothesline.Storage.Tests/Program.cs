@@ -215,7 +215,7 @@ using (var store = new LibraryStore(migration))
     Check(store.LoadSettings().CardSizePercent == 120 && store.LoadSettings().CaptureSound && store.LoadSettings().Language == "en" && store.LoadSettings().RevealProtectionSeconds == 30, "size sound language and reveal protection survive restart");
 using (var store = new LibraryStore(Path.Combine(root, "video-rules")))
 {
-    Check(store.LoadSettings().VideoFolder == "", "video collection stays opt-in for old/default settings");
+    Check(store.LoadSettings().VideoFolder == "" && !store.LoadSettings().VideoFolderInitialized, "storage leaves environment-specific video default unresolved");
     var folder = Path.Combine(root, "mixed-media"); Directory.CreateDirectory(folder);
     File.WriteAllText(Path.Combine(folder, "old.png"), "old image"); File.WriteAllText(Path.Combine(folder, "old.mp4"), "old video");
     var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -7,7 +7,7 @@
 - 功能参考基线：`32a3e47187fdea7b2fd43b3ab5a913f0ed33724a`
 - 许可证：https://github.com/alejandrobujan/tendedero/blob/32a3e47187fdea7b2fd43b3ab5a913f0ed33724a/LICENSE
 
-本项目参考其 macOS 应用的截图晾衣绳概念及相关交互，独立实现 Windows 版本。阶段 0–1 的 C# 实现、托盘图形与测试图片在本仓库内新建，未复制原项目源码或美术素材。
+本项目参考其 macOS 应用的截图晾衣绳概念及相关交互，独立实现 Windows 版本。应用使用独立名称“绳笺 Cordnote”；C# 实现、`src/Clothesline.App/Assets/Cordnote.png`、由其生成的多尺寸 Windows 图标及测试图片均在本项目中独立创建，未复制原项目源码或美术素材。
 
 原项目源码使用 MIT 许可；其名称、图标（包括生成该图标的图稿）和 docs 中的图片不在该授权范围内。Windows 应用将使用独立名称、独立图标与自制宣传素材，并不表示获得原作者背书。
 

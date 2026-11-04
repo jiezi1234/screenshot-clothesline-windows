@@ -22,7 +22,7 @@ internal sealed class ShelfDropWindow : OverlayWindow
     internal int PreviewCount => sprites.Values.Count(s => s.Image.Visibility == Visibility.Visible);
     internal bool PreviewAnimating => sprites.Values.Any(s => s.Moving);
     internal (double X, double Angle, double TargetAngle) PreviewState(string id) => (sprites[id].Translation.X, sprites[id].Rotation.Angle, sprites[id].TargetAngle);
-    internal ShelfDropWindow() : base("Clothesline · Drop", false)
+    internal ShelfDropWindow() : base("Cordnote · Drop", false)
     {
         // A nonzero alpha gives OLE a real hit-test surface, only while a drag is near the shelf.
         var content = new Grid { Background = new SolidColorBrush(Color.FromArgb(1, 49, 94, 73)) };

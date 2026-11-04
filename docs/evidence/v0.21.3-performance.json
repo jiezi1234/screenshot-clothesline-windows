@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "scope": "full-owned-fixture",
+  "os": "Microsoft Windows NT 10.0.22631.0",
+  "runtime": "10.0.13",
+  "checks": [
+    {
+      "name": "hidden-runtime-has-no-visible-overlays",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "100-file-burst-no-loss-or-duplicates",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "thumbnail-cache-bounded",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "large-edit-renders-on-background-thread",
+      "passed": true,
+      "details": {
+        "uiTicks": 19
+      }
+    }
+  ],
+  "measurements": [
+    {
+      "name": "hidden-idle",
+      "parentCpuOneCorePercent": [
+        0.15609399653798003,
+        0.1560942351237124,
+        0
+      ],
+      "cpuIncludingDecodersOneCorePercent": [
+        0.15609399653798003,
+        0.1560942351237124,
+        0.31189070902429267
+      ],
+      "average": 0.208026313561995,
+      "workingSetIncludingDecodersMiB": 161.421875,
+      "privateIncludingDecodersMiB": 71.08984375,
+      "decoderCount": 1,
+      "warmupSeconds": 10,
+      "seconds": 30
+    },
+    {
+      "name": "file-close-to-shelf-record-and-card",
+      "width": 1920,
+      "height": 1080,
+      "milliseconds": [
+        404.6666,
+        373.4277,
+        397.859,
+        378.0125,
+        420.1049,
+        440.2124,
+        362.087,
+        385.2482,
+        313.1286,
+        314.7855
+      ],
+      "median": 381.63035,
+      "p95": 440.2124,
+      "note": "Generated 1080p PNGs; warm decoder after startup. Includes watcher stability delay, database commit and UI refresh; excludes compositor scanout and initial cold decoder startup."
+    },
+    {
+      "name": "100-file-burst",
+      "milliseconds": 9699.0221,
+      "cacheEntries": 64
+    },
+    {
+      "name": "12MP-mosaic-and-render",
+      "milliseconds": 620.1295,
+      "uiTicks": 19,
+      "privateMiB": 318.30859375
+    }
+  ]
+}

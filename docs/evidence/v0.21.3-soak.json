@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "scope": "full-owned-fixture",
+  "os": "Microsoft Windows NT 10.0.22631.0",
+  "runtime": "10.0.13",
+  "checks": [
+    {
+      "name": "60-restore-archive-cycles-release-all-card-windows",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "soak-retains-ten-original-files-and-records",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "soak-thumbnail-cache-remains-bounded",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "soak-private-memory-growth-below-64MiB",
+      "passed": true,
+      "details": [
+        68.00390625,
+        68.69921875,
+        70.04296875,
+        69.50390625,
+        68.56640625,
+        68.35546875
+      ]
+    }
+  ],
+  "measurements": [
+    {
+      "name": "hidden-restore-archive-soak",
+      "cycles": 60,
+      "cardsPerCycle": 10,
+      "seconds": 123.5364828,
+      "privateMiBEveryTenCycles": [
+        68.00390625,
+        68.69921875,
+        70.04296875,
+        69.50390625,
+        68.56640625,
+        68.35546875
+      ],
+      "note": "Synthetic isolated library. Does not establish overnight reliability or real cross-application drag behavior."
+    }
+  ]
+}

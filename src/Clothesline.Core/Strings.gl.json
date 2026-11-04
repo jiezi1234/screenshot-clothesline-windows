@@ -403,5 +403,7 @@
   "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + roda para ampliar; barras para percorrer a imaxe",
   "上一步": "Desfacer",
   "下一步": "Refacer",
-  "重试": "Tentar de novo"
+  "重试": "Tentar de novo",
+  "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "Interrompeuse a vixilancia do cartafol de capturas de WeChat; volve activar a recollida ou reinicia a aplicación.",
+  "微信截图暂未收集：": "Non se recolleu a captura de WeChat: "
 }

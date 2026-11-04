@@ -403,5 +403,7 @@
   "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + molette pour zoomer ; barres pour parcourir l’image",
   "上一步": "Annuler",
   "下一步": "Rétablir",
-  "重试": "Réessayer"
+  "重试": "Réessayer",
+  "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "La surveillance du dossier de captures WeChat s’est arrêtée ; réactivez la collecte ou redémarrez l’application.",
+  "微信截图暂未收集：": "La capture WeChat n’a pas été collectée : "
 }

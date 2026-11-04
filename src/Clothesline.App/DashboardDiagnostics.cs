@@ -33,8 +33,9 @@ internal static class DashboardDiagnostics
                 dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.Show(); dashboard.UpdateLayout();
                 TControl Named<TControl>(string name) where TControl : FrameworkElement { dashboard.UpdateLayout(); return UiAccessibility.Descendants(dashboard).OfType<TControl>().Single(c => AutomationProperties.GetName(c) == T(name)); }
                 Button Action(string title) { dashboard.UpdateLayout(); return UiAccessibility.Descendants(dashboard).OfType<Button>().Single(b => b.Content as string == T(title) && b.IsVisible); }
+                Rect Bounds(FrameworkElement element) { var content = (FrameworkElement)dashboard.Content; return element.TransformToAncestor(content).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight)); }
                 void Click(string title) => Action(title).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Check("default-page-is-shelf-with-accessible-empty-state", Named<ListBox>("晾衣绳列表").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("暂时没有图片") && t.IsVisible));
+                Check("default-page-is-shelf-with-accessible-empty-state", Named<ListBox>("图片" + " / " + "录像").IsVisible && Named<ListBox>("文字").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("暂时没有图片") && t.IsVisible));
                 Capture(dashboard, Path.Combine(directory, "dashboard-empty.png"));
                 var files = DemoAssets.Create(Path.Combine(directory, "fixtures", Guid.NewGuid().ToString("N")));
                 foreach (var item in files)
@@ -42,18 +43,27 @@ internal static class DashboardDiagnostics
                     var path = Path.Combine(Path.GetDirectoryName(item.Path)!, item.Title + "-sample.png"); File.Copy(item.Path, path);
                     runtime.Store.Add(path, Ownership.External, "Fixture", Guid.NewGuid().ToString("N"), LibraryRuntime.Now, 25);
                 }
-                dashboard.ShowShelfList(); dashboard.UpdateLayout();
-                Check("shelf-has-real-entries-and-selected-actions", Named<ListBox>("晾衣绳列表").Items.Count == 3 && Action("复制").IsEnabled && Action("编辑图片…").IsEnabled);
+                var notePath = Path.Combine(Path.GetDirectoryName(files[0].Path)!, "sample-note.txt"); File.WriteAllText(notePath, "A short dashboard note.");
+                runtime.Store.Add(notePath, Ownership.External, "Fixture", Guid.NewGuid().ToString("N"), LibraryRuntime.Now + 1, 25);
+                dashboard.ShowShelfList(); await Task.Delay(250); dashboard.UpdateLayout();
+                Check("shelf-separates-images-and-text-with-selected-actions", Named<ListBox>("图片" + " / " + "录像").Items.Count == 3 && Named<ListBox>("文字").Items.Count == 1 && Action("复制").IsEnabled && Action("编辑图片…").IsEnabled);
+                var shelfThumbnails = UiAccessibility.Descendants(dashboard).OfType<Image>().Where(image => image.IsVisible && image.ActualWidth >= 60 && image.Source is not null).Take(3).Select(Bounds).ToArray();
+                Check("shelf-renders-real-image-thumbnails", shelfThumbnails.Length == 3);
+                Check("shelf-images-form-two-column-grid", shelfThumbnails.Length == 3 && Math.Abs(shelfThumbnails[0].Top - shelfThumbnails[1].Top) <= 1 && Math.Abs(shelfThumbnails[0].Left - shelfThumbnails[2].Left) <= 1 && shelfThumbnails[2].Top > shelfThumbnails[0].Bottom);
+                var toggleBounds = Bounds(Action("显示 / 收起")); var importBounds = Bounds(Action("导入图片或录像…"));
+                Check("header-actions-share-top-edge-and-height", Math.Abs(toggleBounds.Top - importBounds.Top) <= 1 && Math.Abs(toggleBounds.Height - importBounds.Height) <= 1);
+                var navigationItems = Named<ListBox>("控制面板导航").Items.OfType<ListBoxItem>().Select(Bounds).ToArray();
+                Check("navigation-items-share-left-and-right-edges", navigationItems.Length == 6 && navigationItems.All(item => Math.Abs(item.Left - navigationItems[0].Left) <= 1 && Math.Abs(item.Right - navigationItems[0].Right) <= 1));
                 Capture(dashboard, Path.Combine(directory, "dashboard-shelf.png"));
-                var entry = runtime.Store.Entries(EntryState.Shelf)[0]; runtime.Store.Archive(entry.Id, LibraryRuntime.Now);
+                var entry = runtime.Store.Entries(EntryState.Shelf).First(item => !MediaFiles.IsText(item.Path)); runtime.Store.Archive(entry.Id, LibraryRuntime.Now);
                 dashboard.ShowHistory(); dashboard.UpdateLayout();
-                Check("history-restore-enabled-for-selected-record", Named<ListBox>("本地历史").Items.Count == 1 && Action("重新挂上").IsEnabled);
+                Check("history-restore-enabled-for-selected-record", Named<ListBox>("图片" + " / " + "录像").Items.Count == 1 && Named<ListBox>("文字").Items.Count == 0 && Action("重新挂上").IsEnabled);
                 var search = Named<TextBox>("搜索历史"); search.Text = "not-a-fixture-" + Guid.NewGuid().ToString("N");
-                Check("history-search-has-no-destructive-side-effects", Named<ListBox>("本地历史").Items.Count == 0 && !Action("重新挂上").IsEnabled && runtime.Store.Find(entry.Id)?.State == EntryState.History && File.Exists(entry.Path));
-                search.Text = Path.GetFileName(entry.Path).ToUpperInvariant(); Check("history-search-matches-file-name-case-insensitively", Named<ListBox>("本地历史").Items.Count == 1);
+                Check("history-search-has-no-destructive-side-effects", Named<ListBox>("图片" + " / " + "录像").Items.Count == 0 && Named<ListBox>("文字").Items.Count == 0 && !Action("重新挂上").IsEnabled && runtime.Store.Find(entry.Id)?.State == EntryState.History && File.Exists(entry.Path));
+                search.Text = Path.GetFileName(entry.Path).ToUpperInvariant(); Check("history-search-matches-file-name-case-insensitively", Named<ListBox>("图片" + " / " + "录像").Items.Count == 1);
                 search.Text = ""; dashboard.UpdateLayout(); Capture(dashboard, Path.Combine(directory, "dashboard-history.png"));
                 Click("重新挂上"); await Task.Delay(100); dashboard.ShowShelfList();
-                Check("history-restore-returns-original-file-to-shelf", Named<ListBox>("晾衣绳列表").Items.Count == 3 && File.Exists(entry.Path));
+                Check("history-restore-returns-original-file-to-shelf", Named<ListBox>("图片" + " / " + "录像").Items.Count == 3 && Named<ListBox>("文字").Items.Count == 1 && File.Exists(entry.Path));
                 dashboard.ShowSources(); dashboard.UpdateLayout();
                 var source = Named<TextBox>("截图目录"); var chosen = Path.Combine(directory, "incoming"); Directory.CreateDirectory(chosen); source.Text = chosen;
                 Check("changed-source-enables-save-and-discard", dashboard.HasUnsavedChanges && Action("保存设置").IsEnabled && Action("撤销更改").IsEnabled);
@@ -74,6 +84,8 @@ internal static class DashboardDiagnostics
                 Click("撤销更改"); Check("discard-restores-persisted-shortcuts", !dashboard.HasUnsavedChanges && show.Text == "Ctrl+Down" && hide.Text == "Ctrl+Up");
                 Capture(dashboard, Path.Combine(directory, "dashboard-shortcuts.png"));
                 dashboard.ShowSources(); dashboard.UpdateLayout(); Capture(dashboard, Path.Combine(directory, "dashboard-sources.png"));
+                var sourceInputs = UiAccessibility.Descendants(dashboard).OfType<Control>().Where(control => control.IsVisible && control is TextBox or ComboBox).ToArray();
+                Check("source-inputs-use-uniform-control-height", sourceInputs.Length > 0 && sourceInputs.All(control => Math.Abs(control.ActualHeight - 40) <= 1));
                 dashboard.ShowAppearance(); dashboard.UpdateLayout();
                 protection.SelectedIndex = 4;
                 Check("protection-only-change-enables-save-without-applying-draft", dashboard.HasUnsavedChanges && Action("保存设置").IsEnabled && shelf.RevealProtectionSeconds == 30);

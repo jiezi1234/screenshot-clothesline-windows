@@ -11,33 +11,44 @@ internal sealed partial class Dashboard
 {
     private async System.Threading.Tasks.Task CopySelectedShelf()
     {
-        if (shelfList.SelectedItem is not LibraryEntry entry) return;
+        if (SelectedShelfEntry is not { } entry) return;
         using var lease = library?.AcquireLease(entry.Path);
         try { var data = await ShellTransfer.CopyDataAsync(entry.Path); Clipboard.SetDataObject(data, true); SetStatus(T("已复制：") + entry.Title); }
         catch (Exception ex) { SetStatus(ex.Message); }
     }
+    private LibraryEntry? SelectedShelfEntry => shelfList.SelectedItem as LibraryEntry ?? shelfTextList.SelectedItem as LibraryEntry;
+    private HistoryRow? SelectedHistoryRow => history.SelectedItem as HistoryRow ?? historyText.SelectedItem as HistoryRow;
     private sealed record HistoryRow(LibraryEntry Entry)
     {
         public string Label => $"{(Entry.Missing ? T("文件失效") : Entry.Source == LibraryStore.OriginalSource ? T("编辑原版快照") : Entry.Ownership == Ownership.Managed ? T("应用保存") : T("外部引用"))}\n{(Entry.ArchivedAt is long time ? DateTimeOffset.FromUnixTimeMilliseconds(time).LocalDateTime.ToString("yyyy-MM-dd HH:mm") : "")}  {Entry.Error}";
     }
     private void Selected(Action<LibraryEntry> action)
-    { if (history.SelectedItem is HistoryRow row) { try { action(row.Entry); } catch (Exception ex) { SetStatus(ex.Message); } } else SetStatus(T("请先选择一条历史记录。")); }
+    { if (SelectedHistoryRow is { } row) { try { action(row.Entry); } catch (Exception ex) { SetStatus(ex.Message); } } else SetStatus(T("请先选择一条历史记录。")); }
     private void Preview(LibraryEntry entry)
     {
         library?.OpenWorkspace(entry.Id, false);
     }
     private void UpdateHistory()
     {
-        var id = (history.SelectedItem as HistoryRow)?.Entry.Id;
+        var id = SelectedHistoryRow?.Entry.Id;
         var query = historySearch.Text.Trim();
         var rows = library?.Store.Entries(EntryState.History).Where(e => query.Length == 0 || e.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || e.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase)).Select(e => new HistoryRow(e)).ToArray() ?? [];
-        history.ItemsSource = rows; history.SelectedItem = rows.FirstOrDefault(r => r.Entry.Id == id) ?? rows.FirstOrDefault();
-        var shelfId = (shelfList.SelectedItem as LibraryEntry)?.Id; var selectedIndex = shelfList.SelectedIndex;
+        var imageRows = rows.Where(row => !Clothesline.Core.MediaFiles.IsText(row.Entry.Path)).ToArray();
+        var textRows = rows.Where(row => Clothesline.Core.MediaFiles.IsText(row.Entry.Path)).ToArray();
+        history.ItemsSource = imageRows; historyText.ItemsSource = textRows;
+        var restoredHistory = rows.FirstOrDefault(row => row.Entry.Id == id) ?? imageRows.FirstOrDefault() ?? textRows.FirstOrDefault();
+        history.SelectedItem = restoredHistory is not null && !Clothesline.Core.MediaFiles.IsText(restoredHistory.Entry.Path) ? restoredHistory : null;
+        historyText.SelectedItem = restoredHistory is not null && Clothesline.Core.MediaFiles.IsText(restoredHistory.Entry.Path) ? restoredHistory : null;
+        var shelfId = SelectedShelfEntry?.Id;
         var entries = library?.Store.Entries(EntryState.Shelf).ToArray() ?? [];
-        if (!(shelfList.ItemsSource is LibraryEntry[] old && old.SequenceEqual(entries)))
+        var imageEntries = entries.Where(entry => !Clothesline.Core.MediaFiles.IsText(entry.Path)).ToArray();
+        var textEntries = entries.Where(entry => Clothesline.Core.MediaFiles.IsText(entry.Path)).ToArray();
+        if (!(shelfList.ItemsSource is LibraryEntry[] oldImages && oldImages.SequenceEqual(imageEntries)) || !(shelfTextList.ItemsSource is LibraryEntry[] oldText && oldText.SequenceEqual(textEntries)))
         {
-            shelfList.ItemsSource = entries;
-            shelfList.SelectedItem = entries.FirstOrDefault(e => e.Id == shelfId) ?? entries.ElementAtOrDefault(Math.Clamp(selectedIndex, 0, Math.Max(0, entries.Length - 1)));
+            shelfList.ItemsSource = imageEntries; shelfTextList.ItemsSource = textEntries;
+            var restoredShelf = entries.FirstOrDefault(entry => entry.Id == shelfId) ?? imageEntries.FirstOrDefault() ?? textEntries.FirstOrDefault();
+            shelfList.SelectedItem = restoredShelf is not null && !Clothesline.Core.MediaFiles.IsText(restoredShelf.Path) ? restoredShelf : null;
+            shelfTextList.SelectedItem = restoredShelf is not null && Clothesline.Core.MediaFiles.IsText(restoredShelf.Path) ? restoredShelf : null;
         }
         shelfEmpty.Visibility = entries.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         historyEmpty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -103,6 +114,7 @@ internal sealed partial class Dashboard
     {
         var paused = library?.Settings.Paused == true;
         collectionState.Text = library is null ? T("诊断模式") : paused ? T("自动收集已暂停。") : T("正在收集");
+        collectionDot.Fill = Brush(library is not null && !paused ? "LiveBrush" : "MutedBrush");
         pauseCollection.Content = paused ? T("恢复收集") : T("暂停收集"); pauseCollection.IsEnabled = library is not null;
         System.Windows.Automation.AutomationProperties.SetName(pauseCollection, (string)pauseCollection.Content);
     }

@@ -403,5 +403,7 @@
   "Ctrl + 滚轮缩放，滚动条浏览图片": "Ctrl + wheel to zoom; scroll bars to explore the image",
   "上一步": "Undo",
   "下一步": "Redo",
-  "重试": "Retry"
+  "重试": "Retry",
+  "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "WeChat screenshot folder monitoring stopped; re-enable collection or restart the app to recover.",
+  "微信截图暂未收集：": "WeChat screenshot was not collected: "
 }

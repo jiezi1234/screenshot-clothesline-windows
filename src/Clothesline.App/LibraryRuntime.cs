@@ -23,6 +23,7 @@ internal sealed partial class LibraryRuntime : IDisposable
     internal VideoCatalog Videos { get; }
     private readonly ShelfController shelf;
     private readonly ClipboardCollector clipboard;
+    private readonly WeChatScreenshotCollector? weChatScreenshots;
     private readonly DispatcherTimer refresh;
     private readonly DispatcherTimer maintenance;
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
@@ -61,6 +62,17 @@ internal sealed partial class LibraryRuntime : IDisposable
         Collector = new CollectionEngine(Store, ImageFiles.Hash, () => Capacity, async (path, cancellation) => (await Videos.Get(path, cancellation).ConfigureAwait(false)).Hash, ImageDecoder.Hash);
         clipboard = new ClipboardCollector(async (bytes, hash) => { if (!disposed && !Settings.Paused) await Collector.ImportClipboard(bytes, hash, Settings.MaxManagedBytes, closing.Token); },
             async text => { if (!disposed && !Settings.Paused) await Collector.ImportText(text, Settings.MaxManagedBytes, closing.Token); });
+        if (root is null)
+        {
+            weChatScreenshots = new WeChatScreenshotCollector(async (path, cancellation) =>
+            {
+                if (disposed || Settings.Paused) return;
+                var image = await ImageDecoder.Read(path, false, cancellation).ConfigureAwait(false);
+                var result = await Task.Run(() => (Bytes: ImageFiles.Png(image), Hash: ImageFiles.Hash(image)), cancellation).ConfigureAwait(false);
+                if (!disposed && !Settings.Paused) await Collector.ImportClipboard(result.Bytes, result.Hash, Settings.MaxManagedBytes, cancellation).ConfigureAwait(false);
+            });
+            weChatScreenshots.Status += Report;
+        }
         refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         refresh.Tick += (_, _) => { if (shelf.Busy || fileOperation > 0) return; refresh.Stop(); RefreshShelf(revealPending); revealPending = false; };
         maintenance = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -116,6 +128,7 @@ internal sealed partial class LibraryRuntime : IDisposable
         shelf.RevealProtectionSeconds = settings.RevealProtectionSeconds;
         shelf.SetCardSize(settings.CardSizePercent);
         Collector.Configure(settings); clipboard.Enable(settings.ClipboardEnabled && !settings.Paused);
+        weChatScreenshots?.Enable(settings.ClipboardEnabled && !settings.Paused);
         Store.EnforceCapacity(Capacity, Now); ScheduleRefresh(false);
         Report(settings.Paused ? T("收集已暂停；恢复后会补扫新增文件。") : T("设置已保存，开始监听新增图片与录像；首次选择目录不会导入旧文件。"));
     }
@@ -398,6 +411,6 @@ internal sealed partial class LibraryRuntime : IDisposable
         if (disposed) return;
         disposed = true; shelf.ReorderRequested = null; shelf.IncomingDropRequested = null;
         imageEditHistory.Clear();
-        shelf.EnvironmentRecovered -= RecoverEnvironment; shelf.DisplayCapacityChanged -= RefreshCapacity; closing.Cancel(); maintenance.Stop(); refresh.Stop(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
+        shelf.EnvironmentRecovered -= RecoverEnvironment; shelf.DisplayCapacityChanged -= RefreshCapacity; closing.Cancel(); maintenance.Stop(); refresh.Stop(); weChatScreenshots?.Dispose(); clipboard.Dispose(); Collector.Dispose(); Store.Dispose(); closing.Dispose();
     }
 }

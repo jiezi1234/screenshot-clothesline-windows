@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>绳笺 Cordnote · 控制面板重设计</title>
+<style>
+  :root{
+    --desktop:#E9F0F9;
+    --canvas:#F4F8FD;
+    --glass:rgba(255,255,255,.58);
+    --glass-strong:rgba(255,255,255,.74);
+    --glass-edge:rgba(255,255,255,.85);
+    --line:rgba(63,88,122,.15);
+    --line-strong:rgba(63,88,122,.24);
+    --ink:#17263D;
+    --ink-2:#33455F;
+    --muted:#5C6C84;
+    --accent:#345D9D;
+    --accent-deep:#274875;
+    --accent-soft:rgba(52,93,157,.10);
+    --accent-ring:rgba(52,93,157,.34);
+    --live:#1B9D63;
+    --warn:#A8632A;
+    --radius-window:22px;
+    --radius-pane:18px;
+    --radius-control:10px;
+    --font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","PingFang SC","Noto Sans SC",sans-serif;
+    --font-display:"Segoe UI Variable Display","Segoe UI","Microsoft YaHei UI","PingFang SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.6;
+    background:
+      radial-gradient(900px 620px at 82% 4%, rgba(122,168,222,.35), transparent 62%),
+      radial-gradient(760px 560px at 8% 96%, rgba(128,196,208,.30), transparent 60%),
+      linear-gradient(150deg,#EDF3FB 0%,#E7EFF9 48%,#E3EDF7 100%);
+    display:grid;place-items:center;padding:28px;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+  /* ---------- window ---------- */
+  .window{
+    position:relative;width:1120px;height:800px;max-width:100%;max-height:calc(100vh - 56px);
+    display:grid;grid-template-columns:248px 1fr;
+    background:linear-gradient(135deg,rgba(255,255,255,.50),rgba(244,248,253,.72) 46%,rgba(232,241,250,.66));
+    border:1px solid rgba(255,255,255,.9);
+    border-radius:var(--radius-window);
+    box-shadow:0 40px 90px rgba(28,48,78,.20),0 2px 6px rgba(28,48,78,.08),inset 0 1px 0 rgba(255,255,255,.95);
+    overflow:hidden;isolation:isolate;
+  }
+  .window::before,.window::after{content:"";position:absolute;border-radius:50%;filter:blur(58px);z-index:-1;pointer-events:none}
+  .window::before{width:520px;height:520px;right:-150px;top:-230px;background:rgba(141,182,231,.42)}
+  .window::after{width:520px;height:520px;left:-170px;bottom:-250px;background:rgba(142,205,214,.34)}
+
+  /* ---------- rail ---------- */
+  .rail{
+    display:flex;flex-direction:column;gap:18px;padding:18px 14px 14px;
+    margin:14px 0 14px 14px;border-radius:var(--radius-pane);
+    background:var(--glass);border:1px solid var(--glass-edge);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 8px 24px rgba(36,60,94,.06);
+    backdrop-filter:blur(18px);
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:2px 6px}
+  .brand-mark{
+    width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(160deg,rgba(52,93,157,.14),rgba(255,255,255,.55));
+    border:1px solid rgba(52,93,157,.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .brand-mark svg{width:26px;height:26px}
+  .brand h1{font-family:var(--font-display);font-size:20px;font-weight:650;letter-spacing:.01em;line-height:1.2}
+  .brand p{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .nav{display:flex;flex-direction:column;gap:2px;padding:2px 0}
+  .nav button{
+    display:flex;align-items:center;gap:11px;height:40px;padding:0 12px;border-radius:var(--radius-control);
+    color:var(--ink-2);text-align:left;position:relative;transition:background .14s ease,color .14s ease;
+  }
+  .nav button svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:.82}
+  .nav button:hover{background:rgba(255,255,255,.55)}
+  .nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent-deep);font-weight:600}
+  .nav button[aria-current="page"]::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:3px;background:var(--accent)}
+
+  .rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:4px}
+  .live-card{
+    display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;
+    background:var(--glass-strong);border:1px solid var(--glass-edge);margin-bottom:10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
+  }
+  .live-card .dot{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px rgba(27,157,99,.13);flex:none}
+  .live-card strong{display:block;font-size:12.5px;font-weight:600}
+  .live-card small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+  .live-card button{margin-left:auto;font-size:12px;color:var(--accent);padding:5px 8px;border-radius:8px}
+  .live-card button:hover{background:var(--accent-soft)}
+  .rail-actions{display:flex;flex-direction:column;gap:2px;padding:0 2px}
+  .rail-actions button{height:36px;border-radius:10px;font-size:12.5px;color:var(--muted);text-align:left;padding:0 10px}
+  .rail-actions button:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+
+  /* ---------- main ---------- */
+  .main{display:flex;flex-direction:column;min-width:0;padding:26px 28px 16px 22px;gap:16px}
+  .page-head{display:flex;align-items:flex-start;gap:20px}
+  .page-head h2{font-family:var(--font-display);font-size:26px;font-weight:650;letter-spacing:.005em;line-height:1.25}
+  .page-head .desc{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .head-actions{margin-left:auto;display:flex;gap:8px;flex:none;padding-top:4px}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;height:40px;padding:0 16px;
+    border-radius:var(--radius-control);border:1px solid var(--line-strong);background:var(--glass-strong);
+    font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(36,60,94,.05);
+    transition:border-color .14s ease,background .14s ease,transform .06s ease;
+  }
+  .btn:hover{border-color:var(--accent-ring);background:rgba(255,255,255,.9)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:linear-gradient(180deg,#3D6AAC,#345D9D);border-color:#2C5188;color:#fff;font-weight:600;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 6px 14px rgba(52,93,157,.24)}
+  .btn.primary:hover{background:linear-gradient(180deg,#4474B8,#3A67A9)}
+  .btn.quiet{background:transparent;border-color:transparent;box-shadow:none;color:var(--muted)}
+  .btn.quiet:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+  .btn.small{height:34px;padding:0 12px;font-size:12.5px}
+  .btn[disabled]{opacity:.45;cursor:default}
+
+  .page{display:none;flex-direction:column;gap:14px;min-height:0;flex:1}
+  .page.active{display:flex}
+
+  /* ---------- panes ---------- */
+  .pane{
+    background:var(--glass-strong);border:1px solid var(--glass-edge);border-radius:var(--radius-pane);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 30px rgba(36,60,94,.07);
+    backdrop-filter:blur(20px);
+  }
+  .pane-head{display:flex;align-items:center;gap:10px;padding:15px 20px 0}
+  .pane-head h3{font-size:14.5px;font-weight:650;letter-spacing:.005em}
+  .pane-head .note{font-size:11.5px;color:var(--muted);margin-left:auto}
+  .rule{height:1px;background:var(--line);margin:12px 20px 0}
+
+  /* ---------- shelf page ---------- */
+  .shelf-wrap{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);min-height:0;flex:1;overflow:hidden}
+  .shelf-left{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}
+  .shelf-left .pane-head{padding-bottom:2px}
+  .media-scroll{overflow:auto;padding:0 20px 18px}
+
+  .cord{position:relative;height:22px;margin:2px 4px 0}
+  .cord::before{content:"";position:absolute;left:0;right:0;top:12px;height:1px;background:linear-gradient(90deg,rgba(52,93,157,.34),rgba(52,93,157,.12))}
+  .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));align-items:start;gap:22px 16px;margin-top:0;position:relative}
+  .media{position:relative;display:flex;flex-direction:column;align-items:stretch;border-radius:13px;padding:0;text-align:left;color:var(--ink);border:0;background:none}
+  .media .clamp{position:absolute;top:-15px;left:50%;transform:translateX(-50%);width:12px;height:22px;color:rgba(52,93,157,.5);z-index:1}
+  .media .clamp svg{width:12px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;display:block}
+  .thumb{
+    position:relative;display:block;border-radius:13px;overflow:hidden;border:1px solid rgba(63,88,122,.18);
+    background:#dfe8f2;box-shadow:0 6px 16px rgba(36,60,94,.10);aspect-ratio:16/10;width:100%;
+  }
+  .thumb svg{display:block;width:100%;height:100%}
+  .media .name{display:block;margin-top:9px;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .media .path{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+  .media[aria-selected="true"] .thumb{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-ring),0 8px 20px rgba(52,93,157,.18)}
+  .media[aria-selected="true"] .clamp{color:var(--accent)}
+  .media:hover .thumb{border-color:var(--accent-ring)}
+
+  .text-list{overflow:auto;padding:2px 18px 18px}
+  .text-row{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;border-radius:12px;
+    border:1px solid transparent;color:var(--ink);background:none;
+  }
+  .text-row:hover{background:rgba(255,255,255,.6);border-color:var(--line)}
+  .text-row .note-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none;
+    background:rgba(52,93,157,.08);border:1px solid rgba(52,93,157,.16)}
+  .text-row .note-icon svg{width:17px;height:17px;stroke:var(--accent);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .text-row strong{display:block;font-size:12.5px;font-weight:600}
+  .text-row small{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
+
+  .selection-bar{
+    display:flex;align-items:center;gap:10px;padding:11px 14px 11px 16px;
+    background:var(--glass-strong);border:1px solid var(--glass-edge);border-radius:14px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 22px rgba(36,60,94,.06);
+  }
+  .selection-bar .sel-name{font-size:12.5px;font-weight:600;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .selection-bar .sel-meta{font-size:11.5px;color:var(--muted);margin-left:2px}
+  .selection-bar .actions{margin-left:auto;display:flex;gap:6px}
+  .status{font-size:11.5px;color:var(--muted);padding:0 2px 2px}
+
+  /* ---------- settings ---------- */
+  .settings-scroll{overflow:auto;padding-right:4px;display:flex;flex-direction:column;gap:14px}
+  .group{padding:18px 20px 20px}
+  .group-head{display:flex;align-items:baseline;gap:9px;margin-bottom:14px}
+  .group-head h3{font-size:14.5px;font-weight:650}
+  .group-head .hint{font-size:11.5px;color:var(--muted)}
+  .group-head::before{content:"";width:16px;height:2px;border-radius:2px;background:var(--accent);opacity:.55;align-self:center;margin-right:2px}
+  .field{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+  .field:first-of-type{margin-top:0}
+  .field label,.field .label{font-size:12.5px;color:var(--ink-2);font-weight:500}
+  .field .help{font-size:11.5px;color:var(--muted);line-height:1.55}
+  .control{
+    height:40px;width:100%;border-radius:var(--radius-control);border:1px solid var(--line-strong);
+    background:rgba(255,255,255,.72);padding:0 12px;font:inherit;font-size:13px;color:var(--ink);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .control:hover{border-color:var(--accent-ring)}
+  select.control{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235C6C84' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+  .check{display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:13px;color:var(--ink)}
+  .check input{margin-top:3px;width:16px;height:16px;accent-color:var(--accent)}
+  .check small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .inline-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .capacity{display:flex;gap:18px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.5);border:1px solid var(--line);font-size:12.5px}
+  .capacity b{font-size:15px;font-weight:650;color:var(--accent-deep);display:block}
+  .save-bar{
+    display:flex;align-items:center;gap:12px;padding:10px 12px 10px 18px;border-radius:15px;
+    background:rgba(255,255,255,.72);border:1px solid var(--glass-edge);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 10px 26px rgba(36,60,94,.08);
+  }
+  .save-bar .state{font-size:12px;color:var(--muted)}
+  .save-bar .state.dirty{color:var(--accent);font-weight:600}
+  .save-bar .actions{margin-left:auto;display:flex;gap:8px}
+
+  /* ---------- history ---------- */
+  .history-pane{display:flex;flex-direction:column;min-height:0;flex:1}
+  .search-wrap{position:relative;max-width:360px;margin:14px 20px 2px}
+  .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:1.6;stroke-linecap:round}
+  .search-wrap input{padding-left:36px}
+  .history-list{overflow:auto;padding:10px 14px 16px}
+  .history-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid transparent;background:none;color:var(--ink);cursor:pointer}
+  .history-row:hover{background:rgba(255,255,255,.6);border-color:var(--line)}
+  .history-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .history-row .mini{width:44px;height:32px;border-radius:8px;overflow:hidden;border:1px solid var(--line);flex:none}
+  .history-row .mini svg{width:100%;height:100%;display:block}
+  .hist-copy{display:flex;flex-direction:column;min-width:0}
+  .hist-copy strong{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .history-row .meta{font-size:11.5px;color:var(--muted)}
+  .history-row .row-actions{margin-left:auto;display:flex;gap:4px;opacity:.6;transition:opacity .12s ease}
+  .history-row:hover .row-actions,.history-row:focus-within .row-actions{opacity:1}
+  .tag{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(52,93,157,.09);color:var(--accent-deep)}
+
+  .empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 20px;text-align:center;color:var(--muted)}
+  .empty strong{font-size:14px;color:var(--ink-2);font-weight:600}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  @media (max-width:900px){
+    .window{grid-template-columns:76px 1fr}
+    .brand h1,.brand p,.nav span,.rail-actions,.live-card div{display:none}
+    .nav button{justify-content:center;padding:0}
+    .live-card{justify-content:center;padding:10px}
+    .shelf-wrap{grid-template-columns:1fr}
+    .shelf-left{border-right:0;border-bottom:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="window" role="application" aria-label="绳笺 Cordnote 控制面板">
+
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 28 28"><path d="M1 5q13 6 26 0" fill="none" stroke="#345D9D" stroke-width="1.7" stroke-linecap="round"/><path d="M8 8v13h12V8M12 4v7M17 4v7" fill="none" stroke="#345D9D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>晾衣绳</h1>
+        <p>把灵感，晾在手边。</p>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="控制面板导航">
+      <button aria-current="page" data-page="shelf">
+        <svg viewBox="0 0 20 20"><path d="M2 5q8 4 16 0"/><path d="M6 8.4V16h8V8.4"/></svg><span>晾衣绳列表</span>
+      </button>
+      <button data-page="history">
+        <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 1-6.3 4"/><path d="M3 3v4h4"/><path d="M10 6.5V10l2.6 1.6"/></svg><span>本地历史</span>
+      </button>
+      <button data-page="sources">
+        <svg viewBox="0 0 20 20"><path d="M3 5h6l1.6 2H17v9H3z"/></svg><span>来源与设置</span>
+      </button>
+      <button data-page="shortcuts">
+        <svg viewBox="0 0 20 20"><rect x="2.5" y="5.5" width="15" height="9" rx="2"/><path d="M6 9h1M9.5 9h1M13 9h1M6.5 12h7"/></svg><span>快捷键与启动</span>
+      </button>
+      <button data-page="appearance">
+        <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 0 0 0 14c1.2 0 1.8-.8 1.8-1.8 0-1.6 1.2-2.2 2.6-2.2H16a1 1 0 0 0 1-1A7 7 0 0 0 10 3z"/><circle cx="6.8" cy="8.3" r=".9"/><circle cx="10.4" cy="6.6" r=".9"/><circle cx="13.8" cy="8.6" r=".9"/></svg><span>外观与语言</span>
+      </button>
+      <button data-page="formats">
+        <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 9v.2M10 12.4v3.1"/></svg><span>格式支持</span>
+      </button>
+    </nav>
+
+    <div class="rail-foot">
+      <div class="live-card">
+        <span class="dot" aria-hidden="true"></span>
+        <div><strong>正在收集</strong><small>截图与剪贴板</small></div>
+        <button type="button">暂停</button>
+      </div>
+      <div class="rail-actions">
+        <button type="button">收起控制面板</button>
+        <button type="button">退出</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="page-head">
+      <div>
+        <h2 id="pageTitle">晾衣绳列表</h2>
+        <p class="desc" id="pageDesc">4 项，随手取用，文件保留。</p>
+      </div>
+      <div class="head-actions">
+        <button class="btn" type="button">显示 / 收起</button>
+        <button class="btn primary" type="button">导入图片或录像…</button>
+      </div>
+    </header>
+
+    <!-- 晾衣绳列表 -->
+    <section class="page active" id="page-shelf" aria-labelledby="pageTitle">
+      <div class="pane shelf-wrap">
+        <div class="shelf-left">
+          <div class="pane-head"><h3>图片 / 录像</h3><span class="note">3 项</span></div>
+          <div class="media-scroll">
+            <div class="cord" aria-hidden="true"></div>
+            <div class="media-grid">
+              <button class="media" aria-selected="true" data-name="海岸微风-sample.png" data-meta="PNG · 2400×1500 · 10:32">
+                <span class="clamp" aria-hidden="true"><svg viewBox="0 0 12 20"><rect x="1" y="1" width="10" height="12" rx="2"/><path d="M6 13v6"/></svg></span>
+                <span class="thumb"><svg viewBox="0 0 160 100" role="img" aria-label="海岸微风示例图">
+                  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#DCEBF2"/><stop offset="1" stop-color="#F3EFE2"/></linearGradient></defs>
+                  <rect width="160" height="100" fill="url(#sky)"/>
+                  <circle cx="118" cy="30" r="13" fill="#F2CF8E"/>
+                  <path d="M0 62q40-20 80 0t80 0v38H0z" fill="#5C8F8C"/>
+                  <path d="M0 70q46-14 92 2t68-2v30H0z" fill="#3F6E6B"/>
+                  <path d="M0 80q36-10 72 2t88-4v22H0z" fill="#2F5553"/>
+                </svg></span>
+                <span class="name">海岸微风-sample.png</span>
+                <span class="path">C:\Users\lmj\Desktop\work\…</span>
+              </button>
+              <button class="media" data-name="灵感笔记-sample.png" data-meta="PNG · 1800×1200 · 10:31">
+                <span class="clamp" aria-hidden="true"><svg viewBox="0 0 12 20"><rect x="1" y="1" width="10" height="12" rx="2"/><path d="M6 13v6"/></svg></span>
+                <span class="thumb"><svg viewBox="0 0 160 100" role="img" aria-label="灵感笔记示例图">
+                  <rect width="160" height="100" fill="#F2EDE1"/>
+                  <rect x="26" y="18" width="108" height="70" fill="#FAF7EE" stroke="#D9D1BE"/>
+                  <rect x="92" y="28" width="34" height="34" rx="2" fill="#E2A45C" transform="rotate(8 109 45)"/>
+                  <text x="34" y="44" font-family="Segoe UI" font-size="11" font-weight="600" fill="#4A4232">MAKE</text>
+                  <text x="34" y="59" font-family="Segoe UI" font-size="11" font-weight="600" fill="#4A4232">SPACE.</text>
+                  <path d="M34 78h70" stroke="#CFC6B2" stroke-width="2"/>
+                </svg></span>
+                <span class="name">灵感笔记-sample.png</span>
+                <span class="path">C:\Users\lmj\Desktop\work\…</span>
+              </button>
+              <button class="media" data-name="山间一刻-sample.png" data-meta="PNG · 2000×1250 · 10:29">
+                <span class="clamp" aria-hidden="true"><svg viewBox="0 0 12 20"><rect x="1" y="1" width="10" height="12" rx="2"/><path d="M6 13v6"/></svg></span>
+                <span class="thumb"><svg viewBox="0 0 160 100" role="img" aria-label="山间一刻示例图">
+                  <rect width="160" height="100" fill="#DCEAE6"/>
+                  <circle cx="104" cy="32" r="10" fill="#EFD08B"/>
+                  <path d="M0 84l34-40 26 26 20-22 44 36v16H0z" fill="#4E7A6C"/>
+                  <path d="M0 92l40-22 34 10 34-16 52 24v12H0z" fill="#34594F"/>
+                </svg></span>
+                <span class="name">山间一刻-sample.png</span>
+                <span class="path">C:\Users\lmj\Desktop\work\…</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="shelf-right">
+          <div class="pane-head"><h3>文字</h3><span class="note">1 项</span></div>
+          <div class="text-list">
+            <button class="text-row" data-name="sample-note.txt" data-meta="文本 · 已保存 · 10:28">
+              <span class="note-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M5 2.5h7l4 4v11H5z"/><path d="M12 2.5v4h4M7.5 10h6M7.5 13h4.5"/></svg></span>
+              <span><strong>sample-note.txt</strong><small>C:\Users\lmj\Desktop\work\Cordnote\…</small></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="selection-bar">
+        <span class="sel-name" id="selName">海岸微风-sample.png</span>
+        <span class="sel-meta" id="selMeta">PNG · 2400×1500 · 10:32</span>
+        <div class="actions">
+          <button class="btn primary small" type="button">复制</button>
+          <button class="btn small" type="button">预览</button>
+          <button class="btn small" type="button">编辑图片…</button>
+          <button class="btn small" type="button">更多操作</button>
+        </div>
+      </div>
+      <p class="status">方向键选择，Enter 预览，Ctrl+C 复制，Delete 取下到历史。文件保留。</p>
+    </section>
+
+    <!-- 本地历史 -->
+    <section class="page" id="page-history">
+      <div class="pane history-pane">
+        <div class="search-wrap">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg>
+          <input class="control" type="search" placeholder="按文件名或路径搜索" aria-label="搜索历史">
+        </div>
+        <div class="history-list">
+          <div class="history-row" tabindex="0">
+            <span class="mini"><svg viewBox="0 0 60 44"><rect width="60" height="44" fill="#E7EEF4"/><path d="M0 30q16-10 30 0t30 0v14H0z" fill="#6C9A93"/></svg></span>
+            <span class="hist-copy"><strong>旧截图-1026.png</strong><span class="meta">取下于 10 月 27 日 · 外部引用</span></span>
+            <span class="tag">图片</span>
+            <span class="row-actions"><button class="btn small" type="button">重新挂上</button><button class="btn quiet small" type="button">更多</button></span>
+          </div>
+          <div class="history-row" tabindex="0">
+            <span class="mini"><svg viewBox="0 0 60 44"><rect width="60" height="44" fill="#F3EDE0"/><rect x="14" y="8" width="32" height="28" fill="#FBF8F0"/><path d="M18 16h24M18 22h20M18 28h14" stroke="#D9D0BC" stroke-width="2"/></svg></span>
+            <span class="hist-copy"><strong>会议摘要.txt</strong><span class="meta">取下于 10 月 26 日 · 应用自管</span></span>
+            <span class="tag">文字</span>
+            <span class="row-actions"><button class="btn small" type="button">重新挂上</button><button class="btn quiet small" type="button">更多</button></span>
+          </div>
+          <div class="history-row" tabindex="0">
+            <span class="mini"><svg viewBox="0 0 60 44"><rect width="60" height="44" fill="#DDE9E4"/><path d="M0 36l16-18 12 12 10-10 22 16v8H0z" fill="#4E7A6C"/></svg></span>
+            <span class="hist-copy"><strong>山间一刻-0921.png</strong><span class="meta">取下于 10 月 21 日 · 外部引用</span></span>
+            <span class="tag">图片</span>
+            <span class="row-actions"><button class="btn small" type="button">重新挂上</button><button class="btn quiet small" type="button">更多</button></span>
+          </div>
+        </div>
+      </div>
+      <div class="selection-bar">
+        <span class="sel-meta">历史默认永久保留；可在“来源与设置”改为取下 7 或 30 天后清理。</span>
+        <div class="actions"><button class="btn small" type="button">导出</button><button class="btn quiet small" type="button">清理历史…</button></div>
+      </div>
+    </section>
+
+    <!-- 外观与语言 -->
+    <section class="page" id="page-appearance">
+      <div class="settings-scroll">
+        <div class="pane group">
+          <div class="group-head"><h3>外观与动效</h3><span class="hint">保存后立即生效</span></div>
+          <div class="inline-fields">
+            <div class="field">
+              <label for="cardSize">卡片大小</label>
+              <select class="control" id="cardSize"><option>小 · 80%</option><option>标准 · 100%</option><option selected>大 · 120%</option></select>
+            </div>
+            <div class="field">
+              <label for="protection">展开保护期</label>
+              <select class="control" id="protection"><option>5 秒</option><option selected>10 秒（默认）</option><option>15 秒</option><option>30 秒</option><option>60 秒</option></select>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" data-dirty><span>减少动画<small>关闭绳线淡入、卡片入场与摆动；Windows 关闭客户端动画时同样生效。</small></span></label>
+          <p class="field help" style="margin-top:12px">每类名额随屏幕和卡片大小调整，超额的同类最旧项目进入历史。</p>
+        </div>
+
+        <div class="pane group">
+          <div class="group-head"><h3>提示音</h3></div>
+          <label class="check"><input type="checkbox" data-dirty><span>自动收集新项目时播放提示音<small>连续收集最多每 2 秒播放一次；暂停或当前屏幕全屏时静音。</small></span></label>
+        </div>
+
+        <div class="pane group">
+          <div class="group-head"><h3>语言</h3><span class="hint">保存后需重启应用</span></div>
+          <div class="field">
+            <label for="language">界面语言</label>
+            <select class="control" id="language"><option selected>简体中文</option><option>English</option><option>Español</option><option>Français</option><option>Galego</option><option>Português (Brasil)</option><option>日本語</option><option>한국어</option><option>Türkçe</option><option>Azərbaycanca</option><option>हिन्दी</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="save-bar">
+        <span class="state" id="saveState">设置已保存</span>
+        <div class="actions">
+          <button class="btn quiet" type="button" id="discard">撤销更改</button>
+          <button class="btn primary" type="button" id="save">保存设置</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 占位页 -->
+    <section class="page" id="page-sources">
+      <div class="pane group" style="flex:1;display:flex;flex-direction:column">
+        <div class="group-head"><h3>来源与设置</h3></div>
+        <div class="field"><label>截图目录</label><input class="control" value="C:\Users\lmj\Pictures\Screenshots"></div>
+        <div class="field"><label>录像目录</label><input class="control" value="C:\Users\lmj\Videos\Captures"></div>
+        <div class="field"><label>当前屏幕名额</label>
+          <div class="capacity"><div><b>25</b>总容量</div><div><b>12</b>图片 / 录像</div><div><b>12</b>文字</div></div>
+        </div>
+      </div>
+      <div class="save-bar"><span class="state">设置已保存</span><div class="actions"><button class="btn quiet" type="button">撤销更改</button><button class="btn primary" type="button">保存设置</button></div></div>
+    </section>
+    <section class="page" id="page-shortcuts">
+      <div class="pane group" style="flex:1">
+        <div class="group-head"><h3>快捷键与启动</h3></div>
+        <div class="inline-fields">
+          <div class="field"><label>显示晾衣绳</label><input class="control" value="Ctrl + ↓"></div>
+          <div class="field"><label>收回晾衣绳</label><input class="control" value="Ctrl + ↑"></div>
+        </div>
+        <label class="check"><input type="checkbox" data-dirty><span>登录 Windows 时启动到托盘<small>默认关闭，主动开启并保存后生效。</small></span></label>
+      </div>
+      <div class="save-bar"><span class="state">设置已保存</span><div class="actions"><button class="btn quiet" type="button">撤销更改</button><button class="btn primary" type="button">保存设置</button></div></div>
+    </section>
+    <section class="page" id="page-formats">
+      <div class="pane group" style="flex:1">
+        <div class="group-head"><h3>格式支持</h3><span class="hint">使用本机 Windows 图像组件实际解码样本</span></div>
+        <div class="empty"><strong>PNG、JPEG、BMP、TIFF、GIF 可直接使用</strong><span>WebP 与 HEIC 依赖本机图像扩展，可在此重新检测。</span><button class="btn" type="button" style="margin-top:8px">重新检测格式</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const titles={
+    shelf:['晾衣绳列表','4 项，随手取用，文件保留。'],
+    history:['本地历史','取下和超出容量的项目会保留在这里。'],
+    sources:['来源与设置','管理截图与录像目录、容量和历史期限。'],
+    shortcuts:['快捷键与启动','自定义显示与收回方式。'],
+    appearance:['外观与语言','按你的习惯，调整晾衣绳。'],
+    formats:['格式支持','检查本机可解码的图片格式。']
+  };
+  const nav=[...document.querySelectorAll('.nav button')];
+  const pages=[...document.querySelectorAll('.page')];
+  const activate=key=>{
+    nav.forEach(n=>{ if(n.dataset.page===key)n.setAttribute('aria-current','page'); else n.removeAttribute('aria-current'); });
+    pages.forEach(p=>p.classList.toggle('active',p.id==='page-'+key));
+    const t=titles[key];document.getElementById('pageTitle').textContent=t[0];document.getElementById('pageDesc').textContent=t[1];
+  };
+  nav.forEach(b=>b.addEventListener('click',()=>activate(b.dataset.page)));
+  const initial=new URLSearchParams(location.search).get('page');
+  if(initial&&titles[initial])activate(initial);
+
+  const media=[...document.querySelectorAll('.media')];
+  media.forEach(m=>m.addEventListener('click',()=>{
+    media.forEach(x=>x.setAttribute('aria-selected','false'));
+    m.setAttribute('aria-selected','true');
+    document.getElementById('selName').textContent=m.dataset.name;
+    document.getElementById('selMeta').textContent=m.dataset.meta;
+  }));
+
+  const state=document.getElementById('saveState');
+  const markDirty=()=>{if(state){state.textContent='有未保存的更改';state.classList.add('dirty');}};
+  document.querySelectorAll('[data-dirty],.page select').forEach(el=>el.addEventListener('change',markDirty));
+  document.getElementById('discard')?.addEventListener('click',()=>{state.textContent='设置已保存';state.classList.remove('dirty');});
+  document.getElementById('save')?.addEventListener('click',()=>{state.textContent='设置已保存';state.classList.remove('dirty');});
+</script>
+</body>
+</html>

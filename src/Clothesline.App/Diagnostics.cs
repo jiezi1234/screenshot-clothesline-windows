@@ -137,6 +137,9 @@ internal static class Diagnostics
                 Check("first-image-replaces-empty-hint", controller.Visible && controller.Count == 1 && !emptyRope.ShowEmptyHint);
                 controller.SetItems([], false);
                 Check("last-image-removed-shows-empty-hint", controller.Visible && controller.Count == 0 && emptyRope.ShowEmptyHint);
+                controller.SetItems(items.Take(1), false);
+                app.Windows.OfType<CardWindow>().First(card => card.IsVisible).NotifyCopied();
+                Check("single-click-copy-retracts-shelf", !controller.Visible);
                 controller.Hide();
                 backdrop.CloseMainWindow(); await Task.Delay(100);
                 dashboard.Show(); await Task.Delay(150);

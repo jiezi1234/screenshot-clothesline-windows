@@ -1,4 +1,6 @@
 # .NET build output
+**/node_modules/
+**/.build/
 **/bin/
 **/obj/
 artifacts/

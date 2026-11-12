@@ -16,7 +16,7 @@ internal sealed partial class Dashboard
         try { var data = await ShellTransfer.CopyDataAsync(entry.Path); Clipboard.SetDataObject(data, true); SetStatus(T("已复制：") + entry.Title); }
         catch (Exception ex) { SetStatus(ex.Message); }
     }
-    private LibraryEntry? SelectedShelfEntry => shelfList.SelectedItem as LibraryEntry ?? shelfTextList.SelectedItem as LibraryEntry;
+    private LibraryEntry? SelectedShelfEntry => shelfList.SelectedItem as LibraryEntry;
     private HistoryRow? SelectedHistoryRow => history.SelectedItem as HistoryRow ?? historyText.SelectedItem as HistoryRow;
     private sealed record HistoryRow(LibraryEntry Entry)
     {
@@ -41,14 +41,10 @@ internal sealed partial class Dashboard
         historyText.SelectedItem = restoredHistory is not null && Clothesline.Core.MediaFiles.IsText(restoredHistory.Entry.Path) ? restoredHistory : null;
         var shelfId = SelectedShelfEntry?.Id;
         var entries = library?.Store.Entries(EntryState.Shelf).ToArray() ?? [];
-        var imageEntries = entries.Where(entry => !Clothesline.Core.MediaFiles.IsText(entry.Path)).ToArray();
-        var textEntries = entries.Where(entry => Clothesline.Core.MediaFiles.IsText(entry.Path)).ToArray();
-        if (!(shelfList.ItemsSource is LibraryEntry[] oldImages && oldImages.SequenceEqual(imageEntries)) || !(shelfTextList.ItemsSource is LibraryEntry[] oldText && oldText.SequenceEqual(textEntries)))
+        if (!(shelfList.ItemsSource is LibraryEntry[] oldEntries && oldEntries.SequenceEqual(entries)))
         {
-            shelfList.ItemsSource = imageEntries; shelfTextList.ItemsSource = textEntries;
-            var restoredShelf = entries.FirstOrDefault(entry => entry.Id == shelfId) ?? imageEntries.FirstOrDefault() ?? textEntries.FirstOrDefault();
-            shelfList.SelectedItem = restoredShelf is not null && !Clothesline.Core.MediaFiles.IsText(restoredShelf.Path) ? restoredShelf : null;
-            shelfTextList.SelectedItem = restoredShelf is not null && Clothesline.Core.MediaFiles.IsText(restoredShelf.Path) ? restoredShelf : null;
+            shelfList.ItemsSource = entries;
+            shelfList.SelectedItem = entries.FirstOrDefault(entry => entry.Id == shelfId) ?? entries.FirstOrDefault();
         }
         shelfEmpty.Visibility = entries.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         historyEmpty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -113,10 +109,9 @@ internal sealed partial class Dashboard
     private void UpdateCollectionState()
     {
         var paused = library?.Settings.Paused == true;
-        collectionState.Text = library is null ? T("诊断模式") : paused ? T("自动收集已暂停。") : T("正在收集");
-        collectionDot.Fill = Brush(library is not null && !paused ? "LiveBrush" : "MutedBrush");
-        pauseCollection.Content = paused ? T("恢复收集") : T("暂停收集"); pauseCollection.IsEnabled = library is not null;
-        System.Windows.Automation.AutomationProperties.SetName(pauseCollection, (string)pauseCollection.Content);
+        pauseCollection.Content = library is null ? T("诊断模式") : paused ? T("恢复收集") : T("正在收集"); pauseCollection.IsEnabled = library is not null;
+        pauseCollection.Tag = paused ? "\uE768" : "\uE769";
+        System.Windows.Automation.AutomationProperties.SetName(pauseCollection, paused ? T("恢复收集") : T("暂停收集"));
     }
     public void SetStatus(string text)
     {

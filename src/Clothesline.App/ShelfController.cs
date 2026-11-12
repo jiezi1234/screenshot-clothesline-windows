@@ -117,6 +117,7 @@ internal sealed partial class ShelfController : IDisposable
         card.Closed += (_, _) => { hoverPreview.ClearFor(card); textHover.ClearFor(card); };
         card.DragRequested = DragCardWithPreview; AttachDropTarget(card);
         card.Status += text => Status?.Invoke(text);
+        card.Copied += Hide;
         card.TakeDown += Remove;
         card.RecycleRequested = sampleMode ? null : entry => RecycleRequested?.Invoke(entry);
         card.ExportRequested = (entry, desktop) => ExportRequested?.Invoke(entry, desktop);

@@ -18,7 +18,11 @@
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../Clothesline.Core/Clothesline.Core.csproj" /></ItemGroup>
+  <ItemGroup><PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" /></ItemGroup>
   <ItemGroup><ProjectReference Include="../Clothesline.Storage/Clothesline.Storage.csproj" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/*" Exclude="Fixtures/*.md" LogicalName="Clothesline.Fixtures.%(Filename)%(Extension)" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/Cordnote.ico" LogicalName="Cordnote.ico" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Assets/wafer-clouds.webp" LogicalName="Cordnote.WaferClouds.webp" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Assets/github-jiezi1234.png" LogicalName="Cordnote.GithubAvatar.png" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Assets/GithubWeb/index.html" LogicalName="Cordnote.GithubWeb.html" /></ItemGroup>
 </Project>

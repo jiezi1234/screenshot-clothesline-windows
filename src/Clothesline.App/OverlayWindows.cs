@@ -148,6 +148,8 @@ internal sealed class CardWindow : OverlayWindow
     public bool InteractionActive => Busy || copying || down is not null || clickTimer.IsEnabled;
     private bool copying;
     public event Action<string>? Status;
+    public event Action? Copied;
+    internal void NotifyCopied() => Copied?.Invoke();
     public event Action<CardWindow>? TakeDown;
     public event Action? DragEnded;
     public Func<CardWindow, Task<string>>? DragRequested { get; set; }
@@ -216,7 +218,7 @@ internal sealed class CardWindow : OverlayWindow
         }
         var layout = new Grid { Width = DesktopGeometry.CardWidth, Height = DesktopGeometry.CardHeight }; layout.Children.Add(root);
         Content = new Viewbox { Child = layout, Stretch = Stretch.Uniform };
-        clickTimer.Tick += (_, _) => { clickTimer.Stop(); Copy(); };
+        clickTimer.Tick += (_, _) => { clickTimer.Stop(); Copy(true); };
         holdTimer.Tick += (_, _) =>
         {
             holdTimer.Stop(); if (down is null || Busy || Mouse.LeftButton != MouseButtonState.Pressed) return;
@@ -231,7 +233,7 @@ internal sealed class CardWindow : OverlayWindow
         surface.MouseEnter += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = T("单击复制 · 拖动排序或拖出"); caption.ToolTip = caption.Text; } };
         surface.MouseLeave += (_, _) => { if (!Busy && !Item.IsText) { caption.Text = item.Title; caption.ToolTip = item.Title; } };
         var menu = new ContextMenu();
-        Add(menu, item.IsText ? T("复制文字") : item.IsVideo ? T("复制录像文件") : T("复制图片"), Copy);
+        Add(menu, item.IsText ? T("复制文字") : item.IsVideo ? T("复制录像文件") : T("复制图片"), () => Copy(false));
         if (!item.IsText) Add(menu, item.IsVideo ? T("播放录像") : T("预览与缩放"), () => WorkspaceRequested?.Invoke(item, false));
         if (!item.IsVideo && !item.IsText) Add(menu, T("编辑图片…"), () => WorkspaceRequested?.Invoke(item, true));
         if (!item.IsText) Add(menu, item.IsVideo ? T("用默认应用打开") : T("打开图片"), () => ShellTransfer.Open(item.Path));
@@ -324,7 +326,7 @@ internal sealed class CardWindow : OverlayWindow
         if (down is null) return;
         down = null; holdTimer.Stop(); surface.ReleaseMouseCapture(); clickTimer.Start(); e.Handled = true;
     }
-    private async void Copy()
+    private async void Copy(bool retract)
     {
         if (copying || closed) return;
         if (!File.Exists(Item.Path)) { Report(T("原文件已移走，可在历史中查看失效记录。")); return; }
@@ -335,6 +337,7 @@ internal sealed class CardWindow : OverlayWindow
             if (closed) return;
             Clipboard.SetDataObject(data, true);
             Report(Item.IsText ? T("已复制文字") : Item.IsVideo ? T("已复制录像文件") : T("已复制原图"));
+            if (retract) Copied?.Invoke();
         }
         catch (System.Runtime.InteropServices.COMException) { Report(T("剪贴板正在被占用，请稍后再试。")); }
         catch (Exception ex) { Report(T("操作未完成：") + ex.Message); }

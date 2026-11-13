@@ -61,7 +61,7 @@ function App() {
   return <div id="github-host" ref={container}>
     <GithubCard username="jiezi1234" name="jiezi1234" avatarUrl={__AVATAR__}
       text={window.cordnoteLabel || "Follow me on"} linkText="GitHub" year={new Date().getFullYear()}
-      themeScheme="blue" className="github-component" labelClassName="cordnote-hide" linkClassName="cordnote-hide" popoverClassName="cordnote-card" maxDays={28} open={open} />
+      themeScheme="blue" className="github-component" labelClassName="cordnote-hide" linkClassName="cordnote-hide" popoverClassName="cordnote-card" maxDays={56} open={open} />
   </div>;
 }
 createRoot(document.getElementById("root")!).render(<App />);

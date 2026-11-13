@@ -52,23 +52,41 @@ const colorSchemes = {
   },
 };
 
-const generateEmptyContributions = () => {
-  const data = [];
+const DAYS_PER_WEEK = 7;
+
+const toDateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
+
+// Columns are calendar weeks running Sunday → Saturday, so day-of-week labels
+// stay put instead of drifting with the first day of the sliced range.
+const buildWeekGrid = (
+  data: { date: string; count: number; level: number }[],
+  weeks: number,
+) => {
   const today = new Date();
-  for (let i = 118; i >= 0; i--) {
-    const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-    data.push({
-      date: date.toISOString().split("T")[0],
-      count: 0,
-      level: 0,
-    });
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(
+    start.getDate() - start.getDay() - (Math.max(1, weeks) - 1) * DAYS_PER_WEEK,
+  );
+  const byDate = new Map(data.map((day) => [day.date, day]));
+  const cells: { date: string; count: number; level: number }[] = [];
+  for (let offset = 0; offset < weeks * DAYS_PER_WEEK; offset++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + offset);
+    if (date > today) break;
+    const key = toDateKey(date);
+    cells.push(byDate.get(key) ?? { date: key, count: 0, level: 0 });
   }
-  return data;
+  return cells;
 };
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "";
-  const date = new Date(dateStr);
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -104,13 +122,14 @@ export const GithubCard = ({
   const visible = open ?? isHovered;
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const weeks = Math.max(1, Math.round(maxDays / DAYS_PER_WEEK));
   const [profile, setProfile] = useState<{ name: string; avatarUrl: string }>({
     name,
     avatarUrl: avatarUrl || `https://github.com/${username}.png`,
   });
   const [contributionsList, setContributionsList] = useState<
     { date: string; count: number; level: number }[]
-  >(() => generateEmptyContributions());
+  >(() => buildWeekGrid([], weeks));
   const [yearTotal, setYearTotal] = useState<number | undefined>(undefined);
 
   useEffect(() => {
@@ -134,7 +153,7 @@ export const GithubCard = ({
       .catch(() => {});
 
     if (contributionsData) {
-      setContributionsList(contributionsData);
+      setContributionsList(buildWeekGrid(contributionsData, weeks));
       return;
     }
 
@@ -167,25 +186,14 @@ export const GithubCard = ({
               .filter((d) => new Date(d.date).getFullYear() === Number(year))
               .reduce((acc, d) => acc + d.count, 0),
           );
-          setContributionsList(sorted.slice(-maxDays));
+          setContributionsList(buildWeekGrid(sorted, weeks));
         }
       })
       .catch(() => {});
-  }, [username, name, avatarUrl, contributionsData, maxDays, year]);
+  }, [username, name, avatarUrl, contributionsData, weeks, year]);
 
   const isDark = mounted ? theme === "dark" : true;
   const activeTheme = calendarTheme || colorSchemes[themeScheme];
-
-  const contributions = useMemo(() => {
-    if (!mounted) {
-      return Array.from({ length: 119 }, () => ({
-        date: "",
-        count: 0,
-        level: 0,
-      }));
-    }
-    return contributionsList;
-  }, [mounted, contributionsList]);
 
   const linkRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -250,8 +258,8 @@ export const GithubCard = ({
   const calculatedTotalCommits = useMemo(() => {
     if (totalContributions !== undefined) return totalContributions;
     if (yearTotal !== undefined) return yearTotal;
-    return contributions.reduce((acc, curr) => acc + curr.count, 0);
-  }, [contributions, totalContributions, yearTotal]);
+    return contributionsList.reduce((acc, curr) => acc + curr.count, 0);
+  }, [contributionsList, totalContributions, yearTotal]);
 
   const profileUrl = href || `https://github.com/${username}`;
 
@@ -367,7 +375,7 @@ export const GithubCard = ({
           </div>
 
           <div className="mx-auto grid w-max grid-flow-col grid-rows-7 gap-1 select-none">
-            {contributions.map((day, index) => {
+            {contributionsList.map((day, index) => {
               const color = isDark
                 ? activeTheme.dark[day.level]
                 : activeTheme.light[day.level];

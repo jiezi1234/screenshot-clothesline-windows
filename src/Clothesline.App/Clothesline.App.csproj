@@ -13,7 +13,7 @@
     <Product>绳笺 Cordnote</Product>
     <Description>把图片、文字和录像临时夹在桌面绳线上。</Description>
     <ApplicationIcon>Assets\Cordnote.ico</ApplicationIcon>
-    <Version>0.21.3</Version>
+    <Version>0.22.0</Version>
     <!-- WPF owns startup and PMv2 via manifest; WinForms is used only for NotifyIcon. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
@@ -23,6 +23,8 @@
   <ItemGroup><EmbeddedResource Include="Fixtures/*" Exclude="Fixtures/*.md" LogicalName="Clothesline.Fixtures.%(Filename)%(Extension)" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/Cordnote.ico" LogicalName="Cordnote.ico" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/wafer-clouds.webp" LogicalName="Cordnote.WaferClouds.webp" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Assets/make-believe-clouds.png" LogicalName="Cordnote.MakeBelieveClouds.png" /></ItemGroup>
+  <ItemGroup><Resource Include="Assets/VT323-Regular.ttf" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/github-jiezi1234.png" LogicalName="Cordnote.GithubAvatar.png" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/GithubWeb/index.html" LogicalName="Cordnote.GithubWeb.html" /></ItemGroup>
 </Project>

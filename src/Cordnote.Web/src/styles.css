@@ -3,4 +3,16 @@
 @source "./main.tsx";
 html, body, #root { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
 body { font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif; }
-#github-host { position: absolute; left: 0; bottom: 0; height: 32px; display: flex; align-items: center; }
+#github-host { position: static; display: block; width: 336px; height: auto; padding: 8px; }
+.github-component { display: block; }
+.cordnote-hide { display: none !important; }
+.cordnote-card { position: relative !important; bottom: auto !important; margin: 0 !important; width: 200px !important; padding: 14px !important; }
+.cordnote-card::after { display: none !important; }
+.cordnote-card .grid { gap: 3px !important; }
+.cordnote-card .grid > div > div:first-child { width: 7px !important; height: 7px !important; }
+.cordnote-card img { width: 28px !important; height: 28px !important; }
+.cordnote-card .mb-4 { margin-bottom: 10px !important; }
+.cordnote-card .mt-3 { margin-top: 8px !important; }
+.cordnote-card .text-base { font-size: 14px !important; }
+.cordnote-card .text-sm { font-size: 12px !important; }
+.cordnote-card .font-mono { font-size: 10px !important; }

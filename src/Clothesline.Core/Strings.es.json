@@ -414,5 +414,10 @@
   "下一步": "Rehacer",
   "重试": "Reintentar",
   "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "Se interrumpió la supervisión de la carpeta de capturas de WeChat; vuelve a activar la recopilación o reinicia la aplicación.",
-  "微信截图暂未收集：": "No se recopiló la captura de WeChat: "
+  "微信截图暂未收集：": "No se recopiló la captura de WeChat: ",
+  "最小化": "Minimizar",
+  "最大化": "Maximizar",
+  "关闭": "Cerrar",
+  "移动窗口": "Mover ventana",
+  "拖动标题栏移动窗口": "Arrastra la barra de título para mover la ventana"
 }

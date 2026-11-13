@@ -1,5 +1,7 @@
 # Dependency notices
 
+- VT323 Regular: copyright Peter Hull, SIL Open Font License 1.1. The unmodified font is bundled in the application; the full license is `VT323-OFL.txt`. Source: https://github.com/google/fonts/tree/main/ofl/vt323 . Used for the supplied MAKE BELIEVE design's pixel typography.
+
 - Microsoft.Data.Sqlite / Microsoft.Data.Sqlite.Core 10.0.13: MIT; copyright Microsoft Corporation in NuGet metadata and .NET Foundation and Contributors in the upstream license. License copied verbatim from dotnet/efcore tag v10.0.13, LICENSE.txt.
 - SQLitePCLRaw.bundle_e_sqlite3, SQLitePCLRaw.core, SQLitePCLRaw.lib.e_sqlite3, SQLitePCLRaw.provider.e_sqlite3 2.1.13: Apache-2.0, copyright 2014–2024 SourceGear, LLC per the packages' nuspec metadata. These NuGet packages omit standalone license/notice files and the upstream repository has no v2.1.13 tag. The complete upstream Apache license and notice from the preceding v2.1.12 tag are retained verbatim here. The broad upstream notice also describes optional variants (such as SQLCipher) that this app does not use.
 - Native SQLite is supplied by SQLitePCLRaw.lib.e_sqlite3; its public-domain dedication is included in the upstream notice.

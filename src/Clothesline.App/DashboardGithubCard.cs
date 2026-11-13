@@ -14,7 +14,7 @@ namespace Clothesline.App;
 // Native host only. React/Motion/Tailwind render the unchanged upstream TSX.
 internal sealed class DashboardGithubCard : WebView2CompositionControl
 {
-    internal const string SourceHash = "464f2bcd45bec1aa08d5c6a2287d569dd532beecfe8d91d43e065f2f07e55abc";
+    internal const string SourceHash = "393acc05b6f72eff868ea1a356cc09e357852044eae4148c54b8b557bd28d7bb";
     private const string Profile = "https://github.com/jiezi1234";
     private static readonly Lazy<Task<CoreWebView2Environment>> environment = new(() => CoreWebView2Environment.CreateAsync(
         userDataFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenshotClothesline", "WebView2")));

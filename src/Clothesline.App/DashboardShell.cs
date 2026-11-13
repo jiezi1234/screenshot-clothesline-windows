@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media.Effects;
+using System.Windows.Shell;
 using Clothesline.Storage;
 using Clothesline.Core;
 
@@ -42,8 +43,7 @@ internal sealed partial class Dashboard : Window
 {
     private readonly LibraryRuntime? library;
     private readonly ListBox navigation = new(), history = new(), historyText = new(), shelfList = new();
-    private readonly ContentControl pageHost = new();
-    private readonly TextBlock pageTitle = new(), pageDescription = new(), status = new(), draftStatus = new();
+    private readonly TextBlock status = new(), draftStatus = new();
     private readonly TextBox screenshot = new(), videoFolder = new(), showShortcut = new(), hideShortcut = new(), historySearch = new();
     private readonly TextBox[] extras = [new(), new(), new()];
     private readonly CheckBox clipboard = new() { Content = T("收集剪贴板图片和文字（默认开启）") };
@@ -75,74 +75,18 @@ internal sealed partial class Dashboard : Window
     {
         this.library = library; Resources = DashboardTheme.Create();
         Title = T("绳笺 Cordnote · 截图与历史"); Width = 1180; Height = 820; MinWidth = 840; MinHeight = 620;
+        WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize;
+        WindowChrome.SetWindowChrome(this, new WindowChrome { CaptionHeight = 0, ResizeBorderThickness = new Thickness(6), GlassFrameThickness = new Thickness(0), CornerRadius = new CornerRadius(0), UseAeroCaptionButtons = false });
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = Brush("SidebarBrush"); Foreground = Brush("TextBrush");
-        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI"); FontSize = 13; UseLayoutRounding = true;
+        FontFamily = new FontFamily("SimSun, Microsoft YaHei UI"); FontSize = 13; UseLayoutRounding = true;
         save = Button(T("保存设置"), SaveSettings, "PrimaryButton"); discard = Button(T("撤销更改"), () => { FillSettings(); SetStatus(""); }, "QuietButton");
         pauseCollection = Button(T("暂停收集"), () => { library?.TogglePause(); UpdateCollectionState(); }, "QuietButton");
         shelfEmpty = EmptyState(T("暂时没有图片"), T("导入图片或录像，或等待新的截图。"), Import);
         historyEmpty = EmptyState(T("暂无可显示的历史记录"), T("取下的项目会保留在这里；也可以清空搜索查看全部。"));
         pages = [ShelfListPanel(), HistoryPanel(), SettingsPanel(), DesktopSettingsPanel(), AppearancePanel(), Scroll(Card(T("格式支持"), new ImageFormatPanel { Margin = new Thickness(0) }))];
-        var root = new Grid { ClipToBounds = true, Background = Brush("SidebarBrush") }; var sidebarColumn = new ColumnDefinition { Width = new GridLength(230) };
-        root.ColumnDefinitions.Add(sidebarColumn); root.ColumnDefinitions.Add(new ColumnDefinition());
-        if (!SystemParameters.HighContrast)
-        {
-            var backdrop = new Grid { ClipToBounds = true, IsHitTestVisible = false };
-            backdrop.Children.Add(new Border { Background = Brush("CanvasBrush") });
-            using (var cloudStream = typeof(Dashboard).Assembly.GetManifestResourceStream("Cordnote.WaferClouds.webp"))
-            {
-                if (cloudStream is not null)
-                    backdrop.Children.Add(new Image { Source = ImageFiles.ReadStream(cloudStream, preserveExtensionPixels: true), Width = 1551, Height = 984, Stretch = Stretch.Fill, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 190, 0, 0), OpacityMask = new LinearGradientBrush(Colors.Transparent, Colors.White, new Point(0, 0), new Point(0, 0.16)), IsHitTestVisible = false });
-            }
-            backdrop.Children.Add(new Border { Background = new SolidColorBrush(Color.FromArgb(8, 0, 0, 0)) });
-            var mainBackdrop = new Border { Margin = new Thickness(0, 4, 4, 4), CornerRadius = new CornerRadius(26), Child = backdrop };
-            backdrop.SizeChanged += (_, _) => backdrop.Clip = new RectangleGeometry(new Rect(0, 0, backdrop.ActualWidth, backdrop.ActualHeight), 26, 26);
-            Grid.SetColumn(mainBackdrop, 1); root.Children.Add(mainBackdrop);
-        }
-        var side = new DockPanel { Margin = new Thickness(26, 24, 16, 18) };
-        var brand = new Grid { Margin = new Thickness(4, 0, 0, 16) }; DockPanel.SetDock(brand, Dock.Top);
-        brand.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) }); brand.ColumnDefinitions.Add(new ColumnDefinition());
-        brand.Children.Add(new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(9), Background = Brush("SidebarHoverBrush"), Child = Glyph("EE8A5", 21, true) });
-        var brandCopy = Stack(); Grid.SetColumn(brandCopy, 1);
-        var brandName = Text("Cordnote", 23); brandName.Foreground = Brush("SidebarTextBrush"); brandName.FontWeight = FontWeights.Medium; brandName.FontFamily = DisplayFont(); brandCopy.Children.Add(brandName);
-        var brandHint = Text(T("把灵感，晾在手边。"), 11, true, new Thickness(0, 2, 0, 0)); brandHint.Foreground = Brush("SidebarMutedBrush"); brandHint.TextWrapping = TextWrapping.NoWrap; brandHint.TextTrimming = TextTrimming.CharacterEllipsis; brandCopy.Children.Add(brandHint); brand.Children.Add(brandCopy); side.Children.Add(brand);
-        var icons = new[] { "EE8A5", "\uE81C", "\uE8B7", "\uE765", "\uE790", "\uE946" };
-        for (var i = 0; i < titles.Length; i++)
-        {
-            var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) }); row.ColumnDefinitions.Add(new ColumnDefinition());
-            var bar = new Border { Width = 3, CornerRadius = new CornerRadius(2), Background = Brush("AccentBrush"), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Stretch, Margin = new Thickness(-12, 7, 0, 7), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
-            bar.Style = SelectedBarStyle(); row.Children.Add(bar);
-            row.Children.Add(Glyph(icons[i], 17, true)); var label = Text(titles[i], 13.5); label.Foreground = Brush("SidebarTextBrush"); label.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(label, 1); row.Children.Add(label);
-            var item = new ListBoxItem { Content = row, Style = (Style)Resources["NavigationItem"], Padding = new Thickness(12, 0, 10, 0), Height = 43, Margin = new Thickness(0, 2, 0, 2) };
-            AutomationProperties.SetName(item, titles[i]); navigation.Items.Add(item);
-        }
-        AutomationProperties.SetName(navigation, T("控制面板导航")); navigation.SelectionChanged += (_, e) => { if (e.Source == navigation) Navigate((DashboardPage)Math.Max(0, navigation.SelectedIndex)); };
-        side.Children.Add(navigation); root.Children.Add(new Border { Background = Brush("SidebarBrush"), Child = side });
-        var main = new DockPanel { Margin = new Thickness(32, 94, 38, 12) }; Grid.SetColumn(main, 1); root.Children.Add(main);
-        var header = new Grid { Margin = new Thickness(2, 0, 0, 16) }; header.ColumnDefinitions.Add(new ColumnDefinition());
-        var heading = new StackPanel { Margin = new Thickness(0, 0, 20, 0) }; pageTitle.FontFamily = DisplayFont(); pageTitle.FontSize = 26; pageTitle.FontWeight = FontWeights.SemiBold; pageTitle.TextWrapping = TextWrapping.Wrap;
-        pageDescription.FontSize = 12.5; pageDescription.Foreground = Brush("TextBrush"); pageDescription.Opacity = 0.8; pageDescription.Margin = new Thickness(0, 5, 0, 0); pageDescription.TextWrapping = TextWrapping.Wrap;
-        heading.Children.Add(pageTitle); heading.Children.Add(pageDescription); header.Children.Add(heading);
-        DockPanel.SetDock(header, Dock.Top); main.Children.Add(header);
-        var footer = Stack(); DockPanel.SetDock(footer, Dock.Bottom);
-        var saveLayout = new Grid(); saveLayout.ColumnDefinitions.Add(new ColumnDefinition()); saveLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        draftStatus.VerticalAlignment = VerticalAlignment.Center; draftStatus.TextWrapping = TextWrapping.Wrap; draftStatus.Foreground = Brush("MutedBrush"); draftStatus.FontSize = 12; saveLayout.Children.Add(draftStatus);
-        var saveActions = new WrapPanel(); saveActions.Children.Add(discard); saveActions.Children.Add(save); Grid.SetColumn(saveActions, 1); saveLayout.Children.Add(saveActions);
-        saveBar.Child = saveLayout; saveBar.Background = Brush("SurfaceBrush"); saveBar.BorderBrush = Brush("GlassBorderBrush"); saveBar.BorderThickness = new Thickness(1); saveBar.CornerRadius = new CornerRadius(15); saveBar.Padding = new Thickness(18, 10, 12, 10); saveBar.Margin = new Thickness(0, 12, 0, 0); footer.Children.Add(saveBar);
-        status.TextWrapping = TextWrapping.Wrap; status.FontSize = 11.5; status.Foreground = Brush("TextBrush"); status.Opacity = 0.85; status.Margin = new Thickness(0, 10, 0, 14); status.MaxHeight = 46; footer.Children.Add(status); main.Children.Add(footer); main.Children.Add(pageHost);
-        var dockItems = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Center, Orientation = Orientation.Horizontal };
-        var toggleShelf = Button(T("显示 / 收起"), controller.Toggle, "DockButton"); toggleShelf.Tag = "\uE80F";
-        var importMedia = Button(T("导入图片或录像…"), Import, "DockButton"); importMedia.Tag = "\uE898";
-        pauseCollection.Style = (Style)Resources["DockActiveButton"]; pauseCollection.Tag = "\uE768";
-        var collapse = Button(T("收起控制面板"), Hide, "DockButton"); collapse.Tag = "\uE921";
-        var exitApp = Button(T("退出"), quit, "DockButton"); exitApp.Tag = "\uE8BB";
-        foreach (var dockAction in new[] { toggleShelf, importMedia, pauseCollection, collapse, exitApp }) { dockAction.Margin = new Thickness(1); dockItems.Children.Add(dockAction); }
-        var dock = new Border { Child = dockItems, Background = new SolidColorBrush(Color.FromArgb(243, 255, 255, 255)), BorderBrush = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(21), Padding = new Thickness(4), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 16, 0, 0), Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 25, ShadowDepth = 8, Opacity = 0.18 } };
-        Grid.SetColumn(dock, 1); root.Children.Add(dock);
-        var githubCard = DashboardGithubCard.Create(SetStatus); Grid.SetColumnSpan(githubCard, 2); root.Children.Add(githubCard);
-        Content = root;
-        SizeChanged += (_, _) => { var narrow = ActualWidth < 950; sidebarColumn.Width = new GridLength(narrow ? 216 : 230); dockItems.MaxWidth = Math.Max(280, ActualWidth - (narrow ? 216 : 230) - 44); main.Margin = new Thickness(narrow ? 20 : 32, narrow ? 130 : 94, narrow ? 24 : 38, 12); };
+        Content = CreateDesktop(controller, quit);
         UiAccessibility.Install(this); UiAccessibility.LiveStatus(this, status);
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { Hide(); e.Handled = true; } };
+        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { if (activeDesktopFolder?.Handle.IsDragging == true) activeDesktopFolder.Handle.CancelDrag(); else Hide(); e.Handled = true; } };
         controller.Status += SetStatus;
         if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(T("准备收集新增图片与录像；取下和超出容量的项目可从历史找回。")); }
         else { savedFingerprint = DraftFingerprint(); SetStatus(T("界面诊断模式：没有启用收集。")); }
@@ -192,7 +136,7 @@ internal sealed partial class Dashboard : Window
         historySearch.Width = 360; historySearch.HorizontalAlignment = HorizontalAlignment.Left;
         var search = Field(T("搜索历史"), historySearch); DockPanel.SetDock(search, Dock.Top); panel.Children.Add(search);
         var actions = new WrapPanel();
-        var actionBar = new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), Padding = new Thickness(6, 6, 0, 2), Margin = new Thickness(0, 12, 0, 0), Child = actions };
+        var actionBar = new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(0), Padding = new Thickness(6, 6, 0, 2), Margin = new Thickness(0, 12, 0, 0), Child = actions };
         DockPanel.SetDock(actionBar, Dock.Bottom); panel.Children.Add(actionBar);
         var preview = Button(T("预览"), () => Selected(Preview)); var restore = Button(T("重新挂上"), () => Selected(e => library?.Restore(e.Id)), "PrimaryButton");
         var edit = Button(T("编辑图片…"), () => Selected(e => library?.OpenWorkspace(e.Id, true)));
@@ -208,7 +152,7 @@ internal sealed partial class Dashboard : Window
     private FrameworkElement ShelfListPanel()
     {
         var panel = new DockPanel(); var actions = new StackPanel { Orientation = Orientation.Horizontal };
-        var actionBar = new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), Padding = new Thickness(6, 6, 0, 2), Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Child = actions };
+        var actionBar = new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(0), Padding = new Thickness(6, 6, 0, 2), Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Child = actions };
         void SelectedShelf(Action<LibraryEntry> action) { if (SelectedShelfEntry is { } entry) action(entry); }
         var preview = Button(T("预览"), () => SelectedShelf(Preview)); var copy = Button(T("复制"), () => _ = CopySelectedShelf(), "PrimaryButton");
         var edit = Button(T("编辑图片…"), () => SelectedShelf(e => library?.OpenWorkspace(e.Id, true)));
@@ -264,10 +208,10 @@ internal sealed partial class Dashboard : Window
     private FrameworkElement Card(string title, FrameworkElement content)
     {
         var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
-        head.Children.Add(new Border { Width = 16, Height = 2, CornerRadius = new CornerRadius(2), Background = Brush("AccentBrush"), Opacity = 0.55, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 9, 0) });
+        head.Children.Add(new Border { Width = 16, Height = 2, CornerRadius = new CornerRadius(0), Background = Brush("AccentBrush"), Opacity = 0.55, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 9, 0) });
         var heading = Text(title, 14.5); heading.FontWeight = FontWeights.SemiBold; heading.FontFamily = DisplayFont(); head.Children.Add(heading);
         var stack = Stack(); stack.Children.Add(head); stack.Children.Add(content);
-        return new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(18), Padding = new Thickness(20), Margin = new Thickness(0, 0, 0, 14), SnapsToDevicePixels = true, Child = stack };
+        return new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(0), Padding = new Thickness(20), Margin = new Thickness(0, 0, 0, 14), SnapsToDevicePixels = true, Child = stack };
     }
     private static ScrollViewer Scroll(params FrameworkElement[] elements)
     { var stack = Stack(); foreach (var element in elements) stack.Children.Add(element); return new ScrollViewer { Content = stack, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Padding = new Thickness(0, 0, 5, 0) }; }
@@ -310,7 +254,7 @@ internal sealed partial class Dashboard : Window
         images.Margin = new Thickness(0, 0, 8, 0); texts.Margin = new Thickness(8, 0, 0, 0); Grid.SetRow(images, 1); Grid.SetRow(texts, 1); Grid.SetColumn(texts, 2);
         grid.Children.Add(imageHeader); grid.Children.Add(textHeader); grid.Children.Add(divider); grid.Children.Add(images); grid.Children.Add(texts);
         Grid.SetRowSpan(empty, 2); Grid.SetColumnSpan(empty, 3); grid.Children.Add(empty);
-        return new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(18), Padding = new Thickness(18, 16, 18, 18), SnapsToDevicePixels = true, Child = grid };
+        return new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("GlassBorderBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(0), Padding = new Thickness(18, 16, 18, 18), SnapsToDevicePixels = true, Child = grid };
     }
     private static DataTemplate MediaTemplate(bool archived, bool visual, bool cord = false)
     {
@@ -321,7 +265,7 @@ internal sealed partial class Dashboard : Window
         var preview = new FrameworkElementFactory(typeof(Border));
         if (!visual) preview.SetValue(DockPanel.DockProperty, Dock.Left);
         preview.Name = "Preview";
-        preview.SetValue(FrameworkElement.WidthProperty, tileWidth); preview.SetValue(FrameworkElement.HeightProperty, visual ? (cord ? 128.0 : 100.0) : 52.0); preview.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left); preview.SetValue(FrameworkElement.MarginProperty, visual ? new Thickness(0, 0, 0, 9) : new Thickness(0, 0, 12, 0)); preview.SetValue(Border.CornerRadiusProperty, new CornerRadius(visual ? 12 : 9)); preview.SetValue(Border.BackgroundProperty, new DynamicResourceExtension("SoftBrush")); preview.SetValue(Border.BorderBrushProperty, new DynamicResourceExtension("LineBrush")); preview.SetValue(Border.BorderThicknessProperty, new Thickness(1)); preview.SetValue(UIElement.ClipToBoundsProperty, true); preview.SetBinding(FrameworkElement.ToolTipProperty, new Binding(prefix + "Path"));
+        preview.SetValue(FrameworkElement.WidthProperty, tileWidth); preview.SetValue(FrameworkElement.HeightProperty, visual ? (cord ? 128.0 : 100.0) : 52.0); preview.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Left); preview.SetValue(FrameworkElement.MarginProperty, visual ? new Thickness(0, 0, 0, 9) : new Thickness(0, 0, 12, 0)); preview.SetValue(Border.CornerRadiusProperty, new CornerRadius(0)); preview.SetValue(Border.BackgroundProperty, new DynamicResourceExtension("SoftBrush")); preview.SetValue(Border.BorderBrushProperty, new DynamicResourceExtension("LineBrush")); preview.SetValue(Border.BorderThicknessProperty, new Thickness(1)); preview.SetValue(UIElement.ClipToBoundsProperty, true); preview.SetBinding(FrameworkElement.ToolTipProperty, new Binding(prefix + "Path"));
         var previewGrid = new FrameworkElementFactory(typeof(Grid));
         var icon = new FrameworkElementFactory(typeof(TextBlock)); if (visual) icon.SetBinding(TextBlock.TextProperty, new Binding(prefix + "Path") { Converter = new EntryGlyphConverter() }); else icon.SetValue(TextBlock.TextProperty, char.ConvertFromUtf32(0xE8A5)); icon.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Segoe MDL2 Assets")); icon.SetValue(TextBlock.FontSizeProperty, 18.0); icon.SetValue(TextBlock.ForegroundProperty, new DynamicResourceExtension(visual ? "MutedBrush" : "AccentBrush")); icon.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center); icon.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center); previewGrid.AppendChild(icon);
         if (visual)
@@ -352,16 +296,23 @@ internal sealed partial class Dashboard : Window
     internal void Navigate(DashboardPage page)
     {
         if ((int)page < 0 || (int)page >= pages.Length) return;
-        if (navigation.SelectedIndex != (int)page) { navigation.SelectedIndex = (int)page; return; }
-        pageHost.Content = pages[(int)page]; pageTitle.Text = titles[(int)page];
-        saveBar.Visibility = page is DashboardPage.Sources or DashboardPage.Shortcuts or DashboardPage.Appearance ? Visibility.Visible : Visibility.Collapsed;
+        OpenDesktopFolder(page);
         UpdatePageDescription(); UpdateDraftState();
     }
-    private void UpdatePageDescription() => pageDescription.Text = navigation.SelectedIndex switch
+    private string PageDescription(DashboardPage page) => page switch
     {
-        0 => T("{0} 项 · 随手取用，文件保留", shelfList.Items.Count), 1 => T("{0} 项 · 可以重新挂上", history.Items.Count + historyText.Items.Count),
-        2 => T("选择收集位置，安排保留方式。"), 3 => T("让常用操作更顺手。"), 4 => T("按你的习惯，调整晾衣绳。"), _ => T("查看这台电脑的图片格式支持。")
+        DashboardPage.Shelf => T("{0} 项 · 随手取用，文件保留", shelfList.Items.Count),
+        DashboardPage.History => T("{0} 项 · 可以重新挂上", history.Items.Count + historyText.Items.Count),
+        DashboardPage.Sources => T("选择收集位置，安排保留方式。"),
+        DashboardPage.Shortcuts => T("让常用操作更顺手。"),
+        DashboardPage.Appearance => T("按你的习惯，调整晾衣绳。"),
+        _ => T("查看这台电脑的图片格式支持。")
     };
+    private void UpdatePageDescription()
+    {
+        foreach (var folder in desktopFolders.Values)
+            if (folder.Page is { } page) folder.Description.Text = PageDescription(page);
+    }
     public void Reveal() { DesktopLifecycle.FollowForeground(this); Show(); WindowState = WindowState.Normal; Activate(); }
     public void ShowShelfList() { UpdateHistory(); Navigate(DashboardPage.Shelf); Reveal(); UpdateLayout(); shelfList.Focus(); }
     public void ShowHistory() { UpdateHistory(); Navigate(DashboardPage.History); Reveal(); }

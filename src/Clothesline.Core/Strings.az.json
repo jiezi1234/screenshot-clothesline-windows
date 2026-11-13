@@ -414,5 +414,10 @@
   "下一步": "Yenidən et",
   "重试": "Yenidən cəhd et",
   "微信截图目录监听中断；重新启用收集或重启应用后恢复。": "WeChat ekran görüntüsü qovluğunun izlənməsi dayandı; toplamanı yenidən aktivləşdirin və ya tətbiqi yenidən başladın.",
-  "微信截图暂未收集：": "WeChat ekran görüntüsü toplanmadı: "
+  "微信截图暂未收集：": "WeChat ekran görüntüsü toplanmadı: ",
+  "最小化": "Kiçilt",
+  "最大化": "Böyüt",
+  "关闭": "Bağla",
+  "移动窗口": "Pəncərəni daşı",
+  "拖动标题栏移动窗口": "Pəncərəni daşımaq üçün başlıq sətrini sürükləyin"
 }

@@ -26,6 +26,8 @@ export interface GithubCardProps {
   cardTiltMaxRotate?: number;
   className?: string;
   popoverClassName?: string;
+  defaultOpen?: boolean;
+  maxDays?: number;
   linkClassName?: string;
   labelClassName?: string;
 }
@@ -91,10 +93,12 @@ export const GithubCard = ({
   cardTiltMaxRotate = 5,
   className,
   popoverClassName,
+  defaultOpen = false,
+  maxDays = 119,
   linkClassName,
   labelClassName,
 }: GithubCardProps) => {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isHovered, setIsHovered] = useState(defaultOpen);
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<{ name: string; avatarUrl: string }>({
@@ -104,6 +108,7 @@ export const GithubCard = ({
   const [contributionsList, setContributionsList] = useState<
     { date: string; count: number; level: number }[]
   >(() => generateEmptyContributions());
+  const [yearTotal, setYearTotal] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -154,11 +159,16 @@ export const GithubCard = ({
           const sorted = pastContributions.sort(
             (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
           );
-          setContributionsList(sorted.slice(-119));
+          setYearTotal(
+            sorted
+              .filter((d) => new Date(d.date).getFullYear() === Number(year))
+              .reduce((acc, d) => acc + d.count, 0),
+          );
+          setContributionsList(sorted.slice(-maxDays));
         }
       })
       .catch(() => {});
-  }, [username, name, avatarUrl, contributionsData]);
+  }, [username, name, avatarUrl, contributionsData, maxDays, year]);
 
   const isDark = mounted ? theme === "dark" : true;
   const activeTheme = calendarTheme || colorSchemes[themeScheme];
@@ -236,8 +246,9 @@ export const GithubCard = ({
 
   const calculatedTotalCommits = useMemo(() => {
     if (totalContributions !== undefined) return totalContributions;
+    if (yearTotal !== undefined) return yearTotal;
     return contributions.reduce((acc, curr) => acc + curr.count, 0);
-  }, [contributions, totalContributions]);
+  }, [contributions, totalContributions, yearTotal]);
 
   const profileUrl = href || `https://github.com/${username}`;
 

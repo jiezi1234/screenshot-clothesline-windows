@@ -104,7 +104,8 @@ internal sealed partial class Dashboard
     {
         if (fillingSettings) return;
         var dirty = library is not null && HasUnsavedChanges;
-        draftStatus.Text = dirty ? T("有未保存的更改") : T("设置已保存"); save.IsEnabled = discard.IsEnabled = dirty;
+        draftStatus.Text = dirty ? T("有未保存的更改") : ""; draftStatus.Visibility = dirty ? Visibility.Visible : Visibility.Collapsed; save.IsEnabled = discard.IsEnabled = dirty;
+        UpdateDesktopSaveVisibility();
     }
     private void UpdateCollectionState()
     {

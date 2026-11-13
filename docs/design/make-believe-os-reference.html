@@ -1,0 +1,674 @@
+
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<title>MAKE BELIEVE // OS</title>
+<style>
+
+    :root {
+        --c-blue: #5EA6E5;
+        --c-white: #FFFFFF;
+        --border: 1px solid var(--c-blue);
+        --font-sys: 'VT323', monospace;
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="%235EA6E5" d="M0 0h1v16H0V0zm1 1v14h1V1H1zm1 1v12h1V2H2zm1 1v10h1V3H3zm1 1v8h1V4H4zm1 1v6h1V5H5zm1 1v4h1V6H6zm1 1v2h1V7H7z"/><path fill="%23FFFFFF" d="M1 1h1v14H1V1zm1 1h1v12H2V2zm1 1h1v10H3V3zm1 1h1v8H4V4zm1 1h1v6H5V5zm1 1h1v4H6V6zm1 1h1v2H7V7z"/></svg>'), auto;
+        user-select: none;
+    }
+
+    body {
+        background-color: var(--c-white);
+        color: var(--c-blue);
+        font-family: var(--font-sys);
+        font-size: 16px;
+        overflow: hidden;
+        image-rendering: pixelated;
+        -webkit-font-smoothing: none;
+    }
+
+    
+    #canvas-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    
+    #desktop {
+        position: relative;
+        z-index: 10;
+        width: 100vw;
+        height: calc(100vh - 32px); 
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 24px;
+    }
+
+    
+    .desktop-icon {
+        width: 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        text-align: center;
+        cursor: inherit;
+    }
+
+    .desktop-icon:hover .icon-label {
+        background: var(--c-blue);
+        color: var(--c-white);
+    }
+
+    .icon-graphic {
+        width: 32px;
+        height: 32px;
+        position: relative;
+    }
+
+    
+    .icon-folder {
+        background: transparent;
+        box-shadow: 
+            2px 4px 0 0 var(--c-blue), 4px 4px 0 0 var(--c-blue), 6px 4px 0 0 var(--c-blue), 8px 4px 0 0 var(--c-blue), 10px 4px 0 0 var(--c-blue), 12px 4px 0 0 var(--c-blue),
+            0px 6px 0 0 var(--c-blue), 2px 6px 0 0 var(--c-white), 4px 6px 0 0 var(--c-white), 6px 6px 0 0 var(--c-white), 8px 6px 0 0 var(--c-white), 10px 6px 0 0 var(--c-white), 12px 6px 0 0 var(--c-white), 14px 6px 0 0 var(--c-blue),
+            0px 8px 0 0 var(--c-blue), 2px 8px 0 0 var(--c-white), 4px 8px 0 0 var(--c-white), 6px 8px 0 0 var(--c-white), 8px 8px 0 0 var(--c-white), 10px 8px 0 0 var(--c-white), 12px 8px 0 0 var(--c-white), 14px 8px 0 0 var(--c-white), 16px 8px 0 0 var(--c-blue), 18px 8px 0 0 var(--c-blue), 20px 8px 0 0 var(--c-blue), 22px 8px 0 0 var(--c-blue), 24px 8px 0 0 var(--c-blue), 26px 8px 0 0 var(--c-blue),
+            0px 10px 0 0 var(--c-blue), 2px 10px 0 0 var(--c-white), 4px 10px 0 0 var(--c-white), 6px 10px 0 0 var(--c-white), 8px 10px 0 0 var(--c-white), 10px 10px 0 0 var(--c-white), 12px 10px 0 0 var(--c-white), 14px 10px 0 0 var(--c-white), 16px 10px 0 0 var(--c-white), 18px 10px 0 0 var(--c-white), 20px 10px 0 0 var(--c-white), 22px 10px 0 0 var(--c-white), 24px 10px 0 0 var(--c-white), 26px 10px 0 0 var(--c-white), 28px 10px 0 0 var(--c-blue),
+            0px 12px 0 0 var(--c-blue), 2px 12px 0 0 var(--c-white), 4px 12px 0 0 var(--c-white), 6px 12px 0 0 var(--c-white), 8px 12px 0 0 var(--c-white), 10px 12px 0 0 var(--c-white), 12px 12px 0 0 var(--c-white), 14px 12px 0 0 var(--c-white), 16px 12px 0 0 var(--c-white), 18px 12px 0 0 var(--c-white), 20px 12px 0 0 var(--c-white), 22px 12px 0 0 var(--c-white), 24px 12px 0 0 var(--c-white), 26px 12px 0 0 var(--c-white), 28px 12px 0 0 var(--c-blue),
+            0px 14px 0 0 var(--c-blue), 2px 14px 0 0 var(--c-white), 4px 14px 0 0 var(--c-white), 6px 14px 0 0 var(--c-white), 8px 14px 0 0 var(--c-white), 10px 14px 0 0 var(--c-white), 12px 14px 0 0 var(--c-white), 14px 14px 0 0 var(--c-white), 16px 14px 0 0 var(--c-white), 18px 14px 0 0 var(--c-white), 20px 14px 0 0 var(--c-white), 22px 14px 0 0 var(--c-white), 24px 14px 0 0 var(--c-white), 26px 14px 0 0 var(--c-white), 28px 14px 0 0 var(--c-blue),
+            0px 16px 0 0 var(--c-blue), 2px 16px 0 0 var(--c-white), 4px 16px 0 0 var(--c-white), 6px 16px 0 0 var(--c-white), 8px 16px 0 0 var(--c-white), 10px 16px 0 0 var(--c-white), 12px 16px 0 0 var(--c-white), 14px 16px 0 0 var(--c-white), 16px 16px 0 0 var(--c-white), 18px 16px 0 0 var(--c-white), 20px 16px 0 0 var(--c-white), 22px 16px 0 0 var(--c-white), 24px 16px 0 0 var(--c-white), 26px 16px 0 0 var(--c-white), 28px 16px 0 0 var(--c-blue),
+            0px 18px 0 0 var(--c-blue), 2px 18px 0 0 var(--c-white), 4px 18px 0 0 var(--c-white), 6px 18px 0 0 var(--c-white), 8px 18px 0 0 var(--c-white), 10px 18px 0 0 var(--c-white), 12px 18px 0 0 var(--c-white), 14px 18px 0 0 var(--c-white), 16px 18px 0 0 var(--c-white), 18px 18px 0 0 var(--c-white), 20px 18px 0 0 var(--c-white), 22px 18px 0 0 var(--c-white), 24px 18px 0 0 var(--c-white), 26px 18px 0 0 var(--c-white), 28px 18px 0 0 var(--c-blue),
+            2px 20px 0 0 var(--c-blue), 4px 20px 0 0 var(--c-blue), 6px 20px 0 0 var(--c-blue), 8px 20px 0 0 var(--c-blue), 10px 20px 0 0 var(--c-blue), 12px 20px 0 0 var(--c-blue), 14px 20px 0 0 var(--c-blue), 16px 20px 0 0 var(--c-blue), 18px 20px 0 0 var(--c-blue), 20px 20px 0 0 var(--c-blue), 22px 20px 0 0 var(--c-blue), 24px 20px 0 0 var(--c-blue), 26px 20px 0 0 var(--c-blue);
+    }
+
+    .icon-label {
+        background: var(--c-white);
+        padding: 0 4px;
+        line-height: 1.2;
+        border: 1px solid transparent;
+    }
+    
+    .desktop-icon:active .icon-label {
+        border: 1px dotted var(--c-blue);
+    }
+
+    
+    .window {
+        position: absolute;
+        background: var(--c-white);
+        border: var(--c-blue) solid 2px; 
+        box-shadow: 4px 4px 0 0 rgba(94, 166, 229, 0.2);
+        display: flex;
+        flex-direction: column;
+        min-width: 300px;
+    }
+
+    .window-header {
+        background: var(--c-blue);
+        color: var(--c-white);
+        padding: 4px 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--c-blue);
+        cursor: grab;
+    }
+
+    .window-header:active {
+        cursor: grabbing;
+    }
+
+    .window-title {
+        font-size: 18px;
+        letter-spacing: 1px;
+    }
+
+    .window-controls {
+        display: flex;
+        gap: 4px;
+    }
+
+    .win-btn {
+        width: 16px;
+        height: 16px;
+        background: var(--c-white);
+        border: 1px solid var(--c-white);
+        color: var(--c-blue);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1;
+        padding-bottom: 2px;
+    }
+
+    .win-btn:active {
+        background: var(--c-blue);
+        color: var(--c-white);
+        border-color: var(--c-white);
+    }
+
+    .window-menu {
+        display: flex;
+        border-bottom: 1px solid var(--c-blue);
+        padding: 2px 4px;
+        gap: 12px;
+        background: var(--c-white);
+    }
+
+    .window-menu span {
+        cursor: pointer;
+    }
+    .window-menu span:hover {
+        background: var(--c-blue);
+        color: var(--c-white);
+    }
+
+    .window-content {
+        padding: 16px;
+        flex-grow: 1;
+        overflow-y: auto;
+        background: var(--c-white);
+        color: var(--c-blue);
+        font-size: 18px;
+        line-height: 1.4;
+    }
+
+    .window-status {
+        border-top: 1px solid var(--c-blue);
+        padding: 2px 8px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        background: var(--c-white);
+    }
+
+    
+    #win-main {
+        top: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        max-width: 90vw;
+    }
+
+    #win-manifesto {
+        top: 20%;
+        left: 10%;
+        width: 350px;
+        display: none;
+    }
+
+    .pixel-image-placeholder {
+        width: 100%;
+        height: 150px;
+        border: 1px solid var(--c-blue);
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: repeating-linear-gradient(
+            45deg,
+            var(--c-white),
+            var(--c-white) 2px,
+            rgba(94, 166, 229, 0.1) 2px,
+            rgba(94, 166, 229, 0.1) 4px
+        );
+    }
+
+    
+    #taskbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 32px;
+        background: var(--c-white);
+        border-top: 2px solid var(--c-blue);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        padding: 0 4px;
+        justify-content: space-between;
+    }
+
+    .start-button {
+        background: var(--c-white);
+        color: var(--c-blue);
+        border: 2px solid var(--c-blue);
+        padding: 0 12px;
+        height: 24px;
+        font-family: var(--font-sys);
+        font-size: 18px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        box-shadow: 2px 2px 0 0 var(--c-blue);
+    }
+
+    .start-button:active {
+        transform: translate(2px, 2px);
+        box-shadow: 0 0 0 0 var(--c-blue);
+    }
+
+    .taskbar-items {
+        display: flex;
+        flex-grow: 1;
+        margin: 0 8px;
+        gap: 4px;
+    }
+
+    .taskbar-item {
+        border: 1px solid var(--c-blue);
+        padding: 0 12px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+        background: var(--c-white);
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .taskbar-item.active {
+        background: repeating-linear-gradient(
+            45deg,
+            var(--c-white),
+            var(--c-white) 2px,
+            rgba(94, 166, 229, 0.2) 2px,
+            rgba(94, 166, 229, 0.2) 4px
+        );
+        box-shadow: inset 2px 2px 0 0 rgba(94, 166, 229, 0.3);
+    }
+
+    .sys-tray {
+        border: 1px solid var(--c-blue);
+        padding: 0 8px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+    }
+
+    
+    .hero-layer {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 5;
+        pointer-events: none;
+        mix-blend-mode: normal;
+    }
+    
+    .hero-text {
+        font-family: serif;
+        font-style: italic;
+        font-size: 12vw;
+        color: var(--c-white);
+        text-shadow: 
+            2px 2px 0 var(--c-blue),
+            -2px -2px 0 var(--c-blue),
+            2px -2px 0 var(--c-blue),
+            -2px 2px 0 var(--c-blue);
+        white-space: nowrap;
+        
+        filter: url('#pixelate');
+    }
+
+    .meta-data {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+
+    ul.retro-list {
+        list-style-type: square;
+        margin-left: 20px;
+        margin-top: 8px;
+    }
+
+    a {
+        color: var(--c-blue);
+        text-decoration: underline;
+    }
+    a:hover {
+        background: var(--c-blue);
+        color: var(--c-white);
+    }
+
+</style>
+</head>
+<body>
+
+
+<svg style="display: none;">
+  <defs>
+    <filter id="pixelate" x="0" y="0">
+      <feFlood x="4" y="4" height="2" width="2"></feFlood>
+      <feComposite width="4" height="4"></feComposite>
+      <feTile result="a"></feTile>
+      <feComposite in="SourceGraphic" in2="a" operator="in"></feComposite>
+      <feMorphology operator="dilate" radius="2"></feMorphology>
+    </filter>
+  </defs>
+</svg>
+
+
+<div id="canvas-container">
+    <canvas id="glcanvas" width="1385" height="910"></canvas>
+</div>
+
+
+<div class="hero-layer">
+    <div class="hero-text">Make Believe</div>
+</div>
+
+<div id="desktop">
+    <div class="desktop-icon" ondblclick="document.getElementById('win-manifesto').style.display='flex'">
+        <div class="icon-graphic icon-folder"></div>
+        <div class="icon-label">IDEAS.DIR</div>
+    </div>
+    
+    <div class="desktop-icon">
+        <div class="icon-graphic icon-folder"></div>
+        <div class="icon-label">ARCHIVE</div>
+    </div>
+
+    
+    <div class="window" id="win-main" style="z-index: 20;">
+        <div class="window-header" onmousedown="startDrag(event, 'win-main')">
+            <span class="window-title">C:\Y2K_VISION\INDEX.EXE</span>
+            <div class="window-controls">
+                <button class="win-btn">_</button>
+                <button class="win-btn">[]</button>
+                <button class="win-btn">X</button>
+            </div>
+        </div>
+        <div class="window-menu">
+            <span>File</span>
+            <span>Edit</span>
+            <span>View</span>
+            <span>Help</span>
+        </div>
+        <div class="window-content">
+            <div class="pixel-image-placeholder">
+                [ IMAGE_DATA_MISSING.BMP ]
+            </div>
+            <p>Welcome to the <strong>Make Believe</strong> operating environment.</p>
+            <br>
+            <p>This system operates within strict constraints. <br>Colors allocated: 2.<br>Texture generation: Active.</p>
+            <br>
+            <p>System directives:</p>
+            <ul class="retro-list">
+                <li>Embrace limitation.</li>
+                <li>Density is detail.</li>
+                <li>Memory is fleeting, aesthetics are eternal.</li>
+            </ul>
+        </div>
+        <div class="window-status">
+            <span>Obj: 12</span>
+            <span>24.5MB free</span>
+            <span>Local Intranet</span>
+        </div>
+    </div>
+
+    
+    <div class="window" id="win-manifesto" style="z-index: 21;">
+        <div class="window-header" onmousedown="startDrag(event, 'win-manifesto')">
+            <span class="window-title">NOTEPAD - THOUGHTS.TXT</span>
+            <div class="window-controls">
+                <button class="win-btn" onclick="document.getElementById('win-manifesto').style.display='none'">X</button>
+            </div>
+        </div>
+        <div class="window-content" style="font-size: 16px;">
+            <p class="meta-data">DATE: 1999-12-31 23:59:59<br>AUTHOR: SYSADMIN</p>
+            <hr style="border: none; border-top: 1px dotted var(--c-blue); margin: 8px 0;">
+            <p>The pixel is the atomic unit of digital truth. When we blur it, we lie.</p>
+            <br>
+            <p>Dithering is not a compromise; it is an algorithm trying its hardest to dream of gradients using only binary facts.</p>
+        </div>
+    </div>
+</div>
+
+<div id="taskbar">
+    <button class="start-button">START</button>
+    <div class="taskbar-items">
+        <div class="taskbar-item active">C:\Y2K_VISION\I...</div>
+    </div>
+    <div class="sys-tray">
+        <span id="clock">11:12 PM</span>
+    </div>
+</div>
+
+<script>
+    
+    let draggedWindow = null;
+    let startX, startY, initialX, initialY;
+    let zIndexCounter = 30;
+
+    function startDrag(e, id) {
+        draggedWindow = document.getElementById(id);
+        draggedWindow.style.zIndex = ++zIndexCounter;
+        
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        const rect = draggedWindow.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopDrag);
+    }
+
+    function drag(e) {
+        if (!draggedWindow) return;
+        e.preventDefault();
+        
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        draggedWindow.style.left = `${initialX + dx}px`;
+        draggedWindow.style.top = `${initialY + dy}px`;
+        draggedWindow.style.transform = 'none'; 
+    }
+
+    function stopDrag() {
+        draggedWindow = null;
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', stopDrag);
+    }
+
+    
+    function updateClock() {
+        const now = new Date();
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        document.getElementById('clock').textContent = hours + ':' + minutes + ' ' + ampm;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    
+    const canvas = document.getElementById('glcanvas');
+    const gl = canvas.getContext('webgl');
+
+    if (!gl) {
+        console.error('WebGL not supported');
+    }
+
+    if (gl) {
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const vertexShaderSource = `
+        attribute vec2 a_position;
+        void main() {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+    `;
+
+    const fragmentShaderSource = `
+        precision mediump float;
+        uniform vec2 u_resolution;
+        uniform float u_time;
+
+        // Hash function for noise
+        float hash(vec2 p) {
+            p = fract(p * vec2(233.14, 113.23));
+            p += dot(p, p.yx + 19.19);
+            return fract(p.x * p.y);
+        }
+
+        // 2D Noise
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            vec2 u = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+                       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+        }
+
+        // Fractal Brownian Motion for cloud shapes
+        float fbm(vec2 p) {
+            float value = 0.0;
+            float amplitude = 0.5;
+            float frequency = 0.0;
+            for (int i = 0; i < 5; i++) {
+                value += amplitude * noise(p);
+                p *= 2.0;
+                amplitude *= 0.5;
+            }
+            return value;
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+            
+            // Adjust aspect ratio for noise
+            vec2 st = uv;
+            st.x *= u_resolution.x / u_resolution.y;
+
+            // Generate cloud value slowly moving
+            float n = fbm(st * 3.0 + vec2(u_time * 0.05, u_time * 0.02));
+            
+            // Push contrast to make clouds distinct
+            n = smoothstep(0.3, 0.7, n);
+
+            // Bayer matrix 4x4 for dithering
+            int x = int(mod(gl_FragCoord.x, 4.0));
+            int y = int(mod(gl_FragCoord.y, 4.0));
+            
+            // Flatten matrix calculation
+            float limit = 0.0;
+            if(x==0 && y==0) limit = 0.0000;
+            if(x==1 && y==0) limit = 0.5000;
+            if(x==2 && y==0) limit = 0.1250;
+            if(x==3 && y==0) limit = 0.6250;
+            
+            if(x==0 && y==1) limit = 0.7500;
+            if(x==1 && y==1) limit = 0.2500;
+            if(x==2 && y==1) limit = 0.8750;
+            if(x==3 && y==1) limit = 0.3750;
+            
+            if(x==0 && y==2) limit = 0.1875;
+            if(x==1 && y==2) limit = 0.6875;
+            if(x==2 && y==2) limit = 0.0625;
+            if(x==3 && y==2) limit = 0.5625;
+            
+            if(x==0 && y==3) limit = 0.9375;
+            if(x==1 && y==3) limit = 0.4375;
+            if(x==2 && y==3) limit = 0.8125;
+            if(x==3 && y==3) limit = 0.3125;
+
+            // Apply dither threshold
+            float stepVal = step(limit, n);
+
+            // Colors based on reference
+            vec3 colorWhite = vec3(1.0, 1.0, 1.0);
+            vec3 colorBlue = vec3(0.368, 0.651, 0.898); // #5EA6E5
+
+            vec3 finalColor = mix(colorBlue, colorWhite, stepVal);
+
+            gl_FragColor = vec4(finalColor, 1.0);
+        }
+    `;
+
+    function compileShader(gl, source, type) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    const vertexShader = compileShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
+    const fragmentShader = compileShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER);
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+
+    gl.useProgram(program);
+
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1.0, -1.0,
+         1.0, -1.0,
+        -1.0,  1.0,
+        -1.0,  1.0,
+         1.0, -1.0,
+         1.0,  1.0
+    ]), gl.STATIC_DRAW);
+
+    const positionLocation = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+    const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+    const timeLocation = gl.getUniformLocation(program, 'u_time');
+
+    let startTime = Date.now();
+
+    function render() {
+        gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+        gl.uniform1f(timeLocation, (Date.now() - startTime) / 1000.0);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+    }
+
+    render();
+    }
+</script>
+
+</body></html>

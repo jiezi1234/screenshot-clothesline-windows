@@ -241,15 +241,13 @@ internal sealed partial class Dashboard
     private Button? githubButton;
     private DispatcherTimer? githubHoverTimer;
     private long githubOutsideSince;
-    private bool githubWasHidden;
-    private bool githubSizeNudge;
     private void CreateGithubOverlay(Button github, Grid root)
     {
         githubButton = github;
         githubOverlay = new Canvas { Visibility = Visibility.Visible, IsHitTestVisible = false };
-        Panel.SetZIndex(githubOverlay, -1);
+        Panel.SetZIndex(githubOverlay, 10);
         Grid.SetRowSpan(githubOverlay, 2); root.Children.Add(githubOverlay);
-        githubCard = new GithubHoverCard();
+        githubCard = new GithubHoverCard { IsHitTestVisible = false };
         githubCard.ProfileRequested += OpenGithubProfile;
         githubCard.CardBoundsChanged += () => { if (githubOverlay?.IsHitTestVisible == true) ShowGithubCard(); };
         githubOverlay.Children.Add(githubCard);
@@ -258,11 +256,7 @@ internal sealed partial class Dashboard
         githubHoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         githubHoverTimer.Tick += (_, _) => CheckGithubHover();
         githubHoverTimer.Start();
-        IsVisibleChanged += (_, e) =>
-        {
-            if (e.NewValue is false) { githubWasHidden = true; CloseGithubCard(); }
-            else if (githubWasHidden) { githubWasHidden = false; _ = githubCard?.ResumeAsync(); }
-        };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) CloseGithubCard(); };
         Closed += (_, _) => { githubHoverTimer.Stop(); CloseGithubCard(); };
     }
     private void ShowGithubCard()
@@ -274,10 +268,7 @@ internal sealed partial class Dashboard
         double left, top;
         if (bounds.Width > 0 && bounds.Height > 0)
         {
-            // WebView2 stops presenting frames while hidden behind WPF content; a 1px resize wakes it on each show.
-            githubSizeNudge = !githubSizeNudge;
-            var nudge = githubSizeNudge ? 1 : 0;
-            var targetWidth = bounds.Width + 16 + nudge; var targetHeight = bounds.Height + 16 + nudge;
+            var targetWidth = bounds.Width + 16; var targetHeight = bounds.Height + 16;
             if (Math.Abs(githubCard.Width - targetWidth) > .5) githubCard.Width = targetWidth;
             if (Math.Abs(githubCard.Height - targetHeight) > .5) githubCard.Height = targetHeight;
             left = anchor.X - (bounds.Left + bounds.Width / 2);
@@ -293,9 +284,9 @@ internal sealed partial class Dashboard
         }
         Canvas.SetLeft(githubCard, left);
         Canvas.SetTop(githubCard, top);
-        Panel.SetZIndex(githubOverlay, 10);
         githubOverlay.IsHitTestVisible = true;
-        _ = githubCard.WakeAsync();
+        githubCard.IsHitTestVisible = true;
+        githubCard.SetOpen(true);
         githubOutsideSince = 0;
     }
     private void CheckGithubHover()
@@ -317,7 +308,7 @@ internal sealed partial class Dashboard
         if (githubOutsideSince == 0) { githubOutsideSince = now; return; }
         if (now - githubOutsideSince >= 220) HideGithubCard();
     }
-    private void HideGithubCard() { githubOutsideSince = 0; if (githubOverlay is null || githubCard is null) return; githubOverlay.IsHitTestVisible = false; Panel.SetZIndex(githubOverlay, -1); }
+    private void HideGithubCard() { githubOutsideSince = 0; if (githubOverlay is null || githubCard is null) return; githubOverlay.IsHitTestVisible = false; githubCard.IsHitTestVisible = false; githubCard.SetOpen(false); }
     private void CloseGithubCard() { githubHoverTimer?.Stop(); HideGithubCard(); }
     private void OpenGithubProfile()
     {

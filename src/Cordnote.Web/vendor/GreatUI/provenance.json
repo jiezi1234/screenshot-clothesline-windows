@@ -1,7 +1,7 @@
 {
   "source": "https://www.great-ui.com/r/github-card.json",
   "component": "components/ui/GithubCard.tsx",
-  "sha256": "b48db06a089537978d4cd511cb74d386ce7f6b58b7effa19851798cd0f9b6639",
+  "sha256": "ba184a099c759f079b1362add2f2997df7b70cb62a25ddbc8d69d430c1cccc4a",
   "modified": true,
   "retrieved": "2026-11-11"
 }

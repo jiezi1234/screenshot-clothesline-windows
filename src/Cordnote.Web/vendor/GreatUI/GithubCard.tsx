@@ -27,6 +27,7 @@ export interface GithubCardProps {
   className?: string;
   popoverClassName?: string;
   defaultOpen?: boolean;
+  open?: boolean;
   maxDays?: number;
   linkClassName?: string;
   labelClassName?: string;
@@ -94,11 +95,13 @@ export const GithubCard = ({
   className,
   popoverClassName,
   defaultOpen = false,
+  open,
   maxDays = 119,
   linkClassName,
   labelClassName,
 }: GithubCardProps) => {
   const [isHovered, setIsHovered] = useState(defaultOpen);
+  const visible = open ?? isHovered;
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<{ name: string; avatarUrl: string }>({
@@ -310,7 +313,7 @@ export const GithubCard = ({
           onMouseMove={handleCardMouseMove}
           initial="hidden"
           style={popoverStyle}
-          animate={isHovered ? "visible" : "hidden"}
+          animate={visible ? "visible" : "hidden"}
           variants={{
             hidden: {
               opacity: 0,

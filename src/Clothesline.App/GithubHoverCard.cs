@@ -11,12 +11,10 @@ namespace Clothesline.App;
 internal sealed class GithubHoverCard : WebView2CompositionControl
 {
     private static readonly Lazy<Task<CoreWebView2Environment>> environment = new(() => CoreWebView2Environment.CreateAsync(
-        browserExecutableFolder: null,
-        userDataFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenshotClothesline", "WebView2"),
-        options: new CoreWebView2EnvironmentOptions("--disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling")));
+        userDataFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenshotClothesline", "WebView2")));
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private string? html;
     private bool initialized;
+    private bool? pendingOpen;
     internal Task Ready => ready.Task;
     internal string State { get; private set; } = "new";
     internal Rect CardBounds { get; private set; }
@@ -54,7 +52,11 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
                     case "open-profile": ProfileRequested?.Invoke(); break;
                     case "card-enter": PointerEntered?.Invoke(); break;
                     case "card-leave": PointerLeft?.Invoke(); break;
-                    case "ready": State = "ready"; ready.TrySetResult(); break;
+                    case "ready":
+                        State = "ready";
+                        ready.TrySetResult();
+                        if (pendingOpen is bool open) PostOpen(open);
+                        break;
                     case "script-start": State = "script-start"; break;
                     case "script-error": State = "script-error: " + (message.RootElement.TryGetProperty("message", out var text) ? text.GetString() : ""); break;
                     case "card-bounds":
@@ -70,7 +72,7 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
             using var stream = typeof(GithubHoverCard).Assembly.GetManifestResourceStream("Cordnote.GithubWeb.html")
                 ?? throw new InvalidOperationException("Missing GitHub card page.");
             using var reader = new StreamReader(stream);
-            html = await reader.ReadToEndAsync();
+            var html = await reader.ReadToEndAsync();
             State = "navigating";
             NavigateToString(html);
         }
@@ -81,29 +83,16 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
         }
     }
 
-    // Chromium stops presenting frames for a hidden/occluded host; re-navigating on re-show
-    // gives the driver a fresh frame source instead of waiting for a pointer event.
-    internal async Task ResumeAsync()
+    internal void SetOpen(bool open)
     {
-        if (!initialized || CoreWebView2 is null || html is null) return;
-        try
-        {
-            State = "navigating";
-            NavigateToString(html);
-            await Task.Delay(50);
-            await WakeAsync();
-        }
-        catch (Exception ex) { State = "resume-failed: " + ex.Message; }
+        pendingOpen = open;
+        if (State == "ready") PostOpen(open);
     }
 
-    internal async Task WakeAsync()
+    private void PostOpen(bool open)
     {
         if (CoreWebView2 is null) return;
-        try
-        {
-            await CoreWebView2.ExecuteScriptAsync(
-                "const d=document.documentElement;d.style.transform=d.style.transform==='translateZ(0.01px)'?'translateZ(0.02px)':'translateZ(0.01px)';void d.offsetHeight;");
-        }
+        try { CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "card-open", open })); }
         catch { }
     }
 

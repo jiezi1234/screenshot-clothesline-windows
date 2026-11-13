@@ -8,8 +8,11 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace Clothesline.App;
 
-internal sealed class GithubHoverCard : WebView2CompositionControl
+// Native host for the Great UI hover cards: the GitHub contribution card and the donation QR card.
+internal sealed class GreatUIHoverCard : WebView2CompositionControl
 {
+    private const string GithubMode = "github";
+    private readonly string mode;
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool initialized;
     private bool? pendingOpen;
@@ -22,8 +25,9 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
     internal event Action? PointerEntered;
     internal event Action? PointerLeft;
 
-    internal GithubHoverCard()
+    internal GreatUIHoverCard(string mode = GithubMode)
     {
+        this.mode = mode;
         Width = 336; Height = 400;
         DefaultBackgroundColor = System.Drawing.Color.Transparent;
         Loaded += async (_, _) => await Initialize();
@@ -39,8 +43,8 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
             CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             CoreWebView2.Settings.IsStatusBarEnabled = false;
             CoreWebView2.Settings.IsZoomControlEnabled = false;
-            CoreWebView2.NewWindowRequested += (_, e) => { e.Handled = true; if (e.Uri != "about:blank") ProfileRequested?.Invoke(); };
-            CoreWebView2.NavigationStarting += (_, e) => { if (e.Uri.StartsWith("about:", StringComparison.OrdinalIgnoreCase) || e.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return; e.Cancel = true; ProfileRequested?.Invoke(); };
+            CoreWebView2.NewWindowRequested += (_, e) => { e.Handled = true; if (mode == GithubMode && e.Uri != "about:blank") ProfileRequested?.Invoke(); };
+            CoreWebView2.NavigationStarting += (_, e) => { if (e.Uri.StartsWith("about:", StringComparison.OrdinalIgnoreCase) || e.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return; e.Cancel = true; if (mode == GithubMode) ProfileRequested?.Invoke(); };
             CoreWebView2.NavigationCompleted += (_, e) => { if (State == "navigating") State = "navigation " + (e.IsSuccess ? "ok" : e.WebErrorStatus.ToString()); };
             CoreWebView2.WebMessageReceived += (_, e) =>
             {
@@ -69,12 +73,13 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
                         break;
                 }
             };
-            using var stream = typeof(GithubHoverCard).Assembly.GetManifestResourceStream("Cordnote.GithubWeb.html")
-                ?? throw new InvalidOperationException("Missing GitHub card page.");
+            using var stream = typeof(GreatUIHoverCard).Assembly.GetManifestResourceStream("Cordnote.GithubWeb.html")
+                ?? throw new InvalidOperationException("Missing Great UI card page.");
             using var reader = new StreamReader(stream);
             var html = await reader.ReadToEndAsync();
+            var config = "<script>window.cordnoteMode=" + JsonSerializer.Serialize(mode) + ";</script>";
             State = "navigating";
-            NavigateToString(html);
+            NavigateToString(html.Replace("<head>", "<head>" + config, StringComparison.Ordinal));
         }
         catch (Exception ex)
         {

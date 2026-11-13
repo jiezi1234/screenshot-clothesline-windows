@@ -12,11 +12,12 @@ const provenance = JSON.parse(await readFile("vendor/GreatUI/provenance.json", "
 const hash = createHash("sha256").update(source).digest("hex");
 if (hash !== provenance.sha256) throw new Error("Vendored Great UI source changed; review and record upstream provenance before building.");
 const avatar = "data:image/png;base64," + (await readFile("../Clothesline.App/Assets/github-jiezi1234.png")).toString("base64");
+const donateQr = "data:image/jpeg;base64," + (await readFile("../Clothesline.App/Assets/donate-qr.jpg")).toString("base64");
 await mkdir(".build", { recursive: true });
 execFileSync(process.execPath, ["node_modules/@tailwindcss/cli/dist/index.mjs", "-i", "src/styles.css", "-o", ".build/style.css", "--minify"], { stdio: "inherit" });
 const result = await build({ entryPoints: ["src/main.tsx"], bundle: true, minify: true, write: false, jsx: "automatic", target: "chrome120", legalComments: "inline",
   alias: { "@/lib/utils": path.join(root, "src/utils.ts"), "@/components/site/ThemeProvider": path.join(root, "src/ThemeProvider.ts") },
-  define: { __SOURCE_HASH__: JSON.stringify(hash), __AVATAR__: JSON.stringify(avatar), "process.env.NODE_ENV": '"production"' } });
+  define: { __SOURCE_HASH__: JSON.stringify(hash), __AVATAR__: JSON.stringify(avatar), __DONATE_QR__: JSON.stringify(donateQr), "process.env.NODE_ENV": '"production"' } });
 const css = await readFile(".build/style.css", "utf8");
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="great-ui-source-sha256" content="${hash}"><style>${css}</style></head><body><div id="root"></div><script>${result.outputFiles[0].text.replaceAll("</script", "<\\/script")}</script></body></html>`;
 const output = "../Clothesline.App/Assets/GithubWeb";

@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import GithubCard from "../vendor/GreatUI/GithubCard";
+import DonationCard from "./DonationCard";
 
 declare const __AVATAR__: string;
+declare const __DONATE_QR__: string;
 declare global { interface Window {
   chrome?: { webview?: {
     postMessage(message: unknown): void;
@@ -10,7 +12,10 @@ declare global { interface Window {
     removeEventListener(type: string, handler: (event: MessageEvent) => void): void;
   } };
   cordnoteLabel?: string;
+  cordnoteMode?: "github" | "donate";
 } }
+
+const mode = window.cordnoteMode === "donate" || new URLSearchParams(window.location.search).get("mode") === "donate" ? "donate" : "github";
 
 function App() {
   const container = useRef<HTMLDivElement>(null);
@@ -47,9 +52,11 @@ function App() {
           width: card.offsetWidth,
           height: card.offsetHeight,
         });
-        card.addEventListener("click", (event) => {
-          event.preventDefault(); event.stopPropagation(); post({ type: "open-profile" });
-        });
+        if (mode === "github") {
+          card.addEventListener("click", (event) => {
+            event.preventDefault(); event.stopPropagation(); post({ type: "open-profile" });
+          });
+        }
       }
       post({ type: "ready" });
     }, 600);
@@ -59,9 +66,11 @@ function App() {
     };
   }, []);
   return <div id="github-host" ref={container}>
-    <GithubCard username="jiezi1234" name="jiezi1234" avatarUrl={__AVATAR__}
-      text={window.cordnoteLabel || "Follow me on"} linkText="GitHub" year={new Date().getFullYear()}
-      themeScheme="blue" className="github-component" labelClassName="cordnote-hide" linkClassName="cordnote-hide" popoverClassName="cordnote-card" maxDays={56} open={open} />
+    {mode === "donate"
+      ? <DonationCard image={__DONATE_QR__} popoverClassName="cordnote-card" open={open} />
+      : <GithubCard username="jiezi1234" name="jiezi1234" avatarUrl={__AVATAR__}
+        text={window.cordnoteLabel || "Follow me on"} linkText="GitHub" year={new Date().getFullYear()}
+        themeScheme="blue" className="github-component" labelClassName="cordnote-hide" linkClassName="cordnote-hide" popoverClassName="cordnote-card" maxDays={56} open={open} />}
   </div>;
 }
 createRoot(document.getElementById("root")!).render(<App />);

@@ -2,7 +2,7 @@ param([string]$Dotnet = 'dotnet')
 $ErrorActionPreference = 'Stop'
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
-    [xml]$appProject = Get-Content src/Clothesline.App/Clothesline.App.csproj
+    [xml]$appProject = Get-Content src/Clothesline.App/Clothesline.App.csproj -Encoding UTF8
     $appVersion = [string]$appProject.Project.PropertyGroup.Version
     $bundle = "dist/Cordnote-$appVersion-win-x64"
     & $Dotnet publish src/Clothesline.App --configuration Release --runtime win-x64 --self-contained true -p:PublishTrimmed=false -p:OutputPath="bin/publish-$appVersion/" -m:1 -nodeReuse:false -p:UseSharedCompilation=false --output $bundle

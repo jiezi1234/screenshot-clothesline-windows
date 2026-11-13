@@ -93,6 +93,9 @@ export const DonationCard = ({
             draggable={false}
             className="donate-qr block w-full select-none rounded-md"
           />
+          <span className="mt-2 block text-center font-mono text-[10px] text-neutral-500 dark:text-neutral-400">
+            buy me a coffee~
+          </span>
         </motion.div>
       </div>
     </div>

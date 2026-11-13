@@ -24,6 +24,7 @@ internal sealed partial class Dashboard
     private Image? desktopStaticBackground;
     private MakeBelieveBackground? desktopBackground;
     private static readonly DataTemplate TaskLabel = CreateTaskLabel();
+    private static readonly DataTemplate ActionLabel = CreateActionLabel();
     private static DataTemplate CreateTaskLabel()
     {
         var text = new FrameworkElementFactory(typeof(TextBlock));
@@ -32,6 +33,16 @@ internal sealed partial class Dashboard
         text.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
         text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         text.SetBinding(FrameworkElement.MaxWidthProperty, new Binding("ActualWidth") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Button), 1), Converter = new TaskLabelWidthConverter() });
+        return new DataTemplate { VisualTree = text };
+    }
+    private static DataTemplate CreateActionLabel()
+    {
+        var text = new FrameworkElementFactory(typeof(TextBlock));
+        text.SetBinding(TextBlock.TextProperty, new Binding());
+        text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        text.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
+        text.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
+        text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
         return new DataTemplate { VisualTree = text };
     }
     private sealed class TaskLabelWidthConverter : System.Windows.Data.IValueConverter
@@ -102,19 +113,26 @@ internal sealed partial class Dashboard
         desktopCanvas.SizeChanged += (_, _) => FitDesktopFolders();
 
         var bottom = Stack();
-        var bar = new DockPanel { LastChildFill = true, Margin = new Thickness(10, 4, 10, 4) };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        // Eight folder slots and seven action buttons share one row of equal cells,
+        // so a fully populated bar spans the footer exactly.
+        var bar = new Grid { Margin = new Thickness(10, 4, 10, 4) };
+        for (var slot = 0; slot < DesktopTaskSlots + 7; slot++) bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var toggle = Button(T("显示 / 收起"), controller.Toggle);
         var import = Button(T("导入图片或录像…"), Import);
-        foreach (var action in new[] { toggle, import, pauseCollection, Button(T("收起控制面板"), Hide), Button(T("退出"), quit) })
-        { action.MinHeight = 28; action.Padding = new Thickness(8, 3, 8, 3); action.FontSize = 11.5; action.Margin = new Thickness(0, 0, 6, 0); actions.Children.Add(action); }
         var github = Button("GitHub", ShowGithubCard);
         var donate = Button(T("捐赠"), ShowDonateCard);
-        foreach (var cardButton in new[] { github, donate })
-        { cardButton.MinHeight = 28; cardButton.Padding = new Thickness(8, 3, 8, 3); cardButton.FontSize = 11.5; cardButton.Margin = new Thickness(0, 0, 6, 0); }
+        var actionButtons = new[] { donate, github, toggle, import, pauseCollection, Button(T("收起控制面板"), Hide), Button(T("退出"), quit) };
+        for (var slot = 0; slot < actionButtons.Length; slot++)
+        {
+            var action = actionButtons[slot];
+            action.MinHeight = 28; action.Padding = new Thickness(4, 3, 4, 3); action.FontSize = 11.5;
+            action.Margin = new Thickness(1, 0, 1, 0); action.HorizontalAlignment = HorizontalAlignment.Stretch;
+            action.HorizontalContentAlignment = HorizontalAlignment.Stretch; action.ContentTemplate = ActionLabel;
+            action.SetBinding(FrameworkElement.ToolTipProperty, new Binding("Content") { Source = action });
+            Grid.SetColumn(action, DesktopTaskSlots + slot); bar.Children.Add(action);
+        }
         AutomationProperties.SetName(github, "GitHub"); AutomationProperties.SetName(donate, T("捐赠"));
-        actions.Children.Insert(0, github); actions.Children.Insert(0, donate);
-        DockPanel.SetDock(actions, Dock.Right); bar.Children.Add(actions);
+        Grid.SetColumn(desktopTasks, 0); Grid.SetColumnSpan(desktopTasks, DesktopTaskSlots);
         desktopTasks.VerticalAlignment = VerticalAlignment.Center;
         bar.Children.Add(desktopTasks);
         bottom.Children.Add(bar);
@@ -185,7 +203,7 @@ internal sealed partial class Dashboard
         var handle = new Thumb { Background = Brushes.Transparent, Cursor = Cursors.SizeAll, Focusable = true };
         var surface = new FrameworkElementFactory(typeof(Border)); surface.SetValue(Border.BackgroundProperty, Brushes.Transparent); handle.Template = new ControlTemplate(typeof(Thumb)) { VisualTree = surface };
         header.Children.Add(handle); header.Children.Add(caption);
-        var task = Button(label, () => { }); task.MinHeight = 28; task.Padding = new Thickness(6, 2, 6, 2); task.FontSize = 12; task.MinWidth = 0; task.Margin = new Thickness(1, 0, 1, 0); task.ContentTemplate = TaskLabel; task.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        var task = Button(label, () => { }); task.MinHeight = 28; task.Padding = new Thickness(6, 2, 6, 2); task.FontSize = 12; task.MinWidth = 0; task.Margin = new Thickness(1, 0, 1, 0); task.ContentTemplate = TaskLabel; task.HorizontalContentAlignment = HorizontalAlignment.Stretch; task.ToolTip = label;
         var folder = new DesktopFolder { Id = id, Page = page, Frame = frame, Header = header, Handle = handle, Caption = caption, Task = task };
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(3, 3, 4, 3) };
         Button Chrome(string text, string name, Action action)

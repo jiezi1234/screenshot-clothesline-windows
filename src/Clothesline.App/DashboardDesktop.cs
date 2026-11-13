@@ -255,13 +255,12 @@ internal sealed partial class Dashboard
         github.MouseEnter += (_, _) => ShowGithubCard();
         githubHoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         githubHoverTimer.Tick += (_, _) => CheckGithubHover();
-        githubHoverTimer.Start();
         IsVisibleChanged += (_, _) => { if (!IsVisible) CloseGithubCard(); };
         Closed += (_, _) => { githubHoverTimer.Stop(); CloseGithubCard(); };
     }
     private void ShowGithubCard()
     {
-        if (githubOverlay is null || githubCard is null || githubButton is null) return;
+        if (!IsVisible || githubOverlay is null || githubCard is null || githubButton is null) return;
         var anchor = githubButton.TranslatePoint(new Point(githubButton.ActualWidth / 2, 0), githubOverlay);
         var bounds = githubCard.CardBounds;
         var overlayWidth = githubOverlay.ActualWidth > 0 ? githubOverlay.ActualWidth : ActualWidth;
@@ -288,28 +287,32 @@ internal sealed partial class Dashboard
         githubCard.IsHitTestVisible = true;
         githubCard.SetOpen(true);
         githubOutsideSince = 0;
+        // Closing the dashboard or opening the profile stops polling. Every new
+        // hover must restart it, including after the dashboard is revealed again.
+        githubHoverTimer?.Start();
     }
     private void CheckGithubHover()
     {
+        // WebView2 and other windows need not update WPF's cached mouse position.
+        if (Native.GetCursorPos(out var cursor))
+            CheckGithubHover(new Point(cursor.X, cursor.Y), Environment.TickCount64);
+    }
+    private void CheckGithubHover(Point screenPosition, long now)
+    {
         if (githubOverlay is null || githubCard is null || githubButton is null) { githubHoverTimer?.Stop(); return; }
         if (!IsVisible) { HideGithubCard(); return; }
+        if (!githubOverlay.IsHitTestVisible) return;
         var overButton = new Rect(0, 0, githubButton.ActualWidth, githubButton.ActualHeight);
-        overButton.Inflate(10, 10);
-        var buttonHovered = overButton.Contains(Mouse.GetPosition(githubButton));
-        if (!githubOverlay.IsHitTestVisible)
-        {
-            if (buttonHovered) ShowGithubCard();
-            return;
-        }
-        var overCard = new Rect(0, 0, githubCard.ActualWidth, githubCard.ActualHeight);
-        overCard.Inflate(10, 10);
-        if (buttonHovered || overCard.Contains(Mouse.GetPosition(githubCard))) { githubOutsideSince = 0; return; }
-        var now = Environment.TickCount64;
+        var overCard = githubCard.CardBounds;
+        if (overCard.IsEmpty || overCard.Width <= 0 || overCard.Height <= 0)
+            overCard = new Rect(0, 0, githubCard.ActualWidth, githubCard.ActualHeight);
+        if (overButton.Contains(githubButton.PointFromScreen(screenPosition)) ||
+            overCard.Contains(githubCard.PointFromScreen(screenPosition))) { githubOutsideSince = 0; return; }
         if (githubOutsideSince == 0) { githubOutsideSince = now; return; }
         if (now - githubOutsideSince >= 220) HideGithubCard();
     }
-    private void HideGithubCard() { githubOutsideSince = 0; if (githubOverlay is null || githubCard is null) return; githubOverlay.IsHitTestVisible = false; githubCard.IsHitTestVisible = false; githubCard.SetOpen(false); }
-    private void CloseGithubCard() { githubHoverTimer?.Stop(); HideGithubCard(); }
+    private void HideGithubCard() { githubHoverTimer?.Stop(); githubOutsideSince = 0; if (githubOverlay is null || githubCard is null) return; githubOverlay.IsHitTestVisible = false; githubCard.IsHitTestVisible = false; githubCard.SetOpen(false); }
+    private void CloseGithubCard() => HideGithubCard();
     private void OpenGithubProfile()
     {
         CloseGithubCard();
@@ -356,4 +359,7 @@ internal sealed partial class Dashboard
     internal Point GithubButtonCenter => githubButton is null || githubOverlay is null ? default : githubButton.TranslatePoint(new Point(githubButton.ActualWidth / 2, 0), githubOverlay);
     internal void CloseGithubCardForDiagnostics() => CloseGithubCard();
     internal void ShowGithubCardForDiagnostics() { ShowGithubCard(); githubHoverTimer?.Stop(); }
+    internal bool GithubHoverTracking => githubHoverTimer?.IsEnabled == true;
+    internal void CheckGithubHoverForDiagnostics(Point screenPosition, long now) => CheckGithubHover(screenPosition, now);
+    internal Point GithubCardScreenCenter => githubCard is null ? default : githubCard.PointToScreen(new Point(githubCard.CardBounds.Left + githubCard.CardBounds.Width / 2, githubCard.CardBounds.Top + githubCard.CardBounds.Height / 2));
 }

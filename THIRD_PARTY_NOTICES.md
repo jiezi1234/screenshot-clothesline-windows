@@ -27,7 +27,7 @@
 
 ## 本仓库与依赖
 
-v0.22.0 控制面板使用用户提供的 `make-believe-os.html` 作为视觉与组件参考，保留蓝白配色、像素文件夹、硬边窗口和按钮反馈；云纹 PNG 来自该文件的 WebGL 着色器。参考文件保存在 `docs/design/make-believe-os-reference.html`，未将其描述为本项目原创素材。
+v0.22.0 控制面板使用用户提供的 `make-believe-os.html` 作为视觉与组件参考，保留蓝白配色、像素文件夹、硬边窗口和按钮反馈；动态云纹使用从该文件整理的离线 WebGL 着色器，静态降级 PNG 也来自该着色器。参考文件保存在 `docs/design/make-believe-os-reference.html`，未将其描述为本项目原创素材。
 
 像素字体 VT323 Regular 由 Peter Hull 创作，以 SIL Open Font License 1.1 提供，字体未经修改；完整许可见 `licenses/VT323-OFL.txt`。字体随程序内嵌，运行时无需访问 Google Fonts。
 

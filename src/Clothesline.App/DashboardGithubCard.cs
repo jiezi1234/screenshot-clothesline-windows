@@ -16,8 +16,6 @@ internal sealed class DashboardGithubCard : WebView2CompositionControl
 {
     internal const string SourceHash = "393acc05b6f72eff868ea1a356cc09e357852044eae4148c54b8b557bd28d7bb";
     private const string Profile = "https://github.com/jiezi1234";
-    private static readonly Lazy<Task<CoreWebView2Environment>> environment = new(() => CoreWebView2Environment.CreateAsync(
-        userDataFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenshotClothesline", "WebView2")));
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Action<string> reportError;
     private bool initialized;
@@ -41,7 +39,7 @@ internal sealed class DashboardGithubCard : WebView2CompositionControl
         initialized = true;
         try
         {
-            await EnsureCoreWebView2Async(await environment.Value);
+            await EnsureCoreWebView2Async(await DashboardWebViewEnvironment.Get());
             CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             CoreWebView2.Settings.IsStatusBarEnabled = false;
             CoreWebView2.Settings.IsZoomControlEnabled = false;

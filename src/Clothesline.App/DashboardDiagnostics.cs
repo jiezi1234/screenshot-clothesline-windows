@@ -32,6 +32,19 @@ internal static class DashboardDiagnostics
                 using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "library-" + Guid.NewGuid().ToString("N")));
                 runtime.ApplySettings(runtime.Settings with { Capacity = 25, ClipboardEnabled = false }, false);
                 dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.Show(); dashboard.UpdateLayout();
+                await Task.WhenAny(dashboard.BackgroundReadyForDiagnostics, Task.Delay(8000));
+                var backgroundBefore = await dashboard.BackgroundStateForDiagnostics();
+                await Task.Delay(350);
+                var backgroundAfter = await dashboard.BackgroundStateForDiagnostics();
+                Check("desktop-background-animates-when-motion-is-allowed", !dashboard.BackgroundMotionAllowedForDiagnostics ||
+                    (backgroundBefore.Ready && !backgroundAfter.Paused && backgroundAfter.Frames > backgroundBefore.Frames && backgroundAfter.Time > backgroundBefore.Time));
+                dashboard.Hide(); await Task.Delay(150);
+                var hiddenBackground = await dashboard.BackgroundStateForDiagnostics();
+                await Task.Delay(300);
+                var hiddenBackgroundAfter = await dashboard.BackgroundStateForDiagnostics();
+                Check("desktop-background-pauses-while-dashboard-is-hidden", !backgroundBefore.Ready ||
+                    (hiddenBackground.Paused && hiddenBackgroundAfter.Frames == hiddenBackground.Frames));
+                dashboard.Show(); dashboard.UpdateLayout();
                 TControl Named<TControl>(string name) where TControl : FrameworkElement { dashboard.UpdateLayout(); return UiAccessibility.Descendants(dashboard).OfType<TControl>().Single(c => AutomationProperties.GetName(c) == T(name)); }
                 Button Action(string title)
                 {

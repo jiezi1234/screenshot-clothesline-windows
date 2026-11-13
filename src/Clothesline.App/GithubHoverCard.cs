@@ -10,8 +10,6 @@ namespace Clothesline.App;
 
 internal sealed class GithubHoverCard : WebView2CompositionControl
 {
-    private static readonly Lazy<Task<CoreWebView2Environment>> environment = new(() => CoreWebView2Environment.CreateAsync(
-        userDataFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenshotClothesline", "WebView2")));
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool initialized;
     private bool? pendingOpen;
@@ -37,7 +35,7 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
         initialized = true;
         try
         {
-            await EnsureCoreWebView2Async(await environment.Value);
+            await EnsureCoreWebView2Async(await DashboardWebViewEnvironment.Get());
             CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             CoreWebView2.Settings.IsStatusBarEnabled = false;
             CoreWebView2.Settings.IsZoomControlEnabled = false;

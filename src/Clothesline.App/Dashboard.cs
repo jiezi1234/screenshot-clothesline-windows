@@ -79,7 +79,7 @@ internal sealed partial class Dashboard
             ShowShortcut = shortcutEnabled.IsChecked == true ? showShortcut.Text : "", HideShortcut = shortcutEnabled.IsChecked == true ? hideShortcut.Text : "", RunAtLogin = login.IsChecked == true,
             CardSizePercent = new[] { 80, 100, 120 }[Math.Max(0, cardSize.SelectedIndex)], RevealProtectionSeconds = protection.SelectedIndex >= 0 ? protectionDurations[protection.SelectedIndex] : Clothesline.Core.RevealGate.DefaultProtectionSeconds,
             CaptureSound = sound.IsChecked == true, Language = language.SelectedValue as string ?? "zh-CN" });
-        FillSettings();
+        FillSettings(); UpdateDesktopBackgroundMotion();
     }
     private async void Import()
     {

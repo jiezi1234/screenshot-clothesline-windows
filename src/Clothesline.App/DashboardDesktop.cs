@@ -21,6 +21,8 @@ internal sealed partial class Dashboard
     private readonly Canvas desktopCanvas = new() { ClipToBounds = true };
     private readonly Dictionary<string, DesktopFolder> desktopFolders = new();
     private readonly UniformGrid desktopTasks = new() { Rows = 1 };
+    private Image? desktopStaticBackground;
+    private MakeBelieveBackground? desktopBackground;
     private static readonly DataTemplate TaskLabel = CreateTaskLabel();
     private static DataTemplate CreateTaskLabel()
     {
@@ -71,9 +73,15 @@ internal sealed partial class Dashboard
             if (stream is not null)
             {
                 var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze();
-                var clouds = new Image { Source = bitmap, Stretch = Stretch.Fill, IsHitTestVisible = false };
-                RenderOptions.SetBitmapScalingMode(clouds, BitmapScalingMode.NearestNeighbor); desktop.Children.Add(clouds);
+                desktopStaticBackground = new Image { Source = bitmap, Stretch = Stretch.Fill, IsHitTestVisible = false };
+                RenderOptions.SetBitmapScalingMode(desktopStaticBackground, BitmapScalingMode.NearestNeighbor); desktop.Children.Add(desktopStaticBackground);
             }
+            desktopBackground = new MakeBelieveBackground();
+            desktop.Children.Add(desktopBackground);
+            IsVisibleChanged += (_, _) => UpdateDesktopBackgroundMotion();
+            SystemParameters.StaticPropertyChanged += SystemMotionChanged;
+            Closed += (_, _) => { SystemParameters.StaticPropertyChanged -= SystemMotionChanged; desktopBackground.Dispose(); };
+            UpdateDesktopBackgroundMotion();
         }
         var icons = new ScrollViewer { Width = 110, Margin = new Thickness(12, 16, 0, 12), HorizontalAlignment = HorizontalAlignment.Left, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = navigation };
         for (var i = 0; i < titles.Length; i++)
@@ -132,6 +140,20 @@ internal sealed partial class Dashboard
         AddDesktopFolder("COLLECT.SYS", null, T("来源与设置"), collect, new Rect(910, 470, 224, 220));
         var inner = new Border { BorderBrush = Brush("SurfaceBrush"), BorderThickness = new Thickness(1), Child = root };
         return new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("AccentBrush"), BorderThickness = new Thickness(2), Child = inner };
+    }
+
+    private bool DesktopBackgroundMotionAllowed => !SystemParameters.HighContrast && SystemParameters.ClientAreaAnimation && library?.Settings.ReduceMotion != true;
+    private void UpdateDesktopBackgroundMotion()
+    {
+        if (desktopStaticBackground is not null) desktopStaticBackground.Visibility = SystemParameters.HighContrast ? Visibility.Collapsed : Visibility.Visible;
+        if (desktopBackground is null) return;
+        var allowed = DesktopBackgroundMotionAllowed;
+        desktopBackground.Visibility = allowed ? Visibility.Visible : Visibility.Collapsed;
+        desktopBackground.SetPaused(!allowed || !IsVisible);
+    }
+    private void SystemMotionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SystemParameters.ClientAreaAnimation) or nameof(SystemParameters.HighContrast)) UpdateDesktopBackgroundMotion();
     }
 
     private FrameworkElement PixelFolder()
@@ -373,4 +395,7 @@ internal sealed partial class Dashboard
     internal void UpdateGithubPointerForDiagnostics(Point buttonPosition) => UpdateGithubPointer(buttonPosition);
     internal Task<string> GithubCardTransformForDiagnostics() => githubCard?.CardTransformAsync() ?? Task.FromResult("");
     internal Point GithubCardScreenCenter => githubCard is null ? default : githubCard.PointToScreen(new Point(githubCard.CardBounds.Left + githubCard.CardBounds.Width / 2, githubCard.CardBounds.Top + githubCard.CardBounds.Height / 2));
+    internal bool BackgroundMotionAllowedForDiagnostics => DesktopBackgroundMotionAllowed;
+    internal Task BackgroundReadyForDiagnostics => desktopBackground?.Ready ?? Task.CompletedTask;
+    internal Task<BackgroundRenderState> BackgroundStateForDiagnostics() => desktopBackground?.RenderStateAsync() ?? Task.FromResult(new BackgroundRenderState(false, true, 0, 0));
 }

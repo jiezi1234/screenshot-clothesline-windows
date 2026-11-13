@@ -252,7 +252,8 @@ internal sealed partial class Dashboard
         githubCard.CardBoundsChanged += () => { if (githubOverlay?.IsHitTestVisible == true) ShowGithubCard(); };
         githubOverlay.Children.Add(githubCard);
         Canvas.SetLeft(githubCard, 0); Canvas.SetTop(githubCard, 0);
-        github.MouseEnter += (_, _) => ShowGithubCard();
+        github.MouseEnter += (_, _) => { ShowGithubCard(); UpdateGithubPointer(Mouse.GetPosition(github)); };
+        github.MouseMove += (_, e) => UpdateGithubPointer(e.GetPosition(github));
         githubHoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         githubHoverTimer.Tick += (_, _) => CheckGithubHover();
         IsVisibleChanged += (_, _) => { if (!IsVisible) CloseGithubCard(); };
@@ -306,12 +307,20 @@ internal sealed partial class Dashboard
         var overCard = githubCard.CardBounds;
         if (overCard.IsEmpty || overCard.Width <= 0 || overCard.Height <= 0)
             overCard = new Rect(0, 0, githubCard.ActualWidth, githubCard.ActualHeight);
-        if (overButton.Contains(githubButton.PointFromScreen(screenPosition)) ||
-            overCard.Contains(githubCard.PointFromScreen(screenPosition))) { githubOutsideSince = 0; return; }
+        var buttonPosition = githubButton.PointFromScreen(screenPosition);
+        if (overButton.Contains(buttonPosition)) { UpdateGithubPointer(buttonPosition); githubOutsideSince = 0; return; }
+        if (overCard.Contains(githubCard.PointFromScreen(screenPosition))) { githubOutsideSince = 0; return; }
         if (githubOutsideSince == 0) { githubOutsideSince = now; return; }
         if (now - githubOutsideSince >= 220) HideGithubCard();
     }
-    private void HideGithubCard() { githubHoverTimer?.Stop(); githubOutsideSince = 0; if (githubOverlay is null || githubCard is null) return; githubOverlay.IsHitTestVisible = false; githubCard.IsHitTestVisible = false; githubCard.SetOpen(false); }
+    private void UpdateGithubPointer(Point buttonPosition)
+    {
+        if (githubButton is null || githubCard is null || githubButton.ActualWidth <= 0 || githubButton.ActualHeight <= 0) return;
+        githubCard.SetPointer(new Point(
+            Math.Clamp((buttonPosition.X / githubButton.ActualWidth) * 2 - 1, -1, 1),
+            Math.Clamp((buttonPosition.Y / githubButton.ActualHeight) * 2 - 1, -1, 1)));
+    }
+    private void HideGithubCard() { githubHoverTimer?.Stop(); githubOutsideSince = 0; if (githubOverlay is null || githubCard is null) return; githubCard.SetPointer(new Point()); githubOverlay.IsHitTestVisible = false; githubCard.IsHitTestVisible = false; githubCard.SetOpen(false); }
     private void CloseGithubCard() => HideGithubCard();
     private void OpenGithubProfile()
     {
@@ -361,5 +370,7 @@ internal sealed partial class Dashboard
     internal void ShowGithubCardForDiagnostics() { ShowGithubCard(); githubHoverTimer?.Stop(); }
     internal bool GithubHoverTracking => githubHoverTimer?.IsEnabled == true;
     internal void CheckGithubHoverForDiagnostics(Point screenPosition, long now) => CheckGithubHover(screenPosition, now);
+    internal void UpdateGithubPointerForDiagnostics(Point buttonPosition) => UpdateGithubPointer(buttonPosition);
+    internal Task<string> GithubCardTransformForDiagnostics() => githubCard?.CardTransformAsync() ?? Task.FromResult("");
     internal Point GithubCardScreenCenter => githubCard is null ? default : githubCard.PointToScreen(new Point(githubCard.CardBounds.Left + githubCard.CardBounds.Width / 2, githubCard.CardBounds.Top + githubCard.CardBounds.Height / 2));
 }

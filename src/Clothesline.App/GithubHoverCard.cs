@@ -15,6 +15,7 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool initialized;
     private bool? pendingOpen;
+    private Point pendingPointer;
     internal Task Ready => ready.Task;
     internal string State { get; private set; } = "new";
     internal Rect CardBounds { get; private set; }
@@ -56,6 +57,7 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
                         State = "ready";
                         ready.TrySetResult();
                         if (pendingOpen is bool open) PostOpen(open);
+                        PostPointer(pendingPointer);
                         break;
                     case "script-start": State = "script-start"; break;
                     case "script-error": State = "script-error: " + (message.RootElement.TryGetProperty("message", out var text) ? text.GetString() : ""); break;
@@ -94,6 +96,30 @@ internal sealed class GithubHoverCard : WebView2CompositionControl
         if (CoreWebView2 is null) return;
         try { CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "card-open", open })); }
         catch { }
+    }
+
+    internal void SetPointer(Point normalizedPosition)
+    {
+        pendingPointer = new Point(Math.Clamp(normalizedPosition.X, -1, 1), Math.Clamp(normalizedPosition.Y, -1, 1));
+        if (State == "ready") PostPointer(pendingPointer);
+    }
+
+    private void PostPointer(Point normalizedPosition)
+    {
+        if (CoreWebView2 is null) return;
+        try { CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "card-pointer", x = normalizedPosition.X, y = normalizedPosition.Y })); }
+        catch { }
+    }
+
+    internal async Task<string> CardTransformAsync()
+    {
+        if (await Task.WhenAny(ready.Task, Task.Delay(6000)) != ready.Task || CoreWebView2 is null) return "";
+        try
+        {
+            var value = await CoreWebView2.ExecuteScriptAsync("getComputedStyle(document.querySelector('.cordnote-card')).transform");
+            return JsonSerializer.Deserialize<string>(value) ?? "";
+        }
+        catch { return ""; }
     }
 
     internal async Task<bool> CaptureAsync(string path)

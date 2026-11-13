@@ -18,9 +18,22 @@ function App() {
   const post = (message: unknown) => window.chrome?.webview?.postMessage(message);
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      const message = event.data as { type?: string; open?: boolean } | undefined;
-      if (message?.type !== "card-open") return;
-      setOpen(message.open === true);
+      const message = event.data as { type?: string; open?: boolean; x?: number; y?: number } | undefined;
+      if (message?.type === "card-open") {
+        setOpen(message.open === true);
+        return;
+      }
+      if (message?.type !== "card-pointer") return;
+      const card = document.querySelector<HTMLElement>(".cordnote-card");
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const x = Math.max(-1, Math.min(1, message.x ?? 0));
+      const y = Math.max(-1, Math.min(1, message.y ?? 0));
+      card.dispatchEvent(new MouseEvent("mousemove", {
+        bubbles: true,
+        clientX: rect.left + ((x + 1) * rect.width) / 2,
+        clientY: rect.top + ((y + 1) * rect.height) / 2,
+      }));
     };
     window.chrome?.webview?.addEventListener("message", onMessage);
     const measureTimer = setTimeout(() => {

@@ -75,6 +75,13 @@ internal static class DashboardDiagnostics
                 await Task.Delay(1500);
                 checks.Add(new { name = "github-card-state-before-capture", passed = true, state = dashboard.GithubCardState });
                 checks.Add(new { name = "github-card-position", passed = true, bounds = dashboard.GithubCardBounds, position = dashboard.GithubCardPosition, button = dashboard.GithubButtonCenter });
+                dashboard.UpdateGithubPointerForDiagnostics(new Point(githubButton.ActualWidth / 2, githubButton.ActualHeight / 2));
+                await Task.Delay(350);
+                var centerTransform = await dashboard.GithubCardTransformForDiagnostics();
+                dashboard.UpdateGithubPointerForDiagnostics(new Point(githubButton.ActualWidth - 1, 1));
+                await Task.Delay(350);
+                var edgeTransform = await dashboard.GithubCardTransformForDiagnostics();
+                Check("github-card-follows-pointer-with-original-transform", centerTransform.Length > 0 && edgeTransform.Length > 0 && centerTransform != edgeTransform);
                 dashboard.CloseGithubCardForDiagnostics();
                 githubButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await Task.Delay(150);

@@ -2,11 +2,7 @@
 
 ## GitHub 资料卡（开发预览）
 
-左下角 GitHub 悬浮卡对照了 [Great UI 的 GitHub Card 源码](https://www.great-ui.com/components/github-card)：链接触发、上方弹窗、悬停保持、离开淡出、头像及 119 天贡献格在 WPF 中移植实现。头像 `src/Clothesline.App/Assets/github-jiezi1234.png` 来自用户公开的 [GitHub 主页](https://github.com/jiezi1234)，活动格从 GitHub 公开贡献日历读取；原 TSX 源码未打包。
-
-## Wafer 界面参考（开发预览）
-
-控制面板的开发预览参考了 [Wafer 模型页](https://app.wafer.ai/models) 公开交付的 HTML、CSS 与 JavaScript，按其布局参数在 WPF 中重新实现。`src/Clothesline.App/Assets/wafer-clouds.webp` 于 2026-11-10 从 `https://app.wafer.ai/app/bg-clouds.webp` 获取，用于还原其云层背景。该图像的再分发授权尚未确认；正式分发前须取得授权或替换为拥有分发权的素材。其余 Wafer 源码、字体和图标未打包。
+左下角 GitHub 悬浮卡对照了 [Great UI 的 GitHub Card 源码](https://www.great-ui.com/components/github-card)：链接触发、上方弹窗、悬停保持、离开淡出、头像及贡献格在 WebView2 中渲染。头像 `src/Clothesline.App/Assets/github-jiezi1234.png` 来自用户公开的 [GitHub 主页](https://github.com/jiezi1234)，活动格从 GitHub 公开贡献日历读取；该 TSX 源码经构建打包内嵌于应用。
 
 ## Tendedero
 

@@ -329,6 +329,8 @@
   "有未保存的更改": "Unsaved changes",
   "设置已保存": "Settings saved",
   "控制面板导航": "Control panel navigation",
+  "控制面板": "Dashboard",
+  "第 {0} 周": "Week {0}",
   "导入图片或录像，或等待新的截图。": "Import images or videos, or wait for a new capture.",
   "暂无可显示的历史记录": "No history to display",
   "取下的项目会保留在这里；也可以清空搜索查看全部。": "Archived items stay here. Clear the search to see everything.",

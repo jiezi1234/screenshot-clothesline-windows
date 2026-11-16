@@ -6,280 +6,178 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Windows.Threading;
+using Clothesline.Core;
 
 namespace Clothesline.App;
 
 internal sealed partial class Dashboard
 {
-    private readonly Canvas desktopCanvas = new() { ClipToBounds = true };
-    private readonly Dictionary<string, DesktopFolder> desktopFolders = new();
-    private readonly UniformGrid desktopTasks = new() { Rows = 1 };
-    private Image? desktopStaticBackground;
-    private MakeBelieveBackground? desktopBackground;
-    private static readonly DataTemplate TaskLabel = CreateTaskLabel();
-    private static readonly DataTemplate ActionLabel = CreateActionLabel();
-    private static DataTemplate CreateTaskLabel()
-    {
-        var text = new FrameworkElementFactory(typeof(TextBlock));
-        text.SetBinding(TextBlock.TextProperty, new Binding());
-        text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
-        text.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
-        text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        text.SetBinding(FrameworkElement.MaxWidthProperty, new Binding("ActualWidth") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Button), 1), Converter = new TaskLabelWidthConverter() });
-        return new DataTemplate { VisualTree = text };
-    }
-    private static DataTemplate CreateActionLabel()
-    {
-        var text = new FrameworkElementFactory(typeof(TextBlock));
-        text.SetBinding(TextBlock.TextProperty, new Binding());
-        text.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
-        text.SetValue(TextBlock.TextWrappingProperty, TextWrapping.NoWrap);
-        text.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
-        text.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
-        return new DataTemplate { VisualTree = text };
-    }
-    private sealed class TaskLabelWidthConverter : System.Windows.Data.IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is double width ? Math.Max(0, width - 14) : 0;
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
-    }
-    private int desktopZ;
-    private bool selectingDesktopFolder;
-    private DesktopFolder? activeDesktopFolder;
-    private static readonly string[] desktopNames = ["SHELF.DIR", "ARCHIVE.DIR", "SOURCES.CFG", "KEYBOARD.CFG", "APPEARANCE.CFG", "FORMATS.SYS"];
-    private static FontFamily PixelFont => new(new Uri("pack://application:,,,/"), "./Assets/#VT323");
-
-    private sealed class DesktopFolder
-    {
-        internal required string Id { get; init; }
-        internal DashboardPage? Page { get; init; }
-        internal required Border Frame { get; init; }
-        internal required Grid Header { get; init; }
-        internal required Thumb Handle { get; init; }
-        internal required TextBlock Caption { get; init; }
-        internal required Button Task { get; init; }
-        internal TextBlock Description { get; } = new();
-        internal bool Maximized { get; set; }
-        internal Rect RestoreBounds { get; set; }
-    }
+    private readonly List<TextBlock> tabLabels = new();
+    private ContentControl? pageHost;
+    private TextBlock? pageTitle;
+    private TextBlock? pageLead;
+    private DashboardPage currentPage;
+    private bool syncingTabs;
 
     private FrameworkElement CreateDesktop(ShelfController controller, Action quit)
     {
-        var root = new Grid { Background = Brush("SurfaceBrush"), ClipToBounds = true };
-        root.RowDefinitions.Add(new RowDefinition());
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var desk = new Grid { ClipToBounds = true, Background = DeskBackground() };
+        desk.MouseLeftButtonDown += (_, e) => { if (ReferenceEquals(e.OriginalSource, desk)) { try { DragMove(); } catch (InvalidOperationException) { } } };
+        var frame = new Grid { Margin = new Thickness(24, 20, 58, 22) };
+        frame.ColumnDefinitions.Add(new ColumnDefinition());
+        frame.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var board = CreateBoard(controller, quit, out var github, out var donate);
+        frame.Children.Add(board);
+        var tabs = CreateTabs();
+        Grid.SetColumn(tabs, 1); frame.Children.Add(tabs);
+        var overlayHost = new Grid();
+        Grid.SetColumnSpan(overlayHost, 2);
+        Panel.SetZIndex(overlayHost, 20);
+        frame.Children.Add(overlayHost);
+        desk.Children.Add(frame);
+        CreateHoverCards(github, donate, overlayHost);
+        return desk;
+    }
 
-        var desktop = new Grid { ClipToBounds = true, Background = Brush("CanvasBrush") };
-        desktop.MouseLeftButtonDown += (_, e) => { if (ReferenceEquals(e.OriginalSource, desktop)) { try { DragMove(); } catch (InvalidOperationException) { } } };
-        if (!SystemParameters.HighContrast)
-        {
-            using var stream = typeof(Dashboard).Assembly.GetManifestResourceStream("Cordnote.MakeBelieveClouds.png");
-            if (stream is not null)
-            {
-                var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze();
-                desktopStaticBackground = new Image { Source = bitmap, Stretch = Stretch.Fill, IsHitTestVisible = false };
-                RenderOptions.SetBitmapScalingMode(desktopStaticBackground, BitmapScalingMode.NearestNeighbor); desktop.Children.Add(desktopStaticBackground);
-            }
-            desktopBackground = new MakeBelieveBackground();
-            desktop.Children.Add(desktopBackground);
-            IsVisibleChanged += (_, _) => UpdateDesktopBackgroundMotion();
-            SystemParameters.StaticPropertyChanged += SystemMotionChanged;
-            Closed += (_, _) => { SystemParameters.StaticPropertyChanged -= SystemMotionChanged; desktopBackground.Dispose(); };
-            UpdateDesktopBackgroundMotion();
-        }
-        var icons = new ScrollViewer { Width = 110, Margin = new Thickness(12, 16, 0, 12), HorizontalAlignment = HorizontalAlignment.Left, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = navigation };
-        for (var i = 0; i < titles.Length; i++)
-        {
-            var page = (DashboardPage)i;
-            var icon = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-            icon.Children.Add(PixelFolder());
-            var label = Text(titles[i], 12); label.TextAlignment = TextAlignment.Center; label.MaxWidth = 92; label.Margin = new Thickness(0, 7, 0, 0);
-            icon.Children.Add(new Border { Child = label, Background = Brush("SurfaceBrush"), Padding = new Thickness(3, 1, 3, 2) });
-            var item = new ListBoxItem { Content = icon, Padding = new Thickness(3, 6, 3, 6), Margin = new Thickness(0, 0, 0, 9), Style = (Style)Resources["NavigationItem"] };
-            AutomationProperties.SetName(item, titles[i]); item.MouseLeftButtonUp += (_, _) => Navigate(page); navigation.Items.Add(item);
-        }
-        AutomationProperties.SetName(navigation, T("控制面板导航"));
-        navigation.SelectionChanged += (_, e) => { if (!selectingDesktopFolder && e.Source == navigation && navigation.SelectedIndex >= 0) Navigate((DashboardPage)navigation.SelectedIndex); };
-        navigation.KeyDown += (_, e) => { if (e.Key == Key.Enter && navigation.SelectedIndex >= 0) { Navigate((DashboardPage)navigation.SelectedIndex); e.Handled = true; } };
-        desktop.Children.Add(icons); desktop.Children.Add(desktopCanvas);
-        Grid.SetRow(desktop, 0); root.Children.Add(desktop);
-        desktopCanvas.SizeChanged += (_, _) => FitDesktopFolders();
+    private static Brush DeskBackground()
+    {
+        if (SystemParameters.HighContrast) return SystemColors.WindowBrush;
+        var brush = new RadialGradientBrush(Color.FromRgb(0xF5, 0xF2, 0xEF), Color.FromRgb(0xEA, 0xE6, 0xE1))
+        { GradientOrigin = new Point(0.5, 0), Center = new Point(0.5, 0.1), RadiusX = 1.1, RadiusY = 1.4 };
+        brush.Freeze(); return brush;
+    }
 
-        var bottom = Stack();
-        // Eight folder slots and seven action buttons share one row of equal cells,
-        // so a fully populated bar spans the footer exactly.
-        var bar = new Grid { Margin = new Thickness(10, 4, 10, 4) };
-        for (var slot = 0; slot < DesktopTaskSlots + 7; slot++) bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+    private Grid CreateBoard(ShelfController controller, Action quit, out Button github, out Button donate)
+    {
+        var shell = new Grid();
+        shell.Children.Add(new Border { Background = Brush("PaperEdgeBrush"), CornerRadius = new CornerRadius(4, 14, 14, 4), RenderTransform = new TranslateTransform(8, 6) });
+        var boardGrid = new Grid { Margin = new Thickness(80, 42, 48, 26) };
+        boardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        boardGrid.RowDefinitions.Add(new RowDefinition());
+        boardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var header = new StackPanel();
+        header.MouseLeftButtonDown += (_, _) => { try { DragMove(); } catch (InvalidOperationException) { } };
+        var meta = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+        meta.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        meta.ColumnDefinitions.Add(new ColumnDefinition());
+        meta.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var week = Text(T("第 {0} 周", ISOWeek.GetWeekOfYear(DateTime.Today)), 10.5);
+        week.Foreground = Brush("AccentBrush"); week.FontWeight = FontWeights.SemiBold;
+        var rule = new Border { Height = 1, Background = Brush("AccentSoftBrush"), Margin = new Thickness(14, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center };
+        var badge = Text(T("控制面板"), 10.5);
+        badge.Foreground = Brush("AccentBrush"); badge.FontWeight = FontWeights.SemiBold;
+        Grid.SetColumn(badge, 2);
+        meta.Children.Add(week); meta.Children.Add(rule); meta.Children.Add(badge);
+        header.Children.Add(meta);
+
+        pageTitle = new TextBlock { Text = titles[(int)DashboardPage.Shelf], FontFamily = DisplayFont(), FontSize = 38, Foreground = Brush("TextBrush"), TextTrimming = TextTrimming.CharacterEllipsis };
+        header.Children.Add(pageTitle);
+        var date = new TextBlock { Text = DateTime.Today.ToString("D", UiText.Culture), FontFamily = DisplayFont(), FontStyle = FontStyles.Italic, FontSize = 17, Foreground = Brush("MutedBrush"), Margin = new Thickness(0, 4, 0, 0) };
+        header.Children.Add(date);
+        pageLead = Text(PageDescription(DashboardPage.Shelf), 13, true, new Thickness(0, 16, 0, 0));
+        pageLead.FontStyle = FontStyles.Italic;
+        header.Children.Add(pageLead);
+        Grid.SetRow(header, 0); boardGrid.Children.Add(header);
+
+        pageHost = new ContentControl { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, Focusable = false, Margin = new Thickness(0, 10, 0, 0) };
+        Grid.SetRow(pageHost, 1); boardGrid.Children.Add(pageHost);
+
+        var actions = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         var toggle = Button(T("显示 / 收起"), controller.Toggle);
         var import = Button(T("导入图片或录像…"), Import);
-        var github = Button("GitHub", ShowGithubCard);
-        var donate = Button(T("捐赠"), ShowDonateCard);
-        var actionButtons = new[] { donate, github, toggle, import, pauseCollection, Button(T("收起控制面板"), Hide), Button(T("退出"), quit) };
-        for (var slot = 0; slot < actionButtons.Length; slot++)
+        github = Button("GitHub", ShowGithubCard);
+        donate = Button(T("捐赠"), ShowDonateCard);
+        var hide = Button(T("收起控制面板"), Hide);
+        var exit = Button(T("退出"), quit);
+        foreach (var action in new[] { toggle, import, pauseCollection, github, donate, hide, exit, discard, save })
         {
-            var action = actionButtons[slot];
-            action.MinHeight = 28; action.Padding = new Thickness(4, 3, 4, 3); action.FontSize = 11.5;
-            action.Margin = new Thickness(1, 0, 1, 0); action.HorizontalAlignment = HorizontalAlignment.Stretch;
-            action.HorizontalContentAlignment = HorizontalAlignment.Stretch; action.ContentTemplate = ActionLabel;
-            action.SetBinding(FrameworkElement.ToolTipProperty, new Binding("Content") { Source = action });
-            Grid.SetColumn(action, DesktopTaskSlots + slot); bar.Children.Add(action);
+            action.MinHeight = 30; action.Padding = new Thickness(12, 4, 12, 4); action.FontSize = 12; action.Margin = new Thickness(0, 0, 8, 0);
+            actions.Children.Add(action);
         }
         AutomationProperties.SetName(github, "GitHub"); AutomationProperties.SetName(donate, T("捐赠"));
-        Grid.SetColumn(desktopTasks, 0); Grid.SetColumnSpan(desktopTasks, DesktopTaskSlots);
-        desktopTasks.VerticalAlignment = VerticalAlignment.Center;
-        bar.Children.Add(desktopTasks);
-        bottom.Children.Add(bar);
-        var saveLayout = new DockPanel { LastChildFill = true };
-        var saveActions = new WrapPanel(); saveActions.Children.Add(discard); saveActions.Children.Add(save);
-        DockPanel.SetDock(saveActions, Dock.Right); saveLayout.Children.Add(saveActions);
-        var saveInfo = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        draftStatus.VerticalAlignment = VerticalAlignment.Center; draftStatus.TextWrapping = TextWrapping.Wrap; draftStatus.Margin = new Thickness(0, 0, 0, 2); saveInfo.Children.Add(draftStatus);
-        status.FontSize = 11; status.TextTrimming = TextTrimming.CharacterEllipsis; status.TextWrapping = TextWrapping.NoWrap; status.VerticalAlignment = VerticalAlignment.Center; status.Margin = new Thickness(0); status.MaxHeight = 20; saveInfo.Children.Add(status);
-        saveLayout.Children.Add(saveInfo);
-        saveBar.Child = saveLayout; saveBar.Padding = new Thickness(12, 6, 4, 3); saveBar.BorderBrush = Brush("LineBrush"); saveBar.BorderThickness = new Thickness(0, 1, 0, 0); saveBar.Visibility = Visibility.Visible; bottom.Children.Add(saveBar);
-        var footer = new Border { Child = bottom, BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 2, 0, 0), Background = Brush("SurfaceBrush") };
-        Grid.SetRow(footer, 1); root.Children.Add(footer);
-        CreateHoverCards(github, donate, root);
 
-        var quick = Stack();
-        quick.Children.Add(Text(T("快捷键与启动"), 18, margin: new Thickness(0, 0, 0, 14)));
-        quick.Children.Add(Text(T("显示 {0}；收回 {1}", library?.Settings.ShowShortcut ?? "Ctrl+Down", library?.Settings.HideShortcut ?? "Ctrl+Up"), 13));
-        quick.Children.Add(Text(T("取下的项目会保留在这里；也可以清空搜索查看全部。"), 12, margin: new Thickness(0, 18, 0, 16)));
-        quick.Children.Add(Button(T("快捷键与启动"), () => Navigate(DashboardPage.Shortcuts)));
-        AddDesktopFolder("QUICK.TXT", null, T("快捷键与启动"), quick, new Rect(920, 190, 224, 250));
-        var collect = Stack();
-        collect.Children.Add(new TextBlock { Text = "COLLECT.SYS", FontFamily = PixelFont, FontSize = 23, Foreground = Brush("TextBrush"), Margin = new Thickness(0, 0, 0, 12) });
-        collect.Children.Add(Text(T("收集剪贴板图片和文字（默认开启）"), 12));
-        collect.Children.Add(Text(T("截图目录") + " / " + T("录像目录"), 12, margin: new Thickness(0, 10, 0, 16)));
-        collect.Children.Add(Button(T("来源与设置"), () => Navigate(DashboardPage.Sources)));
-        AddDesktopFolder("COLLECT.SYS", null, T("来源与设置"), collect, new Rect(910, 470, 224, 220));
-        var inner = new Border { BorderBrush = Brush("SurfaceBrush"), BorderThickness = new Thickness(1), Child = root };
-        return new Border { Background = Brush("SurfaceBrush"), BorderBrush = Brush("AccentBrush"), BorderThickness = new Thickness(2), Child = inner };
+        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        draftStatus.FontSize = 11.5; draftStatus.Foreground = Brush("AccentBrush"); draftStatus.Margin = new Thickness(0, 0, 0, 2);
+        status.FontSize = 11.5; status.Foreground = Brush("MutedBrush"); status.TextTrimming = TextTrimming.CharacterEllipsis; status.TextWrapping = TextWrapping.NoWrap;
+        info.Children.Add(draftStatus); info.Children.Add(status);
+        var footer = new Grid();
+        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        footer.Children.Add(info);
+        actions.HorizontalAlignment = HorizontalAlignment.Right; actions.Margin = new Thickness(0, 6, 0, 0);
+        Grid.SetRow(actions, 1); footer.Children.Add(actions);
+        saveBar.Child = footer; saveBar.BorderBrush = Brush("LineBrush"); saveBar.BorderThickness = new Thickness(0, 1, 0, 0);
+        saveBar.Padding = new Thickness(0, 12, 0, 0); saveBar.Margin = new Thickness(0, 16, 0, 0); saveBar.Visibility = Visibility.Visible;
+        Grid.SetRow(saveBar, 2); boardGrid.Children.Add(saveBar);
+
+        var content = new Grid(); content.Children.Add(boardGrid); content.Children.Add(Spine());
+        var board = new Border { Background = Brush("SurfaceBrush"), CornerRadius = new CornerRadius(4, 14, 14, 4), SnapsToDevicePixels = true, Child = content };
+        if (!SystemParameters.HighContrast) board.Effect = new DropShadowEffect { Color = Color.FromRgb(0x5A, 0x4A, 0x42), BlurRadius = 38, ShadowDepth = 10, Direction = 270, Opacity = .16 };
+        shell.Children.Add(board);
+        return shell;
     }
 
-    private bool DesktopBackgroundMotionAllowed => !SystemParameters.HighContrast && SystemParameters.ClientAreaAnimation && library?.Settings.ReduceMotion != true;
-    private void UpdateDesktopBackgroundMotion()
+    private FrameworkElement Spine()
     {
-        if (desktopStaticBackground is not null) desktopStaticBackground.Visibility = SystemParameters.HighContrast ? Visibility.Collapsed : Visibility.Visible;
-        if (desktopBackground is null) return;
-        var allowed = DesktopBackgroundMotionAllowed;
-        desktopBackground.Visibility = allowed ? Visibility.Visible : Visibility.Collapsed;
-        desktopBackground.SetPaused(!allowed || !IsVisible);
-    }
-    private void SystemMotionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(SystemParameters.ClientAreaAnimation) or nameof(SystemParameters.HighContrast)) UpdateDesktopBackgroundMotion();
-    }
-
-    private FrameworkElement PixelFolder()
-    {
-        // Pixel coordinates from the supplied .icon-folder box-shadow artwork.
-        var group = new DrawingGroup();
-        using (var dc = group.Open())
+        var spine = new Grid { Width = 58, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(4, 46, 0, 46), IsHitTestVisible = false };
+        var ringBrush = new LinearGradientBrush { StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5) };
+        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xD5, 0xD1, 0xCC), 0));
+        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xFC, 0xFB, 0xFA), .3));
+        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xB8, 0xB3, 0xAE), .8));
+        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0x9E, 0x9A, 0x95), 1));
+        ringBrush.Freeze();
+        for (var i = 0; i < 7; i++)
         {
-            var outline = Geometry.Parse("M2,4 L14,4 14,8 28,8 28,10 30,10 30,20 28,20 28,22 2,22 2,20 0,20 0,6 2,6 Z");
-            dc.DrawGeometry(Brush("AccentBrush"), null, outline);
-            dc.DrawRectangle(Brush("SurfaceBrush"), null, new Rect(2, 6, 10, 4));
-            dc.DrawRectangle(Brush("SurfaceBrush"), null, new Rect(2, 10, 26, 10));
+            spine.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            var cell = new Grid();
+            var ring = new Border { Width = 46, Height = 8, CornerRadius = new CornerRadius(4), Background = ringBrush, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
+            if (!SystemParameters.HighContrast) ring.Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 2, Direction = 270, Opacity = .18 };
+            var hole = new Ellipse { Width = 14, Height = 14, Fill = Brush("CanvasBrush"), Stroke = Brush("LineStrongBrush"), StrokeThickness = 1, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(40, 0, 0, 0) };
+            cell.Children.Add(ring); cell.Children.Add(hole);
+            Grid.SetRow(cell, i); spine.Children.Add(cell);
         }
-        group.Freeze(); var image = new Image { Source = new DrawingImage(group), Width = 36, Height = 30, Stretch = Stretch.Uniform };
-        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor); return image;
+        return spine;
     }
 
-    private DesktopFolder AddDesktopFolder(string id, DashboardPage? page, string label, FrameworkElement body, Rect bounds)
+    private FrameworkElement CreateTabs()
     {
-        var frame = new Border { BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(2), Background = Brush("SurfaceBrush"), Width = bounds.Width, Height = bounds.Height, SnapsToDevicePixels = true, ClipToBounds = true };
-        if (!SystemParameters.HighContrast) frame.Effect = new DropShadowEffect { Color = Color.FromRgb(94, 166, 229), BlurRadius = 0, Direction = 315, ShadowDepth = 4, Opacity = .3 };
-        var grid = new Grid(); grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) }); grid.RowDefinitions.Add(new RowDefinition()); grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(22) }); frame.Child = grid;
-        var header = new Grid { Background = Brush("SurfaceBrush") }; header.ColumnDefinitions.Add(new ColumnDefinition()); header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var caption = new TextBlock { Text = id, FontFamily = PixelFont, FontSize = 20, Margin = new Thickness(8, 1, 5, 1), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, IsHitTestVisible = false };
-        var handle = new Thumb { Background = Brushes.Transparent, Cursor = Cursors.SizeAll, Focusable = true };
-        var surface = new FrameworkElementFactory(typeof(Border)); surface.SetValue(Border.BackgroundProperty, Brushes.Transparent); handle.Template = new ControlTemplate(typeof(Thumb)) { VisualTree = surface };
-        header.Children.Add(handle); header.Children.Add(caption);
-        var task = Button(label, () => { }); task.MinHeight = 28; task.Padding = new Thickness(6, 2, 6, 2); task.FontSize = 12; task.MinWidth = 0; task.Margin = new Thickness(1, 0, 1, 0); task.ContentTemplate = TaskLabel; task.HorizontalContentAlignment = HorizontalAlignment.Stretch; task.ToolTip = label;
-        var folder = new DesktopFolder { Id = id, Page = page, Frame = frame, Header = header, Handle = handle, Caption = caption, Task = task };
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(3, 3, 4, 3) };
-        Button Chrome(string text, string name, Action action)
+        navigation.Items.Clear(); tabLabels.Clear();
+        navigation.Background = Brushes.Transparent; navigation.BorderThickness = new Thickness(0); navigation.SelectionMode = SelectionMode.Single;
+        navigation.ItemContainerStyle = (Style)Resources["BookmarkTab"];
+        AutomationProperties.SetName(navigation, T("控制面板导航"));
+        navigation.VerticalAlignment = VerticalAlignment.Stretch;
+        navigation.Margin = new Thickness(-10, 56, 0, 20);
+        ScrollViewer.SetVerticalScrollBarVisibility(navigation, ScrollBarVisibility.Auto);
+        ScrollViewer.SetHorizontalScrollBarVisibility(navigation, ScrollBarVisibility.Disabled);
+        for (var i = 0; i < titles.Length; i++)
         {
-            var b = Button(text, action); b.Width = 22; b.Height = 22; b.MinHeight = 0; b.Padding = new Thickness(0); b.Margin = new Thickness(2, 0, 0, 0); b.FontFamily = new FontFamily("Consolas"); b.FontSize = 12; b.Background = Brush("SurfaceBrush"); b.Foreground = Brush("TextBrush"); AutomationProperties.SetName(b, name + " " + label); return b;
+            var label = Text(titles[i], 11.5);
+            label.LayoutTransform = new RotateTransform(90);
+            label.TextAlignment = TextAlignment.Center;
+            label.Margin = new Thickness(0);
+            var item = new ListBoxItem { Content = label, Padding = new Thickness(14, 10, 14, 10) };
+            tabLabels.Add(label); navigation.Items.Add(item);
         }
-        controls.Children.Add(Chrome("_", T("最小化"), () => HideDesktopFolder(folder, false)));
-        controls.Children.Add(Chrome("□", T("最大化"), () => ToggleDesktopMaximize(folder)));
-        controls.Children.Add(Chrome("×", T("关闭"), () => HideDesktopFolder(folder, true)));
-        Grid.SetColumn(controls, 1); header.Children.Add(controls); grid.Children.Add(header);
-        var inner = new DockPanel { Margin = new Thickness(16, 14, 16, 8) };
-        if (page is { } key)
+        navigation.SelectionChanged += (_, e) => { if (!syncingTabs && e.Source == navigation && navigation.SelectedIndex >= 0) Navigate((DashboardPage)navigation.SelectedIndex); };
+        return navigation;
+    }
+
+    private void UpdateTabStyles()
+    {
+        for (var i = 0; i < tabLabels.Count; i++)
         {
-            var heading = Stack(); heading.Margin = new Thickness(0, 0, 0, 12);
-            heading.Children.Add(Text(titles[(int)key], 22)); folder.Description.Text = PageDescription(key); folder.Description.FontSize = 12; folder.Description.TextWrapping = TextWrapping.Wrap; folder.Description.Margin = new Thickness(0, 5, 0, 0); heading.Children.Add(folder.Description);
-            DockPanel.SetDock(heading, Dock.Top); inner.Children.Add(heading);
+            var selected = i == (int)currentPage;
+            tabLabels[i].Foreground = Brush(selected ? "AccentBrush" : "MutedBrush");
+            tabLabels[i].FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
         }
-        inner.Children.Add(body); Grid.SetRow(inner, 1); grid.Children.Add(inner);
-        var statusLine = new Border { BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(7, 2, 7, 1), Child = Text(page is null ? "LOCAL / CORDNOTE" : T("拖动标题栏移动窗口"), 11) };
-        Grid.SetRow(statusLine, 2); grid.Children.Add(statusLine);
-        AutomationProperties.SetName(frame, label + " · " + id); AutomationProperties.SetName(handle, T("移动窗口") + " " + label);
-        AutomationProperties.SetHelpText(handle, T("拖动标题栏移动窗口") + "; Arrow keys / Shift+Arrow");
-        desktopFolders.Add(id, folder); desktopCanvas.Children.Add(frame); desktopTasks.Children.Add(task); RefreshTaskColumns();
-        Canvas.SetLeft(frame, bounds.X); Canvas.SetTop(frame, bounds.Y); Panel.SetZIndex(frame, ++desktopZ);
-        Point dragStart = default;
-        handle.DragStarted += (_, _) => { ActivateDesktopFolder(folder); if (folder.Maximized) ToggleDesktopMaximize(folder); dragStart = new Point(Canvas.GetLeft(frame), Canvas.GetTop(frame)); };
-        handle.DragDelta += (_, e) => MoveDesktopFolder(folder, Canvas.GetLeft(frame) + e.HorizontalChange, Canvas.GetTop(frame) + e.VerticalChange);
-        handle.DragCompleted += (_, e) => { if (e.Canceled) MoveDesktopFolder(folder, dragStart.X, dragStart.Y); };
-        handle.PreviewKeyDown += (_, e) =>
-        {
-            if (e.Key == Key.Escape && handle.IsDragging) { handle.CancelDrag(); e.Handled = true; return; }
-            var delta = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 24 : 8;
-            var x = Canvas.GetLeft(frame); var y = Canvas.GetTop(frame);
-            switch (e.Key) { case Key.Left: x -= delta; break; case Key.Right: x += delta; break; case Key.Up: y -= delta; break; case Key.Down: y += delta; break; default: return; }
-            MoveDesktopFolder(folder, x, y); e.Handled = true;
-        };
-        frame.PreviewMouseDown += (_, _) => ActivateDesktopFolder(folder);
-        frame.GotKeyboardFocus += (_, _) => ActivateDesktopFolder(folder);
-        task.Click += (_, _) => { task.Visibility = Visibility.Visible; frame.Visibility = Visibility.Visible; ActivateDesktopFolder(folder); FitDesktopFolder(folder); };
-        FitDesktopFolder(folder); return folder;
     }
 
-    private void OpenDesktopFolder(DashboardPage page)
-    {
-        var id = desktopNames[(int)page];
-        if (!desktopFolders.TryGetValue(id, out var folder))
-            folder = AddDesktopFolder(id, page, titles[(int)page], pages[(int)page], new Rect(132 + (int)page * 22, 20 + (int)page * 18, 720, 470));
-        folder.Frame.Visibility = Visibility.Visible; folder.Task.Visibility = Visibility.Visible; RefreshTaskColumns(); ActivateDesktopFolder(folder); FitDesktopFolder(folder);
-    }
-
-    private void ActivateDesktopFolder(DesktopFolder folder)
-    {
-        if (folder.Frame.Visibility != Visibility.Visible) return;
-        activeDesktopFolder = folder; Panel.SetZIndex(folder.Frame, ++desktopZ);
-        foreach (var item in desktopFolders.Values)
-        {
-            var active = item == folder;
-            item.Header.Background = Brush(active ? "AccentBrush" : "SurfaceBrush"); item.Caption.Foreground = Brush(active ? "AccentTextBrush" : "TextBrush");
-            item.Task.Background = Brush(active ? "SelectedBrush" : "SurfaceBrush");
-        }
-        if (folder.Page is { } page)
-        { selectingDesktopFolder = true; navigation.SelectedIndex = (int)page; selectingDesktopFolder = false; }
-        UpdateDesktopSaveVisibility();
-    }
-
-    private void HideDesktopFolder(DesktopFolder folder, bool close)
-    {
-        folder.Frame.Visibility = Visibility.Collapsed;
-        // Utility windows remain in the taskbar so they can always be reopened.
-        if (close && folder.Page is not null) folder.Task.Visibility = Visibility.Collapsed;
-        RefreshTaskColumns();
-        var next = desktopFolders.Values.Where(f => f.Frame.Visibility == Visibility.Visible).OrderByDescending(f => Panel.GetZIndex(f.Frame)).FirstOrDefault();
-        activeDesktopFolder = null; if (next is not null) ActivateDesktopFolder(next);
-        UpdateDesktopSaveVisibility();
-    }
-    private const int DesktopTaskSlots = 8;
     private sealed class HoverCardSlot
     {
         internal HoverCardSlot(Button button, GreatUIHoverCard card, Canvas overlay) { Button = button; Card = card; Overlay = overlay; }
@@ -302,7 +200,7 @@ internal sealed partial class Dashboard
     {
         var overlay = new Canvas { Visibility = Visibility.Visible, IsHitTestVisible = false };
         Panel.SetZIndex(overlay, 10);
-        Grid.SetRowSpan(overlay, 2); root.Children.Add(overlay);
+        Grid.SetRowSpan(overlay, Math.Max(1, root.RowDefinitions.Count)); root.Children.Add(overlay);
         var card = new GreatUIHoverCard(mode) { IsHitTestVisible = false };
         var slot = new HoverCardSlot(button, card, overlay);
         if (openProfile is not null) card.ProfileRequested += openProfile;
@@ -390,38 +288,10 @@ internal sealed partial class Dashboard
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/jiezi1234") { UseShellExecute = true }); }
         catch (Exception ex) { SetStatus(ex.Message); }
     }
-    private void RefreshTaskColumns() => desktopTasks.Columns = DesktopTaskSlots;
 
     private void UpdateDesktopSaveVisibility() => saveBar.Visibility = Visibility.Visible;
 
-    private void MoveDesktopFolder(DesktopFolder folder, double x, double y)
-    {
-        var width = desktopCanvas.ActualWidth > 0 ? desktopCanvas.ActualWidth : Width - 16;
-        var height = desktopCanvas.ActualHeight > 0 ? desktopCanvas.ActualHeight : Height - 240;
-        Canvas.SetLeft(folder.Frame, Math.Clamp(x, 0, Math.Max(0, width - folder.Frame.Width)));
-        Canvas.SetTop(folder.Frame, Math.Clamp(y, 0, Math.Max(0, height - folder.Frame.Height)));
-    }
-
-    private void FitDesktopFolder(DesktopFolder folder)
-    {
-        if (desktopCanvas.ActualWidth <= 0 || desktopCanvas.ActualHeight <= 0) return;
-        if (folder.Maximized) { folder.Frame.Width = desktopCanvas.ActualWidth; folder.Frame.Height = desktopCanvas.ActualHeight; Canvas.SetLeft(folder.Frame, 0); Canvas.SetTop(folder.Frame, 0); return; }
-        folder.Frame.Width = Math.Min(folder.Frame.Width, desktopCanvas.ActualWidth);
-        folder.Frame.Height = Math.Min(folder.Frame.Height, desktopCanvas.ActualHeight);
-        MoveDesktopFolder(folder, Canvas.GetLeft(folder.Frame), Canvas.GetTop(folder.Frame));
-    }
-
-    private void FitDesktopFolders() { foreach (var folder in desktopFolders.Values) FitDesktopFolder(folder); }
-
-    private void ToggleDesktopMaximize(DesktopFolder folder)
-    {
-        if (folder.Maximized)
-        { folder.Maximized = false; folder.Frame.Width = folder.RestoreBounds.Width; folder.Frame.Height = folder.RestoreBounds.Height; Canvas.SetLeft(folder.Frame, folder.RestoreBounds.X); Canvas.SetTop(folder.Frame, folder.RestoreBounds.Y); }
-        else { folder.RestoreBounds = new Rect(Canvas.GetLeft(folder.Frame), Canvas.GetTop(folder.Frame), folder.Frame.Width, folder.Frame.Height); folder.Maximized = true; }
-        ActivateDesktopFolder(folder); FitDesktopFolder(folder);
-    }
-
-    internal FrameworkElement? ActiveDesktopContent => activeDesktopFolder?.Page is { } page ? pages[(int)page] : null;
+    internal FrameworkElement? ActiveDesktopContent => pageHost?.Content as FrameworkElement;
     internal bool GithubCardOpen => githubCard?.Overlay.IsHitTestVisible == true;
     internal Task GithubCardReady => githubCard?.Card.Ready ?? Task.CompletedTask;
     internal string GithubCardState => githubCard?.Card.State ?? "none";
@@ -442,7 +312,4 @@ internal sealed partial class Dashboard
     internal void CloseDonateCardForDiagnostics() => CloseDonateCard();
     internal void UpdateDonatePointerForDiagnostics(Point buttonPosition) => UpdateCardPointer(donateCard, buttonPosition);
     internal Task<string> DonateCardTransformForDiagnostics() => donateCard?.Card.CardTransformAsync() ?? Task.FromResult("");
-    internal bool BackgroundMotionAllowedForDiagnostics => DesktopBackgroundMotionAllowed;
-    internal Task BackgroundReadyForDiagnostics => desktopBackground?.Ready ?? Task.CompletedTask;
-    internal Task<BackgroundRenderState> BackgroundStateForDiagnostics() => desktopBackground?.RenderStateAsync() ?? Task.FromResult(new BackgroundRenderState(false, true, 0, 0));
 }

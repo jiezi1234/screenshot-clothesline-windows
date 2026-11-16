@@ -32,19 +32,6 @@ internal static class DashboardDiagnostics
                 using var runtime = new LibraryRuntime(shelf, Path.Combine(directory, "library-" + Guid.NewGuid().ToString("N")));
                 runtime.ApplySettings(runtime.Settings with { Capacity = 25, ClipboardEnabled = false }, false);
                 dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.Show(); dashboard.UpdateLayout();
-                await Task.WhenAny(dashboard.BackgroundReadyForDiagnostics, Task.Delay(8000));
-                var backgroundBefore = await dashboard.BackgroundStateForDiagnostics();
-                await Task.Delay(350);
-                var backgroundAfter = await dashboard.BackgroundStateForDiagnostics();
-                Check("desktop-background-animates-when-motion-is-allowed", !dashboard.BackgroundMotionAllowedForDiagnostics ||
-                    (backgroundBefore.Ready && !backgroundAfter.Paused && backgroundAfter.Frames > backgroundBefore.Frames && backgroundAfter.Time > backgroundBefore.Time));
-                dashboard.Hide(); await Task.Delay(150);
-                var hiddenBackground = await dashboard.BackgroundStateForDiagnostics();
-                await Task.Delay(300);
-                var hiddenBackgroundAfter = await dashboard.BackgroundStateForDiagnostics();
-                Check("desktop-background-pauses-while-dashboard-is-hidden", !backgroundBefore.Ready ||
-                    (hiddenBackground.Paused && hiddenBackgroundAfter.Frames == hiddenBackground.Frames));
-                dashboard.Show(); dashboard.UpdateLayout();
                 TControl Named<TControl>(string name) where TControl : FrameworkElement { dashboard.UpdateLayout(); return UiAccessibility.Descendants(dashboard).OfType<TControl>().Single(c => AutomationProperties.GetName(c) == T(name)); }
                 Button Action(string title)
                 {
@@ -78,7 +65,7 @@ internal static class DashboardDiagnostics
                 var toggleBounds = Bounds(Action("显示 / 收起")); var importBounds = Bounds(Action("导入图片或录像…"));
                 Check("header-actions-share-top-edge-and-height", Math.Abs(toggleBounds.Top - importBounds.Top) <= 1 && Math.Abs(toggleBounds.Height - importBounds.Height) <= 1);
                 var navigationItems = Named<ListBox>("控制面板导航").Items.OfType<ListBoxItem>().Select(Bounds).ToArray();
-                Check("navigation-items-share-left-and-right-edges", navigationItems.Length == 6 && navigationItems.All(item => Math.Abs(item.Left - navigationItems[0].Left) <= 1 && Math.Abs(item.Right - navigationItems[0].Right) <= 1));
+                Check("bookmark-tabs-stack-along-the-right-edge", navigationItems.Length == 6 && navigationItems.All(item => Math.Abs(item.Right - navigationItems[0].Right) <= 1) && navigationItems[1].Top >= navigationItems[0].Bottom - 1);
                 Check("github-link-remains-accessible", Action("GitHub").IsVisible);
                 var githubButton = Action("GitHub");
                 dashboard.ShowGithubCardForDiagnostics();
@@ -150,35 +137,11 @@ internal static class DashboardDiagnostics
                 Check("donate-card-follows-pointer-with-original-transform", donateCenterTransform.Length > 0 && donateEdgeTransform.Length > 0 && donateCenterTransform != donateEdgeTransform);
                 dashboard.CloseDonateCardForDiagnostics();
                 Check("donate-card-closes-on-leave", !dashboard.DonateCardOpen);
-                var shelfHandle = Named<Thumb>("移动窗口" + " " + T("晾衣绳列表"));
-                var shelfFolder = UiAccessibility.Descendants(dashboard).OfType<Border>().Single(b => AutomationProperties.GetName(b) == T("晾衣绳列表") + " · SHELF.DIR");
-                var beforeMove = new Point(Canvas.GetLeft(shelfFolder), Canvas.GetTop(shelfFolder));
-                shelfHandle.RaiseEvent(new DragStartedEventArgs(0, 0) { RoutedEvent = Thumb.DragStartedEvent });
-                shelfHandle.RaiseEvent(new DragDeltaEventArgs(48, 16) { RoutedEvent = Thumb.DragDeltaEvent });
-                shelfHandle.RaiseEvent(new DragCompletedEventArgs(48, 16, false) { RoutedEvent = Thumb.DragCompletedEvent });
-                Check("titlebar-drag-moves-native-folder", Canvas.GetLeft(shelfFolder) == beforeMove.X + 48 && Canvas.GetTop(shelfFolder) == beforeMove.Y + 16);
-                var movedPosition = new Point(Canvas.GetLeft(shelfFolder), Canvas.GetTop(shelfFolder));
-                dashboard.ShowAppearance(); dashboard.UpdateLayout();
-                Check("folders-stay-open-independently", shelfFolder.IsVisible && Named<ComboBox>("卡片大小").IsVisible);
-                dashboard.ShowShelfList(); dashboard.UpdateLayout();
-                Check("reopening-folder-retains-position-and-front-order", Canvas.GetLeft(shelfFolder) == movedPosition.X && Canvas.GetTop(shelfFolder) == movedPosition.Y && Panel.GetZIndex(shelfFolder) > UiAccessibility.Descendants(dashboard).OfType<Border>().Where(b => AutomationProperties.GetName(b).EndsWith(" · APPEARANCE.CFG", StringComparison.Ordinal)).Select(Panel.GetZIndex).Single());
-                shelfHandle.RaiseEvent(new DragStartedEventArgs(0, 0) { RoutedEvent = Thumb.DragStartedEvent });
-                shelfHandle.RaiseEvent(new DragDeltaEventArgs(-10000, -10000) { RoutedEvent = Thumb.DragDeltaEvent });
-                Check("drag-stays-inside-desktop", Canvas.GetLeft(shelfFolder) == 0 && Canvas.GetTop(shelfFolder) == 0);
-                shelfHandle.RaiseEvent(new DragCompletedEventArgs(0, 0, true) { RoutedEvent = Thumb.DragCompletedEvent });
-                Check("cancelled-drag-restores-position", Canvas.GetLeft(shelfFolder) == movedPosition.X && Canvas.GetTop(shelfFolder) == movedPosition.Y);
-                Named<Button>("关闭" + " " + T("晾衣绳列表")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Check("closing-folder-preserves-its-content", !shelfFolder.IsVisible && shelfItems.Items.Count == 4);
-                dashboard.ShowShelfList(); dashboard.UpdateLayout();
-                Check("closed-folder-reopens-at-same-position", shelfFolder.IsVisible && Canvas.GetLeft(shelfFolder) == movedPosition.X && Canvas.GetTop(shelfFolder) == movedPosition.Y);
-                Named<Button>("最小化" + " " + T("晾衣绳列表")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Check("minimized-folder-keeps-taskbar-entry", !shelfFolder.IsVisible && UiAccessibility.Descendants(dashboard).OfType<Button>().Any(b => b.IsVisible && b.Content as string == T("晾衣绳列表")));
-                dashboard.ShowShelfList(); dashboard.UpdateLayout();
-                var normalSize = new Size(shelfFolder.Width, shelfFolder.Height);
-                Named<Button>("最大化" + " " + T("晾衣绳列表")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); dashboard.UpdateLayout();
-                Check("maximize-fills-desktop-with-accessible-titlebar", Canvas.GetLeft(shelfFolder) == 0 && Canvas.GetTop(shelfFolder) == 0 && shelfFolder.Width == ((Canvas)shelfFolder.Parent).ActualWidth);
-                Named<Button>("最大化" + " " + T("晾衣绳列表")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); dashboard.UpdateLayout();
-                Check("maximize-restores-folder-size-and-position", shelfFolder.Width == normalSize.Width && shelfFolder.Height == normalSize.Height && Canvas.GetLeft(shelfFolder) == movedPosition.X && Canvas.GetTop(shelfFolder) == movedPosition.Y);
+                var tabs = Named<ListBox>("控制面板导航");
+                tabs.SelectedIndex = (int)DashboardPage.Appearance; dashboard.UpdateLayout();
+                Check("bookmark-tab-switches-page", Named<ComboBox>("卡片大小").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("外观与语言") && t.FontSize >= 30 && t.IsVisible));
+                tabs.SelectedIndex = (int)DashboardPage.Shelf; dashboard.UpdateLayout();
+                Check("bookmark-tab-returns-to-shelf", Named<ListBox>("晾衣绳列表").IsVisible && shelfItems.Items.Count == 4);
                 Capture(dashboard, Path.Combine(directory, "dashboard-shelf.png"));
                 var entry = runtime.Store.Entries(EntryState.Shelf).First(item => !MediaFiles.IsText(item.Path)); runtime.Store.Archive(entry.Id, LibraryRuntime.Now);
                 dashboard.ShowHistory(); dashboard.UpdateLayout();

@@ -1,0 +1,60 @@
+@import "tailwindcss" source(none);
+@source "./settings.tsx";
+@source "../vendor/coss";
+
+@theme {
+  --color-background: #fff;
+  --color-foreground: #202626;
+  --color-card: #fff;
+  --color-popover: #fff;
+  --color-card-foreground: #202626;
+  --color-muted: #f2f5f4;
+  --color-muted-foreground: #596564;
+  --color-primary: #21695b;
+  --color-primary-foreground: white;
+  --color-border: #dce2df;
+  --color-input: #c6cfcb;
+  --color-ring: #247d6c;
+  --color-accent: #eff5f2;
+  --color-accent-foreground: #1c5146;
+}
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { margin: 0; overflow: hidden; background: #f5f7f6; color: var(--color-foreground); font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif; }
+}
+main { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 2px; align-items: stretch; }
+section { min-width: 0; }
+header { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--color-border); padding: 10px 12px; }
+.icon { display: grid; place-items: center; width: 27px; height: 27px; flex-shrink: 0; border-radius: 9px; background: #e8f2ed; color: #236957; }
+h2 { font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
+h2, .fields { min-width: 0; overflow-wrap: anywhere; }
+.fields #retry { max-width: 100%; height: auto; min-height: 26px; padding-block: 3px; white-space: normal; }
+.fields { display: grid; align-content: start; gap: clamp(6px, 1.8vh, 10px); padding: 10px 12px; }
+label, .field-label { display: block; font-size: 13px; font-weight: 550; }
+.input-row, .choice { margin-top: 3px; }
+.input-row, .switch-row { display: flex; align-items: center; gap: 9px; }
+.input-row > :first-child { flex: 1; min-width: 0; }
+.input-row > button { flex-shrink: 0; width: 32px; padding: 0; }
+.fields select { min-width: 0; }
+.field { min-width: 0; overflow-wrap: anywhere; }
+.switch-row { justify-content: space-between; }
+.switch-row label { cursor: pointer; }
+.info-value { font-size: 12px; line-height: 1.5; margin-top: 5px; color: var(--color-muted-foreground); }
+.choice { position: relative; }
+.choice select { appearance: none; padding-right: 30px; }
+.choice svg { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+@media (max-height: 320px) {
+  header { padding: 5px 8px; }
+  .icon { width: 22px; height: 22px; }
+  .fields { gap: 4px; padding: 6px 8px; }
+  label, .field-label { line-height: 1.2; }
+  .choice, .input-row { margin-top: 1px; }
+  .fields input, .fields button:not([role="switch"]), .fields select {
+    height: 25px; min-height: 25px; line-height: 1.2;
+  }
+}
+@media (forced-colors: active) {
+  [role="switch"] { border: 1px solid ButtonText; }
+  [role="switch"][aria-checked="true"] { background: Highlight; forced-color-adjust: none; }
+  [data-slot="switch-thumb"] { background: ButtonText; }
+}

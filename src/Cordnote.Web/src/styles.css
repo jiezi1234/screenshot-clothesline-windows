@@ -1,7 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @source "../vendor/GreatUI/GithubCard.tsx";
 @source "./DonationCard.tsx";
 @source "./main.tsx";
+@source "../build.mjs";
 html, body, #root { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
 body { font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif; }
 #github-host { position: static; display: block; width: 336px; height: auto; padding: 8px; }

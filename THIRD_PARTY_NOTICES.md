@@ -60,3 +60,7 @@ Fixtures 中的 WebP/HEIC/PNG 均为本项目生成的色块，不含用户照�
 ## v0.16 剪贴板文字卡片
 
 文字收集、缩略图、滚动预览、应用内编辑与保存恢复按用户需求独立实现，使用已有 .NET、WPF 与 SQLite 依赖；测试文字在本仓库生成。新增界面译文独立编写，未引入其他 Windows 移植源码、素材或运行时依赖。
+
+## coss UI 控制面板
+
+设置表单使用 [coss UI](https://coss.com/ui) 官方组件注册表的源码，保存在 `src/Cordnote.Web/vendor/coss/`。coss UI、Base UI、Lucide 和 class-variance-authority 的许可证随设置页面嵌入应用。

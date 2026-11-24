@@ -24,4 +24,5 @@
   <ItemGroup><EmbeddedResource Include="Assets/Cordnote.ico" LogicalName="Cordnote.ico" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/github-jiezi1234.png" LogicalName="Cordnote.GithubAvatar.png" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Assets/GithubWeb/index.html" LogicalName="Cordnote.GithubWeb.html" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Assets/SettingsWeb.html" LogicalName="Cordnote.SettingsWeb.html" /></ItemGroup>
 </Project>

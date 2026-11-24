@@ -24,3 +24,15 @@ const output = "../Clothesline.App/Assets/GithubWeb";
 await mkdir(output, { recursive: true });
 await writeFile(path.join(output, "index.html"), html);
 console.log(`Built original Great UI GithubCard.tsx (${hash}), ${Buffer.byteLength(html)} bytes`);
+
+execFileSync(process.execPath, ["node_modules/@tailwindcss/cli/dist/index.mjs", "-i", "src/settings.css", "-o", ".build/settings.css", "--minify"], { stdio: "inherit" });
+const settings = await build({
+  entryPoints: ["src/settings.tsx"], bundle: true, minify: true, write: false, jsx: "automatic", target: "chrome120", legalComments: "inline",
+  alias: { "@/registry/default/lib/utils": path.join(root, "src/utils.ts"), "@/registry/default/ui/spinner": path.join(root, "vendor/coss/spinner.tsx") },
+  define: { "process.env.NODE_ENV": '"production"' },
+});
+const settingsCss = await readFile(".build/settings.css", "utf8");
+const licenseFiles = ["vendor/coss/LICENSE", ...["@base-ui/react", "@base-ui/utils", "lucide-react", "class-variance-authority"].map(pkg => "node_modules/" + pkg + "/LICENSE")];
+const settingsNotices = (await Promise.all(licenseFiles.map(file => readFile(file, "utf8")))).join("\n");
+const settingsHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!-- ${settingsNotices.replaceAll("--", "—")} --><style>${settingsCss}</style></head><body><div id="root"></div><script>${settings.outputFiles[0].text.replaceAll("</script", "<\\/script")}</script></body></html>`;
+await writeFile("../Clothesline.App/Assets/SettingsWeb.html", settingsHtml);

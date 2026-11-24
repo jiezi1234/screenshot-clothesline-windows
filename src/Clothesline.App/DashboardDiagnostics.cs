@@ -42,7 +42,16 @@ internal static class DashboardDiagnostics
                 }
                 Rect Bounds(FrameworkElement element) { var content = (FrameworkElement)dashboard.Content; return element.TransformToAncestor(content).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight)); }
                 void Click(string title) => Action(title).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Check("default-page-is-shelf-with-accessible-empty-state", Named<ListBox>("晾衣绳列表").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("暂时没有图片") && t.IsVisible));
+                Check("shelf-has-accessible-empty-state", Named<ListBox>("晾衣绳列表").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("暂时没有图片") && t.IsVisible));
+                if (!await dashboard.SettingsReady.WaitAsync(TimeSpan.FromSeconds(15))) throw new InvalidOperationException("Settings WebView failed to initialize.");
+                Task<string> Web(string js) => dashboard.InspectSettings(js);
+                async Task SetChoice(string id, int index)
+                {
+                    await Web($"var el = document.getElementById('{id}'); el.value = '{index}'; el.dispatchEvent(new Event('change', {{ bubbles: true }}))");
+                    await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                }
+                Check("coss-settings-share-one-page", await Web("document.querySelectorAll('section[data-slot=card]').length === 4 && document.querySelectorAll('[role=switch]').length === 7 && document.querySelectorAll('select').length === 5 && document.querySelectorAll('input:not([type=hidden])').length >= 7") == "true");
+                await Task.Delay(400); // Allow the composition surface to present its first frame.
                 Capture(dashboard, Path.Combine(directory, "dashboard-empty.png"));
                 var files = DemoAssets.Create(Path.Combine(directory, "fixtures", Guid.NewGuid().ToString("N")));
                 foreach (var item in files)
@@ -64,8 +73,6 @@ internal static class DashboardDiagnostics
                 Check("shelf-images-and-text-render-in-mixed-grid", mixedTiles.Length == 3 && Math.Abs(mixedTiles[0].Top - mixedTiles[1].Top) <= 1 && mixedTiles[1].Left > mixedTiles[0].Right && (mixedTiles[2].Left > mixedTiles[1].Right || mixedTiles[2].Top > mixedTiles[0].Bottom));
                 var toggleBounds = Bounds(Action("显示 / 收起")); var importBounds = Bounds(Action("导入图片或录像…"));
                 Check("header-actions-share-top-edge-and-height", Math.Abs(toggleBounds.Top - importBounds.Top) <= 1 && Math.Abs(toggleBounds.Height - importBounds.Height) <= 1);
-                var navigationItems = Named<ListBox>("控制面板导航").Items.OfType<ListBoxItem>().Select(Bounds).ToArray();
-                Check("bookmark-tabs-stack-along-the-right-edge", navigationItems.Length == 6 && navigationItems.All(item => Math.Abs(item.Right - navigationItems[0].Right) <= 1) && navigationItems[1].Top >= navigationItems[0].Bottom - 1);
                 Check("github-link-remains-accessible", Action("GitHub").IsVisible);
                 var githubButton = Action("GitHub");
                 dashboard.ShowGithubCardForDiagnostics();
@@ -137,11 +144,10 @@ internal static class DashboardDiagnostics
                 Check("donate-card-follows-pointer-with-original-transform", donateCenterTransform.Length > 0 && donateEdgeTransform.Length > 0 && donateCenterTransform != donateEdgeTransform);
                 dashboard.CloseDonateCardForDiagnostics();
                 Check("donate-card-closes-on-leave", !dashboard.DonateCardOpen);
-                var tabs = Named<ListBox>("控制面板导航");
-                tabs.SelectedIndex = (int)DashboardPage.Appearance; dashboard.UpdateLayout();
-                Check("bookmark-tab-switches-page", Named<ComboBox>("卡片大小").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("外观与语言") && t.FontSize >= 30 && t.IsVisible));
-                tabs.SelectedIndex = (int)DashboardPage.Shelf; dashboard.UpdateLayout();
-                Check("bookmark-tab-returns-to-shelf", Named<ListBox>("晾衣绳列表").IsVisible && shelfItems.Items.Count == 4);
+                dashboard.ShowAppearance();
+                Check("tray-focuses-appearance", await Web("document.activeElement.id") == JsonSerializer.Serialize("cardSize"));
+                dashboard.ShowShelfList();
+                Check("tray-focuses-shelf", shelfItems.IsKeyboardFocusWithin);
                 Capture(dashboard, Path.Combine(directory, "dashboard-shelf.png"));
                 var entry = runtime.Store.Entries(EntryState.Shelf).First(item => !MediaFiles.IsText(item.Path)); runtime.Store.Archive(entry.Id, LibraryRuntime.Now);
                 dashboard.ShowHistory(); dashboard.UpdateLayout();
@@ -153,18 +159,21 @@ internal static class DashboardDiagnostics
                 Click("重新挂上"); await Task.Delay(100); dashboard.ShowShelfList();
                 Check("history-restore-returns-original-file-to-shelf", Named<ListBox>("晾衣绳列表").Items.Count == 4 && File.Exists(entry.Path));
                 dashboard.ShowSources(); dashboard.UpdateLayout();
-                var source = Named<TextBox>("截图目录"); var chosen = Path.Combine(directory, "incoming"); Directory.CreateDirectory(chosen); source.Text = chosen;
+                var source = Named<TextBox>("截图目录"); var chosen = Path.Combine(directory, "incoming"); Directory.CreateDirectory(chosen);
+                await Web($"var input = document.getElementById('screenshot'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, {JsonSerializer.Serialize(chosen)}); input.dispatchEvent(new Event('input', {{bubbles:true}}))");
+                await Web("document.getElementById('motion').click()");
+                Check("switch-edits-draft-in-coss-form", Named<CheckBox>("减少动画").IsChecked == true);
                 Check("changed-source-enables-save-and-discard", dashboard.HasUnsavedChanges && Action("保存设置").IsEnabled && Action("撤销更改").IsEnabled);
                 dashboard.ShowAppearance(); dashboard.UpdateLayout();
-                var size = Named<ComboBox>("卡片大小"); size.SelectedIndex = 2;
+                var size = Named<ComboBox>("卡片大小"); await SetChoice("cardSize", 2);
                 var protection = Named<ComboBox>("展开保护期");
                 Check("protection-defaults-to-ten-seconds-with-five-choices", protection.SelectedIndex == 1 && protection.Items.Count == 5 && shelf.RevealProtectionSeconds == 10);
-                protection.SelectedIndex = 3;
+                await SetChoice("protection", 3);
                 dashboard.ShowSources(); dashboard.UpdateLayout();
-                Check("switching-pages-retains-unsaved-fields", source.Text == chosen && size.SelectedIndex == 2 && protection.SelectedIndex == 3 && dashboard.HasUnsavedChanges);
+                Check("focus-changes-retain-unsaved-fields", source.Text == chosen && size.SelectedIndex == 2 && protection.SelectedIndex == 3 && dashboard.HasUnsavedChanges);
                 Click("暂停收集"); Check("pausing-collection-keeps-settings-draft", runtime.Settings.Paused && source.Text == chosen && dashboard.HasUnsavedChanges && shelf.RevealProtectionSeconds == 10);
                 Click("保存设置");
-                Check("saving-applies-draft-across-settings-pages", runtime.Store.LoadSettings().ScreenshotFolder == chosen && runtime.Store.LoadSettings().CardSizePercent == 120 && runtime.Settings.Paused && !dashboard.HasUnsavedChanges && !Action("保存设置").IsEnabled);
+                Check("saving-applies-draft-across-sections", runtime.Store.LoadSettings().ScreenshotFolder == chosen && runtime.Store.LoadSettings().CardSizePercent == 120 && runtime.Settings.Paused && !dashboard.HasUnsavedChanges && !Action("保存设置").IsEnabled);
                 Check("saving-protection-persists-and-applies-to-running-controller", runtime.Settings.RevealProtectionSeconds == 30 && runtime.Store.LoadSettings().RevealProtectionSeconds == 30 && shelf.RevealProtectionSeconds == 30);
                 Click("恢复收集"); dashboard.ShowDesktopSettings(); dashboard.UpdateLayout();
                 var show = Named<TextBox>("显示快捷键"); var hide = Named<TextBox>("收回快捷键"); show.Text = hide.Text;
@@ -172,8 +181,6 @@ internal static class DashboardDiagnostics
                 Click("撤销更改"); Check("discard-restores-persisted-shortcuts", !dashboard.HasUnsavedChanges && show.Text == "Ctrl+Down" && hide.Text == "Ctrl+Up");
                 Capture(dashboard, Path.Combine(directory, "dashboard-shortcuts.png"));
                 dashboard.ShowSources(); dashboard.UpdateLayout(); Capture(dashboard, Path.Combine(directory, "dashboard-sources.png"));
-                var sourceInputs = UiAccessibility.Descendants(dashboard).OfType<Control>().Where(control => control.IsVisible && control is TextBox or ComboBox).ToArray();
-                Check("source-inputs-use-uniform-control-height", sourceInputs.Length > 0 && sourceInputs.All(control => Math.Abs(control.ActualHeight - 40) <= 1));
                 dashboard.ShowAppearance(); dashboard.UpdateLayout();
                 protection.SelectedIndex = 4;
                 Check("protection-only-change-enables-save-without-applying-draft", dashboard.HasUnsavedChanges && Action("保存设置").IsEnabled && shelf.RevealProtectionSeconds == 30);
@@ -182,41 +189,46 @@ internal static class DashboardDiagnostics
                 protection.SelectedIndex = 1; Click("保存设置");
                 Check("protection-can-return-to-default", runtime.Store.LoadSettings().RevealProtectionSeconds == 10 && shelf.RevealProtectionSeconds == 10);
                 Capture(dashboard, Path.Combine(directory, "dashboard-appearance.png"));
-                size.Focus(); size.IsDropDownOpen = true; await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ContextIdle); dashboard.UpdateLayout();
-                var dropdown = (Popup)size.Template.FindName("PART_Popup", size);
-                var popup = dropdown.Child as FrameworkElement; popup?.UpdateLayout();
-                var popupPassed = dropdown.IsOpen && popup is not null && popup.ActualWidth >= size.ActualWidth - 1;
-                checks.Add(new { name = "custom-combobox-opens-usable-popup", passed = popupPassed, open = dropdown.IsOpen, popupWidth = popup?.ActualWidth, controlWidth = size.ActualWidth }); passed &= popupPassed;
-                size.IsDropDownOpen = false;
+                Check("coss-choice-reflects-saved-value", await Web("+document.getElementById('protection').value") == "1");
                 dashboard.Width = 840; dashboard.Height = 620; dashboard.UpdateLayout();
                 var button = Action("保存设置"); var bounds = button.TransformToAncestor((FrameworkElement)dashboard.Content).TransformBounds(new Rect(0, 0, button.ActualWidth, button.ActualHeight));
                 Check("save-remains-inside-small-window", bounds.Left >= 0 && bounds.Bottom <= ((FrameworkElement)dashboard.Content).ActualHeight && bounds.Right <= ((FrameworkElement)dashboard.Content).ActualWidth);
+                await Task.Delay(400); // Wait for WebView2 to present the resized surface.
                 Capture(dashboard, Path.Combine(directory, "dashboard-small.png")); dashboard.Close(); dashboard = null;
                 foreach (var locale in UiText.Languages)
                 {
                     UiText.Language = locale.Code;
                     dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.ShowAppearance(); dashboard.UpdateLayout();
-                    Check("sidebar-and-save-accessible-" + locale.Code, Named<ListBox>("控制面板导航").Items.Count == 6 && Action("保存设置").IsVisible && Named<ComboBox>("界面语言（重启后生效）").Items.Count == 11 && Named<ComboBox>("展开保护期").SelectedIndex == 1);
+                    await dashboard.SettingsReady.WaitAsync(TimeSpan.FromSeconds(15));
+                    Check("localized-coss-settings-" + locale.Code, Action("保存设置").IsVisible && await Web("document.documentElement.lang") == JsonSerializer.Serialize(locale.Code) && await Web("document.querySelector('#language').options.length") == "11");
                     Capture(dashboard, Path.Combine(directory, "dashboard-" + locale.Code + ".png"));
                     dashboard.Width = 840; dashboard.Height = 620;
+                    dashboard.UpdateLayout();
+                    await Task.Delay(200);
+                    var outside = await Web("""
+                        (() => {
+                          const outside = [...document.querySelectorAll('section,section label,section button,section select,section input:not([type=hidden])')].filter(el => {
+                            const r = el.getBoundingClientRect();
+                            return !r.width || !r.height || r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1;
+                          }).map(el => [el.id || el.tagName, el.getBoundingClientRect().toJSON()]);
+                          if (document.documentElement.scrollHeight > innerHeight + 1 || document.documentElement.scrollWidth > innerWidth + 1)
+                            outside.push(['document', innerWidth, innerHeight, document.documentElement.scrollWidth, document.documentElement.scrollHeight]);
+                          return outside;
+                        })()
+                        """);
+                    checks.Add(new { name = "all-coss-options-fit-small-window-" + locale.Code, passed = outside == "[]", outside }); passed &= outside == "[]";
                     var overflow = new List<string>();
-                    foreach (var page in Enum.GetValues<DashboardPage>())
+                    var content = (FrameworkElement)dashboard.Content;
+                    foreach (var control in UiAccessibility.Descendants(dashboard).OfType<Control>().Where(c => c.IsVisible && c is Button or TextBox or ComboBox))
                     {
-                        dashboard.Navigate(page); dashboard.UpdateLayout(); var content = (FrameworkElement)dashboard.Content;
-                        if (page == DashboardPage.Formats)
-                        {
-                            // Finish the asynchronous probe before disposing its window or changing locale.
-                            var deadline = DateTime.UtcNow.AddSeconds(30);
-                            while (!Action("重新检测").IsEnabled && DateTime.UtcNow < deadline) await Task.Delay(25);
-                            if (!Action("重新检测").IsEnabled) throw new TimeoutException("Image format panel did not finish its probe.");
-                        }
-                        foreach (var control in UiAccessibility.Descendants(dashboard).OfType<Control>().Where(c => c.IsVisible && c is Button or TextBox or ComboBox))
-                        {
-                            var rect = control.TransformToAncestor(content).TransformBounds(new Rect(0, 0, control.ActualWidth, control.ActualHeight));
-                            if (rect.Left < -1 || rect.Right > content.ActualWidth + 1) overflow.Add(page + ":" + AutomationProperties.GetName(control) + ":" + rect);
-                        }
+                        var rect = Bounds(control);
+                        if (rect.Left < -1 || rect.Top < -1 || rect.Right > content.ActualWidth + 1 || rect.Bottom > content.ActualHeight + 1)
+                            overflow.Add(AutomationProperties.GetName(control) + ":" + rect);
                     }
-                    checks.Add(new { name = "all-pages-fit-small-window-" + locale.Code, passed = overflow.Count == 0, overflow }); passed &= overflow.Count == 0;
+                    checks.Add(new { name = "native-actions-fit-small-window-" + locale.Code, passed = overflow.Count == 0, overflow }); passed &= overflow.Count == 0;
+                    var deadline = DateTime.UtcNow.AddSeconds(30);
+                    while (!Action("重新检测").IsEnabled && DateTime.UtcNow < deadline) await Task.Delay(25);
+                    if (!Action("重新检测").IsEnabled) throw new TimeoutException("Image format panel did not finish its probe.");
                     dashboard.Close(); dashboard = null;
                 }
             }

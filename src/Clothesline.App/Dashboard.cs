@@ -48,7 +48,7 @@ internal sealed partial class Dashboard
         }
         shelfEmpty.Visibility = entries.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         historyEmpty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        UpdatePageDescription(); UpdateCollectionState(); UpdateCapacity();
+        UpdateCollectionState(); UpdateCapacity(); SendSettingInfo();
     }
     private void UpdateCapacity()
     {
@@ -68,7 +68,7 @@ internal sealed partial class Dashboard
         showShortcut.Text = shortcutEnabled.IsChecked == true ? settings.ShowShortcut : LibrarySettings.DefaultShowShortcut;
         hideShortcut.Text = shortcutEnabled.IsChecked == true ? settings.HideShortcut : LibrarySettings.DefaultHideShortcut;
         showShortcut.IsEnabled = hideShortcut.IsEnabled = shortcutEnabled.IsChecked == true; login.IsChecked = library.Desktop?.LoginEnabled ?? settings.RunAtLogin; UpdateShortcutHint();
-        fillingSettings = false; savedFingerprint = DraftFingerprint(); UpdateDraftState();
+        fillingSettings = false; savedFingerprint = DraftFingerprint(); UpdateDraftState(); SendSettingsDraft();
     }
     private void UpdateShortcutHint() => interactionHint.Text = library?.Desktop?.ShortcutStatus ?? (library is null ? T("诊断模式") : T("显示 {0}；收回 {1}", library.Settings.ShowShortcut, library.Settings.HideShortcut));
     private void SaveSettings()
@@ -105,7 +105,6 @@ internal sealed partial class Dashboard
         if (fillingSettings) return;
         var dirty = library is not null && HasUnsavedChanges;
         draftStatus.Text = dirty ? T("有未保存的更改") : ""; draftStatus.Visibility = dirty ? Visibility.Visible : Visibility.Collapsed; save.IsEnabled = discard.IsEnabled = dirty;
-        UpdateDesktopSaveVisibility();
     }
     private void UpdateCollectionState()
     {

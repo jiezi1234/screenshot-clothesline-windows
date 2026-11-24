@@ -1,181 +1,94 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
-using System.Windows.Shapes;
 using System.Windows.Threading;
-using Clothesline.Core;
 
 namespace Clothesline.App;
 
 internal sealed partial class Dashboard
 {
-    private readonly List<TextBlock> tabLabels = new();
-    private ContentControl? pageHost;
-    private TextBlock? pageTitle;
-    private TextBlock? pageLead;
-    private DashboardPage currentPage;
-    private bool syncingTabs;
+    private DashboardPage currentSection = DashboardPage.Sources;
 
     private FrameworkElement CreateDesktop(ShelfController controller, Action quit)
     {
-        var desk = new Grid { ClipToBounds = true, Background = DeskBackground() };
-        desk.MouseLeftButtonDown += (_, e) => { if (ReferenceEquals(e.OriginalSource, desk)) { try { DragMove(); } catch (InvalidOperationException) { } } };
-        var frame = new Grid { Margin = new Thickness(24, 20, 58, 22) };
-        frame.ColumnDefinitions.Add(new ColumnDefinition());
-        frame.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var board = CreateBoard(controller, quit, out var github, out var donate);
-        frame.Children.Add(board);
-        var tabs = CreateTabs();
-        Grid.SetColumn(tabs, 1); frame.Children.Add(tabs);
-        var overlayHost = new Grid();
-        Grid.SetColumnSpan(overlayHost, 2);
-        Panel.SetZIndex(overlayHost, 20);
-        frame.Children.Add(overlayHost);
-        desk.Children.Add(frame);
-        CreateHoverCards(github, donate, overlayHost);
-        return desk;
-    }
+        var desk = new Grid { Background = Brush("CanvasBrush"), ClipToBounds = true };
+        desk.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        desk.RowDefinitions.Add(new RowDefinition());
+        desk.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-    private static Brush DeskBackground()
-    {
-        if (SystemParameters.HighContrast) return SystemColors.WindowBrush;
-        var brush = new RadialGradientBrush(Color.FromRgb(0xF5, 0xF2, 0xEF), Color.FromRgb(0xEA, 0xE6, 0xE1))
-        { GradientOrigin = new Point(0.5, 0), Center = new Point(0.5, 0.1), RadiusX = 1.1, RadiusY = 1.4 };
-        brush.Freeze(); return brush;
-    }
-
-    private Grid CreateBoard(ShelfController controller, Action quit, out Button github, out Button donate)
-    {
-        var shell = new Grid();
-        shell.Children.Add(new Border { Background = Brush("PaperEdgeBrush"), CornerRadius = new CornerRadius(4, 14, 14, 4), RenderTransform = new TranslateTransform(8, 6) });
-        var boardGrid = new Grid { Margin = new Thickness(80, 42, 48, 26) };
-        boardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        boardGrid.RowDefinitions.Add(new RowDefinition());
-        boardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        var header = new StackPanel();
-        header.MouseLeftButtonDown += (_, _) => { try { DragMove(); } catch (InvalidOperationException) { } };
-        var meta = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        meta.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        meta.ColumnDefinitions.Add(new ColumnDefinition());
-        meta.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var week = Text(T("第 {0} 周", ISOWeek.GetWeekOfYear(DateTime.Today)), 10.5);
-        week.Foreground = Brush("AccentBrush"); week.FontWeight = FontWeights.SemiBold;
-        var rule = new Border { Height = 1, Background = Brush("AccentSoftBrush"), Margin = new Thickness(14, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center };
-        var badge = Text(T("控制面板"), 10.5);
-        badge.Foreground = Brush("AccentBrush"); badge.FontWeight = FontWeights.SemiBold;
-        Grid.SetColumn(badge, 2);
-        meta.Children.Add(week); meta.Children.Add(rule); meta.Children.Add(badge);
-        header.Children.Add(meta);
-
-        pageTitle = new TextBlock { Text = titles[(int)DashboardPage.Shelf], FontFamily = DisplayFont(), FontSize = 38, Foreground = Brush("TextBrush"), TextTrimming = TextTrimming.CharacterEllipsis };
-        header.Children.Add(pageTitle);
-        var date = new TextBlock { Text = DateTime.Today.ToString("D", UiText.Culture), FontFamily = DisplayFont(), FontStyle = FontStyles.Italic, FontSize = 17, Foreground = Brush("MutedBrush"), Margin = new Thickness(0, 4, 0, 0) };
-        header.Children.Add(date);
-        pageLead = Text(PageDescription(DashboardPage.Shelf), 13, true, new Thickness(0, 16, 0, 0));
-        pageLead.FontStyle = FontStyles.Italic;
-        header.Children.Add(pageLead);
-        Grid.SetRow(header, 0); boardGrid.Children.Add(header);
-
-        pageHost = new ContentControl { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, Focusable = false, Margin = new Thickness(0, 10, 0, 0) };
-        Grid.SetRow(pageHost, 1); boardGrid.Children.Add(pageHost);
-
-        var actions = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        var toggle = Button(T("显示 / 收起"), controller.Toggle);
-        var import = Button(T("导入图片或录像…"), Import);
-        github = Button("GitHub", ShowGithubCard);
-        donate = Button(T("捐赠"), ShowDonateCard);
-        var hide = Button(T("收起控制面板"), Hide);
-        var exit = Button(T("退出"), quit);
-        foreach (var action in new[] { toggle, import, pauseCollection, github, donate, hide, exit, discard, save })
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition());
+        var commands = new WrapPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        foreach (var command in new[] { pauseCollection, Button(T("显示 / 收起"), controller.Toggle), Button(T("导入图片或录像…"), Import), Button(T("收起控制面板"), Hide), Button(T("退出"), quit, "QuietButton") })
+            commands.Children.Add(command);
+        Grid.SetColumn(commands, 1); header.Children.Add(commands);
+        var identity = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        using (var icon = typeof(Dashboard).Assembly.GetManifestResourceStream("Cordnote.ico"))
         {
-            action.MinHeight = 30; action.Padding = new Thickness(12, 4, 12, 4); action.FontSize = 12; action.Margin = new Thickness(0, 0, 8, 0);
-            actions.Children.Add(action);
+            if (icon is not null)
+            {
+                var image = System.Windows.Media.Imaging.BitmapFrame.Create(icon, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                identity.Children.Add(new Image { Source = image, Width = 32, Height = 32, Margin = new Thickness(0, 0, 12, 0) });
+            }
         }
-        AutomationProperties.SetName(github, "GitHub"); AutomationProperties.SetName(donate, T("捐赠"));
+        var brand = Text("Cordnote", 20); brand.FontWeight = FontWeights.SemiBold; identity.Children.Add(brand);
+        var panelName = Text(T("控制面板"), 14, true, new Thickness(12, 0, 12, 0));
+        panelName.VerticalAlignment = VerticalAlignment.Center; identity.Children.Add(panelName);
+        header.Children.Add(identity);
+        var titleBar = new Border { Child = header, Padding = new Thickness(24, 12, 16, 10), Background = Brush("SurfaceBrush"), BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
+        titleBar.MouseLeftButtonDown += (_, _) => { try { DragMove(); } catch (InvalidOperationException) { } };
+        desk.Children.Add(titleBar);
 
-        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        draftStatus.FontSize = 11.5; draftStatus.Foreground = Brush("AccentBrush"); draftStatus.Margin = new Thickness(0, 0, 0, 2);
-        status.FontSize = 11.5; status.Foreground = Brush("MutedBrush"); status.TextTrimming = TextTrimming.CharacterEllipsis; status.TextWrapping = TextWrapping.NoWrap;
+        var body = new Grid { Margin = new Thickness(14, 10, 14, 6) };
+        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1.35, GridUnitType.Star), MaxHeight = 430 });
+        body.RowDefinitions.Add(new RowDefinition());
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.ColumnDefinitions.Add(new ColumnDefinition());
+        body.ColumnDefinitions.Add(new ColumnDefinition());
+        var settings = new Grid { ClipToBounds = true };
+        settings.Children.Add(nativeSettings);
+        settings.Children.Add(settingsWeb);
+        Grid.SetColumnSpan(settings, 2); body.Children.Add(settings);
+
+        void AddLibrary(DashboardPage page, FrameworkElement panel, int column)
+        {
+            var surface = Card(titles[(int)page], panel);
+            surface.Margin = new Thickness(column == 0 ? 2 : 5, 8, column == 0 ? 5 : 2, 6);
+            sections.Add(page, surface);
+            Grid.SetRow(surface, 1); Grid.SetColumn(surface, column); body.Children.Add(surface);
+        }
+        AddLibrary(DashboardPage.Shelf, ShelfListPanel(), 0);
+        AddLibrary(DashboardPage.History, HistoryPanel(), 1);
+        var formats = new ImageFormatPanel(compact: true);
+        sections.Add(DashboardPage.Formats, formats);
+        Grid.SetRow(formats, 2); Grid.SetColumnSpan(formats, 2); body.Children.Add(formats);
+        Grid.SetRow(body, 1); desk.Children.Add(body);
+
+        var github = Button("GitHub", ShowGithubCard);
+        var donate = Button(T("捐赠"), ShowDonateCard);
+        var links = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        links.Children.Add(github); links.Children.Add(donate);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        actions.Children.Add(discard); actions.Children.Add(save);
+        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 12, 0) };
+        draftStatus.FontSize = 12; draftStatus.Foreground = Brush("AccentBrush");
+        status.FontSize = 12; status.Foreground = Brush("MutedBrush"); status.TextTrimming = TextTrimming.CharacterEllipsis;
         info.Children.Add(draftStatus); info.Children.Add(status);
-        var footer = new Grid();
-        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        footer.Children.Add(info);
-        actions.HorizontalAlignment = HorizontalAlignment.Right; actions.Margin = new Thickness(0, 6, 0, 0);
-        Grid.SetRow(actions, 1); footer.Children.Add(actions);
-        saveBar.Child = footer; saveBar.BorderBrush = Brush("LineBrush"); saveBar.BorderThickness = new Thickness(0, 1, 0, 0);
-        saveBar.Padding = new Thickness(0, 12, 0, 0); saveBar.Margin = new Thickness(0, 16, 0, 0); saveBar.Visibility = Visibility.Visible;
-        Grid.SetRow(saveBar, 2); boardGrid.Children.Add(saveBar);
+        var footer = new DockPanel(); DockPanel.SetDock(links, Dock.Left); DockPanel.SetDock(actions, Dock.Right);
+        footer.Children.Add(links); footer.Children.Add(actions); footer.Children.Add(info);
+        saveBar.Child = footer; saveBar.Background = Brush("SurfaceBrush"); saveBar.BorderBrush = Brush("LineBrush");
+        saveBar.BorderThickness = new Thickness(0, 1, 0, 0); saveBar.Padding = new Thickness(24, 12, 16, 8);
+        Grid.SetRow(saveBar, 2); desk.Children.Add(saveBar);
 
-        var content = new Grid(); content.Children.Add(boardGrid); content.Children.Add(Spine());
-        var board = new Border { Background = Brush("SurfaceBrush"), CornerRadius = new CornerRadius(4, 14, 14, 4), SnapsToDevicePixels = true, Child = content };
-        if (!SystemParameters.HighContrast) board.Effect = new DropShadowEffect { Color = Color.FromRgb(0x5A, 0x4A, 0x42), BlurRadius = 38, ShadowDepth = 10, Direction = 270, Opacity = .16 };
-        shell.Children.Add(board);
-        return shell;
-    }
-
-    private FrameworkElement Spine()
-    {
-        var spine = new Grid { Width = 58, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(4, 46, 0, 46), IsHitTestVisible = false };
-        var ringBrush = new LinearGradientBrush { StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5) };
-        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xD5, 0xD1, 0xCC), 0));
-        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xFC, 0xFB, 0xFA), .3));
-        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0xB8, 0xB3, 0xAE), .8));
-        ringBrush.GradientStops.Add(new GradientStop(Color.FromRgb(0x9E, 0x9A, 0x95), 1));
-        ringBrush.Freeze();
-        for (var i = 0; i < 7; i++)
-        {
-            spine.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            var cell = new Grid();
-            var ring = new Border { Width = 46, Height = 8, CornerRadius = new CornerRadius(4), Background = ringBrush, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
-            if (!SystemParameters.HighContrast) ring.Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 6, ShadowDepth = 2, Direction = 270, Opacity = .18 };
-            var hole = new Ellipse { Width = 14, Height = 14, Fill = Brush("CanvasBrush"), Stroke = Brush("LineStrongBrush"), StrokeThickness = 1, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(40, 0, 0, 0) };
-            cell.Children.Add(ring); cell.Children.Add(hole);
-            Grid.SetRow(cell, i); spine.Children.Add(cell);
-        }
-        return spine;
-    }
-
-    private FrameworkElement CreateTabs()
-    {
-        navigation.Items.Clear(); tabLabels.Clear();
-        navigation.Background = Brushes.Transparent; navigation.BorderThickness = new Thickness(0); navigation.SelectionMode = SelectionMode.Single;
-        navigation.ItemContainerStyle = (Style)Resources["BookmarkTab"];
-        AutomationProperties.SetName(navigation, T("控制面板导航"));
-        navigation.VerticalAlignment = VerticalAlignment.Stretch;
-        navigation.Margin = new Thickness(-10, 56, 0, 20);
-        ScrollViewer.SetVerticalScrollBarVisibility(navigation, ScrollBarVisibility.Auto);
-        ScrollViewer.SetHorizontalScrollBarVisibility(navigation, ScrollBarVisibility.Disabled);
-        for (var i = 0; i < titles.Length; i++)
-        {
-            var label = Text(titles[i], 11.5);
-            label.LayoutTransform = new RotateTransform(90);
-            label.TextAlignment = TextAlignment.Center;
-            label.Margin = new Thickness(0);
-            var item = new ListBoxItem { Content = label, Padding = new Thickness(14, 10, 14, 10) };
-            tabLabels.Add(label); navigation.Items.Add(item);
-        }
-        navigation.SelectionChanged += (_, e) => { if (!syncingTabs && e.Source == navigation && navigation.SelectedIndex >= 0) Navigate((DashboardPage)navigation.SelectedIndex); };
-        return navigation;
-    }
-
-    private void UpdateTabStyles()
-    {
-        for (var i = 0; i < tabLabels.Count; i++)
-        {
-            var selected = i == (int)currentPage;
-            tabLabels[i].Foreground = Brush(selected ? "AccentBrush" : "MutedBrush");
-            tabLabels[i].FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
-        }
+        CreateHoverCards(github, donate, desk);
+        Loaded += async (_, _) => await StartSettingsWeb();
+        Closed += (_, _) => { webClosed = true; settingsWeb.Dispose(); };
+        return desk;
     }
 
     private sealed class HoverCardSlot
@@ -289,9 +202,8 @@ internal sealed partial class Dashboard
         catch (Exception ex) { SetStatus(ex.Message); }
     }
 
-    private void UpdateDesktopSaveVisibility() => saveBar.Visibility = Visibility.Visible;
 
-    internal FrameworkElement? ActiveDesktopContent => pageHost?.Content as FrameworkElement;
+    internal FrameworkElement? ActiveDesktopContent => sections.GetValueOrDefault(currentSection);
     internal bool GithubCardOpen => githubCard?.Overlay.IsHitTestVisible == true;
     internal Task GithubCardReady => githubCard?.Card.Ready ?? Task.CompletedTask;
     internal string GithubCardState => githubCard?.Card.State ?? "none";

@@ -138,10 +138,12 @@ var textCalls = new System.Text.RegularExpressions.Regex("\\bT\\(\"((?:[^\"\\\\]
 var sourceKeys = Directory.EnumerateFiles("src", "*.cs", SearchOption.AllDirectories).Where(p => !p.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) && !p.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
     .SelectMany(p => textCalls.Matches(File.ReadAllText(p)).Select(m => System.Text.Json.JsonSerializer.Deserialize<string>("\"" + m.Groups[1].Value + "\"")!)).Distinct().ToArray();
 Check(sourceKeys.All(UiText.English.ContainsKey), "all application translation keys exist in English resource");
-Check(UiText.Languages.Count == 11 && UiText.Languages.Select(l => l.Code).Distinct().Count() == 11, "all original-baseline languages are selectable without duplicates");
+Check(UiText.Languages.Select(l => l.Code).SequenceEqual(new[] { "zh-CN", "en" }), "only Chinese and English are selectable");
+UiText.Language = "fr";
+Check(UiText.Language == "zh-CN", "retired language falls back to Chinese");
 foreach (var locale in UiText.Languages.Where(l => l.Code != "zh-CN"))
 {
-    var catalog = UiText.Catalog(locale.Code);
+    var catalog = UiText.English;
     Check(sourceKeys.All(catalog.ContainsKey) && catalog.Values.All(v => !string.IsNullOrWhiteSpace(v)), "complete nonempty catalog: " + locale.Code);
     Check(catalog.All(p => System.Text.CompositeFormat.Parse(p.Key).MinimumArgumentCount == System.Text.CompositeFormat.Parse(p.Value).MinimumArgumentCount), "format arguments retained: " + locale.Code);
     Check(catalog.Where(p => p.Key.Contains('|')).All(p => p.Key.Split('|').Where((_, i) => i % 2 == 1).SequenceEqual(p.Value.Split('|').Where((_, i) => i % 2 == 1))), "file dialog extension filters retained: " + locale.Code);

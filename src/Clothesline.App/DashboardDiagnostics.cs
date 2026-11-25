@@ -200,7 +200,7 @@ internal static class DashboardDiagnostics
                     UiText.Language = locale.Code;
                     dashboard = new Dashboard(shelf, false, () => { }, runtime) { Exiting = true }; dashboard.ShowAppearance(); dashboard.UpdateLayout();
                     await dashboard.SettingsReady.WaitAsync(TimeSpan.FromSeconds(15));
-                    Check("localized-coss-settings-" + locale.Code, Action("保存设置").IsVisible && await Web("document.documentElement.lang") == JsonSerializer.Serialize(locale.Code) && await Web("document.querySelector('#language').options.length") == "11");
+                    Check("localized-coss-settings-" + locale.Code, Action("保存设置").IsVisible && await Web("document.documentElement.lang") == JsonSerializer.Serialize(locale.Code) && await Web("document.querySelector('#language').options.length") == "2");
                     Capture(dashboard, Path.Combine(directory, "dashboard-" + locale.Code + ".png"));
                     dashboard.Width = 840; dashboard.Height = 620;
                     dashboard.UpdateLayout();

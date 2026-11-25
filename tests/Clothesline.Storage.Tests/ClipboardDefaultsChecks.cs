@@ -8,7 +8,7 @@ internal static class ClipboardDefaultsChecks
         foreach (var (name, json, expected) in new[]
         {
             ("missing", "{\"Capacity\":25}", true),
-            ("disabled", "{\"Capacity\":25,\"ClipboardEnabled\":false}", false),
+            ("disabled", "{\"Capacity\":25,\"ClipboardEnabled\":false,\"Language\":\"fr\"}", false),
             ("enabled", "{\"Capacity\":25,\"ClipboardEnabled\":true}", true)
         })
         {
@@ -23,6 +23,7 @@ internal static class ClipboardDefaultsChecks
             using (var store = new LibraryStore(root))
             {
                 var settings = store.LoadSettings();
+                if (name == "disabled") check(settings.Language == "zh-CN", "retired UI language loads as Simplified Chinese");
                 check(settings.ClipboardEnabled == expected && settings.Capacity == 25, "clipboard default respects stored choice: " + name);
                 store.SaveSettings(settings with { ClipboardEnabled = false });
             }

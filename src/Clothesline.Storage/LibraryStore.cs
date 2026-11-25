@@ -125,7 +125,7 @@ public sealed partial class LibraryStore : IDisposable
                 if (gesture.Length == 0) settings = settings with { ShowShortcut = "", HideShortcut = "" };
                 else if (gesture != "Ctrl+Alt+T") settings = settings with { ShowShortcut = gesture };
             }
-            return settings;
+            return settings with { Language = Clothesline.Core.UiText.NormalizeLanguage(settings.Language) };
         }
     }
     public bool HasSettings { get { lock (gate) return Convert.ToInt64(Scalar("SELECT COUNT(*) FROM Settings")) != 0; } }

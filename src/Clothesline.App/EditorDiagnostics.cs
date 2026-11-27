@@ -5,6 +5,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -72,6 +75,22 @@ internal static class EditorDiagnostics
                 Check("zoom-percentage-uses-physical-pixels-at-monitor-dpi", Math.Abs(workspace.CanvasScale * VisualTreeHelper.GetDpi(workspace).DpiScaleX - workspace.PhysicalMagnification) < .001);
                 if (workspace.Document is not null)
                 {
+                    var editor = (FrameworkElement)workspace.Content;
+                    TControl Named<TControl>(string label) where TControl : Control => UiAccessibility.Descendants(editor).OfType<TControl>()
+                        .Single(control => AutomationProperties.GetName(control) == T(label));
+                    void Tool(string label) { Named<ToggleButton>(label).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); workspace.UpdateLayout(); }
+                    var annotation = Named<TextBox>("标注文字");
+                    var ink = Named<ToggleButton>("红色");
+                    Tool("浏览");
+                    Check("workspace-pan-hides-drawing-options", !annotation.IsVisible && !ink.IsVisible);
+                    Tool("马赛克");
+                    Check("workspace-mosaic-shows-size-without-ink", Named<Slider>("马赛克大小").IsVisible && !ink.IsVisible);
+                    workspace.Width = workspace.MinWidth; workspace.Height = workspace.MinHeight;
+                    Tool("文字");
+                    var textBounds = annotation.TransformToAncestor(editor).TransformBounds(new Rect(annotation.RenderSize));
+                    Check("workspace-text-tools-fit-at-minimum-size", annotation.IsVisible && ink.IsVisible && textBounds.Right <= editor.ActualWidth);
+                    Tool("画笔");
+                    workspace.Width = 1040; workspace.Height = 720;
                     foreach (var mark in document.State.Marks) workspace.Document.Add(mark);
                     workspace.Document.MarkSaved(); await Task.Delay(100);
                     Render((FrameworkElement)workspace.Content, Path.Combine(directory, "image-workspace.png"));
@@ -149,7 +168,8 @@ internal static class EditorDiagnostics
         var drawing = new DrawingVisual(); using (var dc = drawing.RenderOpen())
         {
             var bounds = new Rect(0, 0, element.ActualWidth, element.ActualHeight);
-            dc.DrawRectangle(DemoAssets.Brush("#F4F5EE"), null, bounds); dc.DrawRectangle(new VisualBrush(element), null, bounds);
+            dc.DrawRectangle(Window.GetWindow(element)?.Background ?? SystemColors.WindowBrush, null, bounds);
+            dc.DrawRectangle(new VisualBrush(element), null, bounds);
         }
         bitmap.Render(drawing); DemoAssets.Save(bitmap, path);
     }

@@ -20,9 +20,6 @@ internal sealed partial class Dashboard
         desk.RowDefinitions.Add(new RowDefinition());
         desk.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.ColumnDefinitions.Add(new ColumnDefinition());
         Button HeaderAction(string name, string glyph, string? label, Action run, string style)
         {
             var button = Button(name, run, style);
@@ -46,19 +43,7 @@ internal sealed partial class Dashboard
         commands.Children.Add(new Border { Background = Brush("LineBrush"), Width = 1, Height = 16, Margin = new Thickness(8, 0, 4, 0) });
         commands.Children.Add(HeaderAction(T("收起控制面板"), "\uE921", null, Hide, "QuietButton"));
         commands.Children.Add(HeaderAction(T("退出"), "\uE8BB", null, quit, "QuietButton"));
-        Grid.SetColumn(commands, 1); header.Children.Add(commands);
-        var identity = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        using (var icon = typeof(Dashboard).Assembly.GetManifestResourceStream("Cordnote.ico"))
-        {
-            if (icon is not null)
-            {
-                var image = System.Windows.Media.Imaging.BitmapFrame.Create(icon, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
-                identity.Children.Add(new Image { Source = image, Width = 24, Height = 24, Margin = new Thickness(0, 0, 7, 0) });
-            }
-        }
-        var brand = Text("Cordnote", 17); brand.FontWeight = FontWeights.SemiBold; identity.Children.Add(brand);
-        header.Children.Add(identity);
-        var titleBar = new Border { Child = header, Padding = new Thickness(12, 5, 10, 5), Background = Brush("SurfaceBrush"), BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
+        var titleBar = new Border { Child = commands, Padding = new Thickness(12, 5, 10, 5), Background = Brush("SurfaceBrush"), BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         titleBar.MouseLeftButtonDown += (_, _) => { try { DragMove(); } catch (InvalidOperationException) { } };
         desk.Children.Add(titleBar);
 

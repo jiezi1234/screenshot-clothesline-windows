@@ -9,6 +9,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using static Clothesline.App.ImageHoverTheme;
 
 namespace Clothesline.App;
 
@@ -114,25 +115,6 @@ internal sealed partial class HoverPreviewWindow
         UpdateToolOptions(); UpdateZoomDisplay();
     }
 
-    private static FrameworkElement EditorIcon(string symbol)
-    {
-        // Small original line drawings; no icon font or external asset dependency.
-        var data = symbol switch
-        {
-            "undo" => "M8,5 L3,10 L8,15 M3,10 H14 C22,10 22,20 14,20 H10",
-            "redo" => "M16,5 L21,10 L16,15 M21,10 H10 C2,10 2,20 10,20 H14",
-            "crop" => "M7,2 V17 H22 M2,7 H17 V22 M11,7 H17 V13",
-            "pen" => "M4,16 L16,4 L20,8 L8,20 L3,21 Z M14,6 L18,10",
-            "arrow" => "M4,20 L20,4 M11,4 H20 V13",
-            "rectangle" => "M4,4 H20 V20 H4 Z",
-            "text" => "M4,6 V4 H20 V6 M12,4 V21 M8,21 H16",
-            "mosaic" => "M4,4 H20 V20 H4 Z M4,12 H20 M12,4 V20",
-            _ => "M8,12 V5 Q8,2 10,4 V11 M10,8 V3 Q12,1 13,3 V11 M13,6 Q16,3 16,6 V12 M16,9 Q19,6 19,10 V15 Q19,21 13,21 H11 Q8,21 6,18 L3,13 Q2,10 5,11 L8,14"
-        };
-        var path = new Path { Data = Geometry.Parse(data), StrokeThickness = 1.5, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round };
-        path.SetBinding(Shape.StrokeProperty, new Binding { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Control), 1), Path = new PropertyPath(Control.ForegroundProperty) });
-        return new Viewbox { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center, Child = new Canvas { Width = 24, Height = 24, Children = { path } }, IsHitTestVisible = false };
-    }
     private static StackPanel IconLabel(string symbol, string text, List<TextBlock> labels)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };

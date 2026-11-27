@@ -118,6 +118,7 @@
   "应用保存的文件仍存在，请使用移入回收站。": "The app-managed file still exists. Use Move to Recycle Bin.",
   "应用路径已改变，请从新位置重新启动后再设置登录启动。": "The app path has changed. Restart from its new location before enabling startup.",
   "当前显示器为全屏窗口，已暂缓显示。": "A fullscreen window is on this monitor. Display is deferred.",
+  "快捷键": "Keyboard shortcuts",
   "快捷键与启动": "Shortcut and startup",
   "快捷键与登录启动": "Shortcut and startup",
   "快捷键仍被占用或不可用，请使用其他组合。": "The shortcut is still occupied or unavailable. Choose another combination.",

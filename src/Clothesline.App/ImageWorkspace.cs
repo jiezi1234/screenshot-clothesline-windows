@@ -12,6 +12,8 @@ using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using static Clothesline.App.ImageHoverTheme;
 
 namespace Clothesline.App;
 
@@ -26,15 +28,24 @@ internal sealed class ImageWorkspace : Window
     private readonly Func<EditSaveRequest, Window, Task<SavedImage?>> save;
     private readonly Func<WorkspaceImage, string, OriginalReference?> resolveOriginal;
     private readonly Func<string, IDisposable> acquireLease;
-    private readonly ScrollViewer viewport = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Background = DemoAssets.Brush("#DDE3D9") };
+    private readonly ScrollViewer viewport = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly ImageSurface canvas = new();
-    private readonly TextBlock heading = new() { FontSize = 20, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, MinHeight = 36, Margin = new Thickness(0, 10, 0, 0) };
-    private readonly TextBlock zoomLabel = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 55 };
-    private readonly TextBox annotation = new() { Width = 200, MaxLength = 300, Text = T("在此输入文字"), VerticalContentAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 4) };
+    private readonly TextBlock heading = new() { FontSize = 14, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock dirtyLabel = new() { Text = T("未保存修改"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0), Visibility = Visibility.Collapsed };
+    private readonly TextBlock status = new() { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
+    private readonly TextBlock dimensions = new() { FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+    private readonly TextBlock galleryPosition = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 42, TextAlignment = TextAlignment.Center, FontSize = 11 };
+    private readonly Button zoomButton, saveButton, previousButton, nextButton, undoButton, redoButton, moreButton;
+    private readonly MenuItem resetItem, restoreItem;
+    private readonly DockPanel editBar = new();
+    private readonly StackPanel options = new() { Orientation = Orientation.Horizontal };
+    private readonly StackPanel palette = new() { Orientation = Orientation.Horizontal };
+    private readonly Grid annotationField = new() { Margin = new Thickness(9, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly Slider strokeSize = new() { Minimum = 1, Maximum = 24, Value = 4, Width = 80, TickFrequency = 1, IsSnapToTickEnabled = true, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock sizeValue = new() { Width = 39, FontSize = 11, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBox annotation = new() { Width = 148, MaxLength = 300, Padding = new Thickness(6, 3, 6, 3), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
     private readonly Dictionary<EditorTool, ToggleButton> tools = new();
-    private readonly Button undoButton, redoButton, resetButton, restoreButton, saveButton, previousButton, nextButton;
-    private readonly WrapPanel editBar = new();
+    private readonly Dictionary<Color, ToggleButton> swatches = new();
     private IDisposable? lease;
     private IDisposable? originalLease;
     private OriginalReference? originalReference;
@@ -57,40 +68,106 @@ internal sealed class ImageWorkspace : Window
         this.gallery = gallery; index = start; this.save = save; this.acquireLease = acquireLease;
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Clothesline.Core.UiText.Language);
         this.resolveOriginal = resolveOriginal ?? ((_, _) => null);
-        Title = T("图片工作台 · 绳笺 Cordnote"); Width = 1100; Height = 800; MinWidth = 820; MinHeight = 620;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = DemoAssets.Brush("#F4F5EE");
-        Foreground = DemoAssets.Brush("#294535"); FontFamily = new FontFamily("Segoe UI, Microsoft YaHei UI");
-        var root = new DockPanel { Margin = new Thickness(20, 16, 20, 16) }; Content = root;
-        var header = new StackPanel(); DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
+        Title = T("图片工作台 · 绳笺 Cordnote"); Width = 1040; Height = 720; MinWidth = 740; MinHeight = 520;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        Resources = ImageHoverTheme.Create(neutral: true);
+        SetResourceReference(BackgroundProperty, "CanvasBrush");
+        SetResourceReference(ForegroundProperty, "TextBrush");
+        viewport.SetResourceReference(Control.BackgroundProperty, "SidebarBrush");
+        foreach (var label in new[] { dirtyLabel, status, dimensions, galleryPosition, sizeValue })
+            label.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI"); UseLayoutRounding = true;
+
+        var root = new DockPanel { Margin = new Thickness(9, 6, 9, 6) }; Content = root;
+        var header = new DockPanel { Margin = new Thickness(2, 0, 2, 5) };
+        var commands = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        commands.Children.Add(undoButton = Button(T("撤销"), () => document?.Undo(), "undo", "Ctrl+Z"));
+        commands.Children.Add(redoButton = Button(T("重做"), () => document?.Redo(), "redo", "Ctrl+Y"));
+        resetItem = new MenuItem { Header = T("重置本次修改") };
+        resetItem.Click += (_, _) => { canvas.Cancel(); document?.Reset(); };
+        restoreItem = new MenuItem { Header = T("恢复最初原图") };
+        restoreItem.Click += async (_, _) => await RestoreOriginal();
+        var more = new ContextMenu { Placement = PlacementMode.Bottom, Items = { resetItem, restoreItem } };
+        moreButton = Button(T("更多操作"), () => more.IsOpen = true, "more");
+        moreButton.ContextMenu = more; more.PlacementTarget = moreButton;
+        commands.Children.Add(moreButton);
+
+        saveButton = Button(T("另存为"), () => _ = Save(), shortcut: "Ctrl+S");
+        saveButton.ToolTip = T("另存副本并挂上…") + " · Ctrl+S";
+        saveButton.Margin = new Thickness(7, 0, 0, 0);
+        saveButton.Padding = new Thickness(10, 2, 10, 2);
+        saveButton.FontWeight = FontWeights.SemiBold;
+        saveButton.SetResourceReference(Control.BackgroundProperty, "SelectedBrush");
+        saveButton.SetResourceReference(Control.BorderBrushProperty, "LineBrush");
+        commands.Children.Add(saveButton);
+        DockPanel.SetDock(commands, Dock.Right); header.Children.Add(commands);
+        DockPanel.SetDock(dirtyLabel, Dock.Right); header.Children.Add(dirtyLabel);
         header.Children.Add(heading);
-        var navigation = new WrapPanel { Margin = new Thickness(0, 12, 0, 6) }; header.Children.Add(navigation);
-        navigation.Children.Add(previousButton = Button(T("← 上一张"), () => _ = Navigate(-1)));
-        navigation.Children.Add(nextButton = Button(T("下一张 →"), () => _ = Navigate(1)));
-        navigation.Children.Add(Button(T("适应窗口"), Fit)); navigation.Children.Add(Button("100%", () => Zoom(1)));
-        var zoomOut = Button("−", () => Zoom(scale / 1.25)); AutomationProperties.SetName(zoomOut, T("缩小")); zoomOut.ToolTip = T("缩小"); navigation.Children.Add(zoomOut);
-        var zoomIn = Button("+", () => Zoom(scale * 1.25)); AutomationProperties.SetName(zoomIn, T("放大")); zoomIn.ToolTip = T("放大"); navigation.Children.Add(zoomIn); navigation.Children.Add(zoomLabel);
-        navigation.Children.Add(undoButton = Button(T("撤销"), () => document?.Undo())); navigation.Children.Add(redoButton = Button(T("重做"), () => document?.Redo()));
-        navigation.Children.Add(resetButton = Button(T("重置本次修改"), () => document?.Reset()));
-        navigation.Children.Add(restoreButton = Button(T("恢复最初原图"), () => _ = RestoreOriginal()));
-        navigation.Children.Add(saveButton = Button(T("另存副本并挂上…"), () => _ = Save()));
-        header.Children.Add(editBar);
-        foreach (var (tool, label) in new[] { (EditorTool.Pan, T("浏览")), (EditorTool.Pen, T("画笔")), (EditorTool.Arrow, T("箭头")), (EditorTool.Rectangle, T("矩形")), (EditorTool.Text, T("文字")), (EditorTool.Mosaic, T("马赛克")), (EditorTool.Crop, T("裁剪")) })
+        DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
+
+        var toolRail = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var (tool, label, symbol) in new[] { (EditorTool.Pan, T("浏览"), "pan"), (EditorTool.Pen, T("画笔"), "pen"), (EditorTool.Arrow, T("箭头"), "arrow"), (EditorTool.Rectangle, T("矩形"), "rectangle"), (EditorTool.Text, T("文字"), "text"), (EditorTool.Mosaic, T("马赛克"), "mosaic"), (EditorTool.Crop, T("裁剪"), "crop") })
         {
-            var button = new ToggleButton { Content = label, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 0, 5, 5) };
-            button.Click += (_, _) => SelectTool(tool); tools[tool] = button; editBar.Children.Add(button);
+            var button = new ToggleButton { Content = EditorIcon(symbol), Width = 30, Height = 29, ToolTip = label };
+            AutomationProperties.SetName(button, label);
+            button.Click += (_, _) => SelectTool(tool);
+            tools.Add(tool, button); toolRail.Children.Add(button);
         }
-        var options = new WrapPanel { Margin = new Thickness(0, 4, 0, 6) }; header.Children.Add(options);
+        DockPanel.SetDock(toolRail, Dock.Left); editBar.Children.Add(toolRail);
+        var divider = new Border { Width = 1, Height = 17, Margin = new Thickness(7, 0, 7, 0) };
+        divider.SetResourceReference(Border.BackgroundProperty, "LineBrush"); options.Children.Add(divider);
         foreach (var (color, name) in new[] { (Colors.Crimson, T("红色")), (Colors.Orange, T("橙色")), (Colors.ForestGreen, T("绿色")), (Colors.DodgerBlue, T("蓝色")), (Colors.Black, T("黑色")), (Colors.White, T("白色")) })
         {
-            var choice = Button("●", () => { canvas.Ink = color; }); choice.Foreground = new SolidColorBrush(color); choice.Width = 30; choice.Padding = new Thickness(2); choice.ToolTip = name; AutomationProperties.SetName(choice, name); options.Children.Add(choice);
+            var choice = new ToggleButton
+            {
+                Style = (Style)Resources["ColorSwatch"], ToolTip = name, Width = 23, Height = 29,
+                Content = new Ellipse { Width = 13, Height = 13, Fill = new SolidColorBrush(color), Stroke = DemoAssets.Brush("#55000000"), StrokeThickness = 1 }
+            };
+            AutomationProperties.SetName(choice, name); choice.Click += (_, _) => SelectInk(color);
+            swatches.Add(color, choice); palette.Children.Add(choice);
         }
-        options.Children.Add(new TextBlock { Text = T("粗细"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 4) });
-        var size = new Slider { Minimum = 1, Maximum = 24, Value = 4, Width = 110, VerticalAlignment = VerticalAlignment.Center };
-        AutomationProperties.SetName(size, T("画笔粗细")); AutomationProperties.SetName(annotation, T("标注文字"));
-        size.ValueChanged += (_, _) => canvas.StrokeSize = size.Value; options.Children.Add(size); options.Children.Add(annotation);
-        annotation.TextChanged += (_, _) => canvas.Annotation = annotation.Text; canvas.Annotation = annotation.Text;
-        header.Children.Add(new TextBlock { Text = T("Ctrl + 滚轮缩放 · 空格拖动 · ← → 切图 · Ctrl + Z / Y 撤销重做 · Ctrl + S 另存 · Esc 关闭"), FontSize = 11, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap });
-        DockPanel.SetDock(status, Dock.Bottom); root.Children.Add(status);
+        SelectInk(canvas.Ink);
+        options.Children.Add(palette); options.Children.Add(strokeSize); options.Children.Add(sizeValue);
+        AutomationProperties.SetName(annotation, T("标注文字")); annotation.ToolTip = T("在此输入文字");
+        var watermark = new TextBlock { Text = T("在此输入文字"), FontSize = 12, Margin = new Thickness(7, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false, TextTrimming = TextTrimming.CharacterEllipsis };
+        watermark.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+        annotation.TextChanged += (_, _) =>
+        {
+            canvas.Annotation = annotation.Text;
+            watermark.Visibility = annotation.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        };
+        strokeSize.ValueChanged += (_, _) => { canvas.StrokeSize = strokeSize.Value; UpdateToolSize(); };
+        annotationField.Children.Add(annotation); annotationField.Children.Add(watermark);
+        options.Children.Add(annotationField); editBar.Children.Add(options);
+        var toolbar = new Border { Child = editBar, Padding = new Thickness(3, 2, 3, 2), Margin = new Thickness(0, 0, 0, 6), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7) };
+        toolbar.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
+        DockPanel.SetDock(toolbar, Dock.Top); root.Children.Add(toolbar);
+
+        var footer = new DockPanel { Margin = new Thickness(1, 4, 1, 0) };
+        var navigation = new StackPanel { Orientation = Orientation.Horizontal };
+        navigation.Children.Add(previousButton = Button(T("← 上一张"), () => _ = Navigate(-1), "previous"));
+        navigation.Children.Add(galleryPosition);
+        navigation.Children.Add(nextButton = Button(T("下一张 →"), () => _ = Navigate(1), "next"));
+        if (gallery.Length == 1)
+            previousButton.Visibility = nextButton.Visibility = galleryPosition.Visibility = Visibility.Collapsed;
+        navigation.Children.Add(dimensions);
+        DockPanel.SetDock(navigation, Dock.Left); footer.Children.Add(navigation);
+        var zoom = new StackPanel { Orientation = Orientation.Horizontal };
+        zoom.Children.Add(Button(T("适应窗口"), Fit, "fit", "0"));
+        zoom.Children.Add(Button(T("缩小"), () => Zoom(scale / 1.25), "minus"));
+        zoomButton = Button("100%", () => Zoom(1), shortcut: "1"); zoomButton.MinWidth = 52;
+        AutomationProperties.SetName(zoomButton, T("缩放比例") + " · 100%");
+        zoom.Children.Add(zoomButton);
+        zoom.Children.Add(Button(T("放大"), () => Zoom(scale * 1.25), "plus"));
+        var shortcuts = T("Ctrl + 滚轮缩放 · 空格拖动 · ← → 切图 · Ctrl + Z / Y 撤销重做 · Ctrl + S 另存 · Esc 关闭");
+        var help = Button(T("快捷键"), () => MessageBox.Show(this, shortcuts, T("快捷键")), "help");
+        help.ToolTip = new TextBlock { Text = shortcuts, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
+        AutomationProperties.SetHelpText(help, shortcuts); zoom.Children.Add(help);
+        DockPanel.SetDock(zoom, Dock.Right); footer.Children.Add(zoom);
+        status.Margin = new Thickness(10, 0, 10, 0);
+        status.SetBinding(ToolTipProperty, new System.Windows.Data.Binding(nameof(TextBlock.Text)) { Source = status });
+        footer.Children.Add(status);
+        DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
         UiAccessibility.Install(this); UiAccessibility.LiveStatus(this, status);
         canvas.Focusable = true; AutomationProperties.SetName(canvas, T("图片画布"));
         AutomationProperties.SetHelpText(canvas, T("Alt+C 聚焦画布。方向键移动光标，Shift 加速，Enter 设置起点或完成标注，Esc 取消。"));
@@ -111,19 +188,53 @@ internal sealed class ImageWorkspace : Window
         PreviewKeyDown += KeyPressed;
         Closing += ClosingWorkspace;
         Closed += (_, _) => { closed = true; closing.Cancel(); loadVersion++; lease?.Dispose(); originalLease?.Dispose(); if (document is not null) document.Changed -= DocumentChanged; };
+        heading.Text = gallery[index].Title; heading.ToolTip = gallery[index].Title;
         Loaded += async (_, _) => await Load(index);
         SelectTool(edit ? EditorTool.Pen : EditorTool.Pan); UpdateActions();
     }
-    private Button Button(string text, Action action)
+    private Button Button(string text, Action action, string? symbol = null, string? shortcut = null)
     {
-        var button = new Button { Content = text, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 0, 6, 4), Background = DemoAssets.Brush("#E2E9DD"), BorderThickness = new Thickness(0) };
-        button.Click += (_, _) => { try { canvas.Cancel(); action(); } catch (Exception ex) { status.Text = ex.Message; } }; return button;
+        var button = new Button
+        {
+            Content = symbol is null ? text : EditorIcon(symbol),
+            Width = symbol is null ? double.NaN : 28, Height = 28, Padding = new Thickness(4),
+            ToolTip = shortcut is null ? text : text + " · " + shortcut
+        };
+        AutomationProperties.SetName(button, text);
+        button.Click += (_, _) => { try { canvas.Cancel(); action(); } catch (Exception ex) { status.Text = ex.Message; } };
+        return button;
     }
     private void SelectTool(EditorTool tool)
     {
-        if (canvas.Processing) return;
-        canvas.Cancel(); canvas.Tool = tool; foreach (var item in tools) item.Value.IsChecked = item.Key == tool;
-        canvas.Cursor = tool == EditorTool.Pan ? Cursors.Hand : Cursors.Cross; annotation.IsEnabled = tool == EditorTool.Text;
+        if (canvas.Processing)
+        {
+            tools[tool].IsChecked = tool == canvas.Tool;
+            return;
+        }
+        canvas.Cancel(); canvas.Tool = tool;
+        foreach (var item in tools) item.Value.IsChecked = item.Key == tool;
+        canvas.Cursor = tool == EditorTool.Pan ? Cursors.Hand : Cursors.Cross;
+        options.Visibility = tool is EditorTool.Pan or EditorTool.Crop ? Visibility.Collapsed : Visibility.Visible;
+        palette.Visibility = tool == EditorTool.Mosaic ? Visibility.Collapsed : Visibility.Visible;
+        annotationField.Visibility = tool == EditorTool.Text ? Visibility.Visible : Visibility.Collapsed;
+        var sizeName = tool switch { EditorTool.Text => T("字号"), EditorTool.Mosaic => T("马赛克大小"), _ => T("画笔粗细") };
+        AutomationProperties.SetName(strokeSize, sizeName); strokeSize.ToolTip = sizeName;
+        UpdateToolSize();
+    }
+    private void SelectInk(Color color)
+    {
+        canvas.Ink = color;
+        foreach (var swatch in swatches) swatch.Value.IsChecked = swatch.Key == color;
+    }
+    private void UpdateToolSize()
+    {
+        var size = canvas.Tool switch
+        {
+            EditorTool.Text => Math.Max(14, strokeSize.Value * 4),
+            EditorTool.Mosaic => Math.Max(12, strokeSize.Value * 4),
+            _ => strokeSize.Value
+        };
+        sizeValue.Text = $"{size:0} px";
     }
     private bool DiscardAllowed() => document?.IsDirty != true || MessageBox.Show(this, T("放弃本次尚未保存的修改？"), T("未保存修改"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
     private void ClosingWorkspace(object? sender, CancelEventArgs e)
@@ -153,7 +264,10 @@ internal sealed class ImageWorkspace : Window
             lease?.Dispose(); lease = candidate; candidate = null; index = next;
             SetOriginal(reference);
             document = new ImageDocument(loaded.Image); document.Changed += DocumentChanged; canvas.Document = document; DocumentChanged(); Fit();
-            status.Text = reference is null ? T("另存时保留本次打开图片的原版快照。旧版副本无法追溯更早的原图。") : T("已关联最初原图，可恢复后另存；当前文件不会被覆盖。");
+            saveButton.ToolTip = T("另存副本并挂上…") + " · Ctrl+S\n" + (reference is null
+                ? T("另存时保留本次打开图片的原版快照。旧版副本无法追溯更早的原图。")
+                : T("已关联最初原图，可恢复后另存；当前文件不会被覆盖。"));
+            status.Text = "";
         }
         catch (Exception ex) { if (!closed) status.Text = T("无法读取图片：") + ex.Message; }
         finally { candidate?.Dispose(); if (!closed && version == loadVersion) { loading = false; UpdateActions(); } }
@@ -162,16 +276,18 @@ internal sealed class ImageWorkspace : Window
     {
         if (document is null) return;
         var crop = document.State.Crop; canvas.Width = crop.Width; canvas.Height = crop.Height; canvas.InvalidateVisual();
-        heading.Text = $"{gallery[index].Title}   ·   {index + 1} / {gallery.Length}   ·   {crop.Width} × {crop.Height}" + (document.IsDirty ? T("   ·   未保存") : "");
-        Title = (document.IsDirty ? "* " : "") + gallery[index].Title + T(" · 图片工作台");
+        heading.Text = gallery[index].Title; heading.ToolTip = gallery[index].Title;
+        galleryPosition.Text = $"{index + 1} / {gallery.Length}";
+        dimensions.Text = $"{crop.Width} × {crop.Height}";
+        dirtyLabel.Visibility = document.IsDirty ? Visibility.Visible : Visibility.Collapsed;
         UpdateActions(); if (fitMode) Fit();
     }
     private void UpdateActions()
     {
         var enabled = document is not null && !loading && !saving;
         canvas.IsEnabled = enabled; editBar.IsEnabled = enabled; saveButton.IsEnabled = enabled;
-        resetButton.IsEnabled = enabled;
-        restoreButton.IsEnabled = enabled && originalReference is not null;
+        moreButton.IsEnabled = resetItem.IsEnabled = enabled;
+        restoreItem.IsEnabled = enabled && originalReference is not null;
         undoButton.IsEnabled = enabled && document!.CanUndo; redoButton.IsEnabled = enabled && document!.CanRedo;
         previousButton.IsEnabled = !loading && !saving && index > 0; nextButton.IsEnabled = !loading && !saving && index < gallery.Length - 1;
     }
@@ -192,7 +308,9 @@ internal sealed class ImageWorkspace : Window
     private void SetScale(double value)
     {
         scale = Math.Clamp(value, .01, 8); var logical = scale / VisualTreeHelper.GetDpi(this).DpiScaleX;
-        canvas.LayoutTransform = new ScaleTransform(logical, logical); zoomLabel.Text = $"{scale:P0}";
+        canvas.LayoutTransform = new ScaleTransform(logical, logical);
+        zoomButton.Content = $"{scale:P0}";
+        AutomationProperties.SetName(zoomButton, T("缩放比例") + " · " + zoomButton.Content);
     }
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     {

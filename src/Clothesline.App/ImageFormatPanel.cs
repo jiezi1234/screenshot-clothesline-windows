@@ -28,12 +28,15 @@ internal sealed class ImageFormatPanel : StackPanel
         AutomationProperties.SetName(results, T("图片格式检测结果"));
         if (compact)
         {
-            Margin = new Thickness(4, 0, 4, 0);
+            Margin = new Thickness(7, 0, 4, 0); VerticalAlignment = VerticalAlignment.Center;
             var bar = new DockPanel();
-            refresh.MinHeight = 26; refresh.Padding = new Thickness(8, 2, 8, 2);
+            refresh.MinHeight = 26; refresh.Width = 26; refresh.Padding = new Thickness(0);
+            refresh.ToolTip = T("重新检测");
+            AutomationProperties.SetName(refresh, T("重新检测"));
+            refresh.Content = new TextBlock { Text = "\uE72C", FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets") };
             DockPanel.SetDock(refresh, Dock.Right); bar.Children.Add(refresh);
-            bar.Children.Add(title);
-            results.Margin = new Thickness(10, 0, 8, 0); results.FontSize = 12; results.VerticalAlignment = VerticalAlignment.Center;
+            results.Margin = new Thickness(0, 0, 5, 0); results.FontSize = 11; results.VerticalAlignment = VerticalAlignment.Center;
+            results.MaxWidth = 164; results.TextWrapping = TextWrapping.NoWrap; results.TextTrimming = TextTrimming.CharacterEllipsis;
             bar.Children.Add(results); Children.Add(bar);
             ToolTip = string.Join("\n\n", notes);
             AutomationProperties.SetHelpText(refresh, (string)ToolTip);
@@ -52,8 +55,14 @@ internal sealed class ImageFormatPanel : StackPanel
     internal async Task Refresh(Func<ImageFormatCapability[]>? probe = null)
     {
         if (running) return; running = true; refresh.IsEnabled = false; results.Text = T("正在检测图片格式…");
-        try { Capabilities = await Task.Run(probe ?? ImageFormatSupport.ProbeAll); results.Text = string.Join(compact ? "   ·   " : "\n\n", Capabilities.Select(c => c.Summary)); }
-        catch (Exception ex) { results.Text = T("格式检测未完成：") + ex.Message; }
+        try
+        {
+            Capabilities = await Task.Run(probe ?? ImageFormatSupport.ProbeAll);
+            var details = string.Join("\n", Capabilities.Select(c => c.Summary));
+            results.Text = compact ? string.Join("     ", Capabilities.Select(c => c.Name + (c.CanDecode ? "  ✓" : "  ×"))) : details;
+            results.ToolTip = details; AutomationProperties.SetHelpText(results, details);
+        }
+        catch (Exception ex) { results.Text = T("格式检测未完成：") + ex.Message; results.ToolTip = results.Text; }
         finally { running = false; refresh.IsEnabled = true; }
     }
 }

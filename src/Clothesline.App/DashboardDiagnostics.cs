@@ -45,32 +45,46 @@ internal static class DashboardDiagnostics
                 Check("shelf-has-accessible-empty-state", Named<ListBox>("晾衣绳列表").IsVisible && UiAccessibility.Descendants(dashboard).OfType<TextBlock>().Any(t => t.Text == T("暂时没有图片") && t.IsVisible));
                 if (!await dashboard.SettingsReady.WaitAsync(TimeSpan.FromSeconds(15))) throw new InvalidOperationException("Settings WebView failed to initialize.");
                 Task<string> Web(string js) => dashboard.InspectSettings(js);
+                async Task<bool> WaitForWeb(string expression)
+                {
+                    var deadline = DateTime.UtcNow.AddSeconds(8);
+                    do { if (await Web(expression) == "true") return true; await Task.Delay(75); } while (DateTime.UtcNow < deadline);
+                    return false;
+                }
+                async Task SetInput(string id, string value)
+                {
+                    await Web($"var input = document.getElementById('{id}'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, {JsonSerializer.Serialize(value)}); input.dispatchEvent(new Event('input', {{bubbles:true}}))");
+                }
                 async Task SetChoice(string id, int index)
                 {
                     await Web($"var el = document.getElementById('{id}'); el.value = '{index}'; el.dispatchEvent(new Event('change', {{ bubbles: true }}))");
                     await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                 }
-                Check("coss-settings-share-one-page", await Web("document.querySelectorAll('section[data-slot=card]').length === 4 && document.querySelectorAll('[role=switch]').length === 7 && document.querySelectorAll('select').length === 5 && document.querySelectorAll('input:not([type=hidden])').length >= 7") == "true");
+                Check("coss-settings-share-one-page", await Web("document.querySelectorAll('.settings-sheet section[data-slot=card]').length === 4 && document.querySelectorAll('[role=switch]').length === 7 && document.querySelectorAll('select').length === 5 && document.querySelectorAll('input:not([type=hidden])').length >= 7") == "true");
                 await Task.Delay(400); // Allow the composition surface to present its first frame.
                 Capture(dashboard, Path.Combine(directory, "dashboard-empty.png"));
                 var files = DemoAssets.Create(Path.Combine(directory, "fixtures", Guid.NewGuid().ToString("N")));
                 foreach (var item in files)
                 {
-                    var path = Path.Combine(Path.GetDirectoryName(item.Path)!, item.Title + "-sample.png"); File.Copy(item.Path, path);
+                    var path = Path.Combine(Path.GetDirectoryName(item.Path)!, item.Title + ".png"); File.Copy(item.Path, path);
                     runtime.Store.Add(path, Ownership.External, "Fixture", Guid.NewGuid().ToString("N"), LibraryRuntime.Now, 25);
                 }
                 var notePath = Path.Combine(Path.GetDirectoryName(files[0].Path)!, "sample-note.txt"); File.WriteAllText(notePath, "A short dashboard note.");
                 runtime.Store.Add(notePath, Ownership.External, "Fixture", Guid.NewGuid().ToString("N"), LibraryRuntime.Now + 1, 25);
                 dashboard.ShowShelfList(); await Task.Delay(250); dashboard.UpdateLayout();
-                var shelfItems = Named<ListBox>("晾衣绳列表");
-                Check("shelf-lists-mixed-items-with-selected-actions", shelfItems.Items.Count == 4 && Action("复制").IsEnabled);
-                shelfItems.SelectedIndex = shelfItems.Items.OfType<LibraryEntry>().ToList().FindIndex(item => !MediaFiles.IsText(item.Path));
-                dashboard.UpdateLayout();
-                Check("shelf-selection-enables-image-editing", Action("编辑图片…").IsEnabled);
-                var shelfThumbnails = UiAccessibility.Descendants(shelfItems).OfType<Image>().Where(image => image.IsVisible && image.ActualWidth >= 60 && image.Source is not null).Take(3).Select(Bounds).ToArray();
-                Check("shelf-renders-real-image-thumbnails", shelfThumbnails.Length == 3);
-                var mixedTiles = Enumerable.Range(0, shelfItems.Items.Count).Select(i => shelfItems.ItemContainerGenerator.ContainerFromIndex(i)).OfType<ListBoxItem>().Take(3).Select(Bounds).ToArray();
-                Check("shelf-images-and-text-render-in-mixed-grid", mixedTiles.Length == 3 && Math.Abs(mixedTiles[0].Top - mixedTiles[1].Top) <= 1 && mixedTiles[1].Left > mixedTiles[0].Right && (mixedTiles[2].Left > mixedTiles[1].Right || mixedTiles[2].Top > mixedTiles[0].Bottom));
+                const string shelfCaption = "[data-library=shelf] .caption";
+                Check("shelf-displays-note-body", await WaitForWeb("document.querySelector('#shelf-stage .note-cover p')?.textContent === 'A short dashboard note.'"));
+                Check("shelf-mixed-entries-and-copy", await WaitForWeb("document.querySelector('#shelf-stage .file-cover') && document.querySelector('[data-library=shelf] [data-action=copy]')?.disabled === false && document.querySelector('[data-library=shelf] .counter')?.textContent.endsWith('/ 4')"));
+                Check("coverflow-renders-local-thumbnails", await WaitForWeb("[...document.querySelectorAll('#shelf-stage img')].filter(img => img.naturalWidth > 0 && img.src.startsWith('https://thumbnails.cordnote.invalid/')).length === 3"));
+                Check("coverflow-centers-selection-and-tilts-neighbors", await Web("document.querySelector('#shelf-stage [data-active=true]')?.dataset.offset === '0' && [...document.querySelectorAll('#shelf-stage [data-active=false]')].some(el => Math.abs(new DOMMatrix(getComputedStyle(el).transform).m13) > .1)") == "true");
+                var firstId = await Web($"document.querySelector('{shelfCaption}').dataset.selected");
+                await Web("document.getElementById('shelf-stage').dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowRight', bubbles:true}))");
+                Check("coverflow-keyboard-updates-caption", await WaitForWeb($"document.querySelector('{shelfCaption}').dataset.selected !== {firstId}"));
+                await Task.Delay(330);
+                Check("image-edit-command-follows-media-type", await Web("!!document.querySelector('[data-library=shelf] [data-action=edit]') === !!document.querySelector('#shelf-stage [data-active=true] img')") == "true");
+                await Web("document.querySelector('[data-library=shelf] .rack-navigation button:last-child').click()");
+                await Task.Delay(330);
+                Check("coverflow-navigation-follows-selection", await Web("document.querySelector('#shelf-stage [data-active=true]').dataset.cover === document.querySelector('[data-library=shelf] .caption').dataset.selected") == "true");
                 var toggleBounds = Bounds(Action("显示 / 收起")); var importBounds = Bounds(Action("导入图片或录像…"));
                 Check("header-actions-share-top-edge-and-height", Math.Abs(toggleBounds.Top - importBounds.Top) <= 1 && Math.Abs(toggleBounds.Height - importBounds.Height) <= 1);
                 Check("github-link-remains-accessible", Action("GitHub").IsVisible);
@@ -147,21 +161,37 @@ internal static class DashboardDiagnostics
                 dashboard.ShowAppearance();
                 Check("tray-focuses-appearance", await Web("document.activeElement.id") == JsonSerializer.Serialize("cardSize"));
                 dashboard.ShowShelfList();
-                Check("tray-focuses-shelf", shelfItems.IsKeyboardFocusWithin);
+                Check("tray-focuses-shelf", await Web("document.activeElement.id") == JsonSerializer.Serialize("shelf-stage"));
                 Capture(dashboard, Path.Combine(directory, "dashboard-shelf.png"));
                 var entry = runtime.Store.Entries(EntryState.Shelf).First(item => !MediaFiles.IsText(item.Path)); runtime.Store.Archive(entry.Id, LibraryRuntime.Now);
                 dashboard.ShowHistory(); dashboard.UpdateLayout();
-                Check("history-restore-enabled-for-selected-record", Named<ListBox>("图片" + " / " + "录像").Items.Count == 1 && Named<ListBox>("文字").Items.Count == 0 && Action("重新挂上").IsEnabled);
-                var search = Named<TextBox>("搜索历史"); search.Text = "not-a-fixture-" + Guid.NewGuid().ToString("N");
-                Check("history-search-has-no-destructive-side-effects", Named<ListBox>("图片" + " / " + "录像").Items.Count == 0 && Named<ListBox>("文字").Items.Count == 0 && !Action("重新挂上").IsEnabled && runtime.Store.Find(entry.Id)?.State == EntryState.History && File.Exists(entry.Path));
-                search.Text = Path.GetFileName(entry.Path).ToUpperInvariant(); Check("history-search-matches-file-name-case-insensitively", Named<ListBox>("图片" + " / " + "录像").Items.Count == 1);
-                search.Text = ""; dashboard.UpdateLayout(); Capture(dashboard, Path.Combine(directory, "dashboard-history.png"));
-                Click("重新挂上"); await Task.Delay(100); dashboard.ShowShelfList();
-                Check("history-restore-returns-original-file-to-shelf", Named<ListBox>("晾衣绳列表").Items.Count == 4 && File.Exists(entry.Path));
+                Check("history-restore-enabled-for-selected-record", await WaitForWeb($"document.querySelector('[data-library=history] .caption')?.dataset.selected === {JsonSerializer.Serialize(entry.Id)} && !document.querySelector('[data-action=restore]').disabled"));
+                await SetInput("history-search", "not-a-fixture-" + Guid.NewGuid().ToString("N"));
+                Check("history-search-has-no-destructive-side-effects", await WaitForWeb("!document.querySelector('[data-action=restore]') && !!document.querySelector('#history-stage .gallery-empty')") && runtime.Store.Find(entry.Id)?.State == EntryState.History && File.Exists(entry.Path));
+                await SetInput("history-search", Path.GetFileName(entry.Path).ToUpperInvariant());
+                Check("history-search-matches-file-name-case-insensitively", await WaitForWeb("!!document.querySelector('[data-library=history] .caption')"));
+                await SetInput("history-search", ""); Capture(dashboard, Path.Combine(directory, "dashboard-history.png"));
+                await Web("document.querySelector('[data-action=restore]').click()"); await Task.Delay(150); dashboard.ShowShelfList();
+                Check("history-restore-returns-original-file-to-shelf", runtime.Store.Find(entry.Id)?.State == EntryState.Shelf && File.Exists(entry.Path));
+                foreach (var item in files)
+                {
+                    var copy = Path.Combine(Path.GetDirectoryName(item.Path)!, item.Title + " (1).png"); File.Copy(item.Path, copy);
+                    var added = runtime.Store.Add(copy, Ownership.External, "Fixture", Guid.NewGuid().ToString("N"), LibraryRuntime.Now, 25);
+                    runtime.Store.Archive(added.Id, LibraryRuntime.Now);
+                }
+                dashboard.ShowShelfList(); await Web("document.activeElement.blur()");
+                Check("history-coverflow-loads-local-images", await WaitForWeb("[...document.querySelectorAll('#history-stage img')].filter(i => i.naturalWidth > 0).length === 3"));
+                await Task.Delay(400); Capture(dashboard, Path.Combine(directory, "dashboard-gallery.png"));
+                var note = runtime.Store.Entries(EntryState.Shelf).Single(item => item.Path == notePath);
+                runtime.Store.Archive(note.Id, LibraryRuntime.Now);
+                dashboard.ShowHistory();
+                await SetInput("history-search", "sample-note.txt");
+                Check("history-displays-note-body", await WaitForWeb("document.querySelector('#history-stage .note-cover p')?.textContent === 'A short dashboard note.'"));
+                await SetInput("history-search", "");
                 dashboard.ShowSources(); dashboard.UpdateLayout();
                 var source = Named<TextBox>("截图目录"); var chosen = Path.Combine(directory, "incoming"); Directory.CreateDirectory(chosen);
-                await Web($"var input = document.getElementById('screenshot'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, {JsonSerializer.Serialize(chosen)}); input.dispatchEvent(new Event('input', {{bubbles:true}}))");
-                await Web("document.getElementById('motion').click()");
+                await SetInput("screenshot", chosen);
+                await Web("document.querySelector('[data-field=motion] [role=switch]').click()");
                 Check("switch-edits-draft-in-coss-form", Named<CheckBox>("减少动画").IsChecked == true);
                 Check("changed-source-enables-save-and-discard", dashboard.HasUnsavedChanges && Action("保存设置").IsEnabled && Action("撤销更改").IsEnabled);
                 dashboard.ShowAppearance(); dashboard.UpdateLayout();
@@ -190,7 +220,7 @@ internal static class DashboardDiagnostics
                 Check("protection-can-return-to-default", runtime.Store.LoadSettings().RevealProtectionSeconds == 10 && shelf.RevealProtectionSeconds == 10);
                 Capture(dashboard, Path.Combine(directory, "dashboard-appearance.png"));
                 Check("coss-choice-reflects-saved-value", await Web("+document.getElementById('protection').value") == "1");
-                dashboard.Width = 840; dashboard.Height = 620; dashboard.UpdateLayout();
+                dashboard.Width = dashboard.MinWidth; dashboard.Height = dashboard.MinHeight; dashboard.UpdateLayout();
                 var button = Action("保存设置"); var bounds = button.TransformToAncestor((FrameworkElement)dashboard.Content).TransformBounds(new Rect(0, 0, button.ActualWidth, button.ActualHeight));
                 Check("save-remains-inside-small-window", bounds.Left >= 0 && bounds.Bottom <= ((FrameworkElement)dashboard.Content).ActualHeight && bounds.Right <= ((FrameworkElement)dashboard.Content).ActualWidth);
                 await Task.Delay(400); // Wait for WebView2 to present the resized surface.
@@ -202,12 +232,12 @@ internal static class DashboardDiagnostics
                     await dashboard.SettingsReady.WaitAsync(TimeSpan.FromSeconds(15));
                     Check("localized-coss-settings-" + locale.Code, Action("保存设置").IsVisible && await Web("document.documentElement.lang") == JsonSerializer.Serialize(locale.Code) && await Web("document.querySelector('#language').options.length") == "2");
                     Capture(dashboard, Path.Combine(directory, "dashboard-" + locale.Code + ".png"));
-                    dashboard.Width = 840; dashboard.Height = 620;
+                    dashboard.Width = dashboard.MinWidth; dashboard.Height = dashboard.MinHeight;
                     dashboard.UpdateLayout();
                     await Task.Delay(200);
                     var outside = await Web("""
                         (() => {
-                          const outside = [...document.querySelectorAll('section,section label,section button,section select,section input:not([type=hidden])')].filter(el => {
+                          const outside = [...document.querySelectorAll('section,section label,section button,section select,section input:not([type=hidden]),section output,.caption')].filter(el => {
                             const r = el.getBoundingClientRect();
                             return !r.width || !r.height || r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1;
                           }).map(el => [el.id || el.tagName, el.getBoundingClientRect().toJSON()]);

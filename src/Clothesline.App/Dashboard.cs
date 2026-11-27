@@ -9,9 +9,9 @@ namespace Clothesline.App;
 
 internal sealed partial class Dashboard
 {
-    private async System.Threading.Tasks.Task CopySelectedShelf()
+    private System.Threading.Tasks.Task CopySelectedShelf() => SelectedShelfEntry is { } entry ? CopyEntry(entry) : System.Threading.Tasks.Task.CompletedTask;
+    private async System.Threading.Tasks.Task CopyEntry(LibraryEntry entry)
     {
-        if (SelectedShelfEntry is not { } entry) return;
         using var lease = library?.AcquireLease(entry.Path);
         try { var data = await ShellTransfer.CopyDataAsync(entry.Path); Clipboard.SetDataObject(data, true); SetStatus(T("已复制：") + entry.Title); }
         catch (Exception ex) { SetStatus(ex.Message); }
@@ -32,7 +32,8 @@ internal sealed partial class Dashboard
     {
         var id = SelectedHistoryRow?.Entry.Id;
         var query = historySearch.Text.Trim();
-        var rows = library?.Store.Entries(EntryState.History).Where(e => query.Length == 0 || e.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || e.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase)).Select(e => new HistoryRow(e)).ToArray() ?? [];
+        var archived = library?.Store.Entries(EntryState.History).ToArray() ?? [];
+        var rows = archived.Where(e => query.Length == 0 || e.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || e.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase)).Select(e => new HistoryRow(e)).ToArray();
         var imageRows = rows.Where(row => !Clothesline.Core.MediaFiles.IsText(row.Entry.Path)).ToArray();
         var textRows = rows.Where(row => Clothesline.Core.MediaFiles.IsText(row.Entry.Path)).ToArray();
         history.ItemsSource = imageRows; historyText.ItemsSource = textRows;
@@ -48,6 +49,7 @@ internal sealed partial class Dashboard
         }
         shelfEmpty.Visibility = entries.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         historyEmpty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        SetDashboardMedia(entries, archived);
         UpdateCollectionState(); UpdateCapacity(); SendSettingInfo();
     }
     private void UpdateCapacity()
@@ -109,13 +111,22 @@ internal sealed partial class Dashboard
     private void UpdateCollectionState()
     {
         var paused = library?.Settings.Paused == true;
-        pauseCollection.Content = library is null ? T("诊断模式") : paused ? T("恢复收集") : T("正在收集"); pauseCollection.IsEnabled = library is not null;
-        pauseCollection.Tag = paused ? "\uE768" : "\uE769";
+        pauseCollection.Content = new TextBlock
+        {
+            Text = paused ? "\uE768" : "\uE769",
+            FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
+            FontSize = 13
+        };
+        pauseCollection.IsEnabled = library is not null;
+        pauseCollection.ToolTip = paused ? T("恢复收集") : T("暂停收集");
         System.Windows.Automation.AutomationProperties.SetName(pauseCollection, paused ? T("恢复收集") : T("暂停收集"));
     }
     public void SetStatus(string text)
     {
-        status.Text = text + (library is not null && library.Settings.Language != Clothesline.Core.UiText.Language ? "\n" + T("语言设置已保存，重启应用后生效。") : "");
+        if (text == T("设置已保存，开始监听新增图片与录像；首次选择目录不会导入旧文件。")) text = T("已保存");
+        if (library is not null && library.Settings.Language != Clothesline.Core.UiText.Language)
+            text = string.Join(" · ", new[] { text, T("语言设置已保存，重启应用后生效。") }.Where(part => part.Length > 0));
+        status.Text = text;
         status.ToolTip = status.Text;
     }
 }

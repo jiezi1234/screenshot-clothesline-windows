@@ -63,6 +63,7 @@ internal sealed class LoginRegistration : ILoginRegistration
 internal sealed class DesktopPreferences(ShelfHotKeys shortcut, ILoginRegistration login, Func<string> launchCommand)
 {
     private static string Status(string gesture, bool registered) => gesture.Length == 0 ? T("快捷键已关闭") : registered ? gesture : gesture + T("（注册失败，可换组合或重试）");
+    public bool ShortcutRegistrationFailed => (shortcut.ShowGesture.Length > 0 && !shortcut.ShowRegistered) || (shortcut.HideGesture.Length > 0 && !shortcut.HideRegistered);
     public string ShortcutStatus => T("显示 {0}；收回 {1}", Status(shortcut.ShowGesture, shortcut.ShowRegistered), Status(shortcut.HideGesture, shortcut.HideRegistered));
     public bool LoginEnabled => login.Read() is not null;
     public void RetryShortcut() { if (!shortcut.Retry()) throw new InvalidOperationException(T("快捷键仍被占用或不可用，请使用其他组合。")); }

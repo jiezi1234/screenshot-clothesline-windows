@@ -32,7 +32,7 @@ const settings = await build({
   define: { "process.env.NODE_ENV": '"production"' },
 });
 const settingsCss = await readFile(".build/settings.css", "utf8");
-const licenseFiles = ["vendor/coss/LICENSE", ...["@base-ui/react", "@base-ui/utils", "lucide-react", "class-variance-authority"].map(pkg => "node_modules/" + pkg + "/LICENSE")];
+const licenseFiles = ["vendor/coss/LICENSE", "vendor/ruixen/LICENSE.md", ...["@base-ui/react", "@base-ui/utils", "lucide-react", "class-variance-authority"].map(pkg => "node_modules/" + pkg + "/LICENSE")];
 const settingsNotices = (await Promise.all(licenseFiles.map(file => readFile(file, "utf8")))).join("\n");
 const settingsHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><!-- ${settingsNotices.replaceAll("--", "—")} --><style>${settingsCss}</style></head><body><div id="root"></div><script>${settings.outputFiles[0].text.replaceAll("</script", "<\\/script")}</script></body></html>`;
 await writeFile("../Clothesline.App/Assets/SettingsWeb.html", settingsHtml);

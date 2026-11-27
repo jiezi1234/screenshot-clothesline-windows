@@ -77,14 +77,20 @@ internal sealed partial class Dashboard : Window
         this.library = library; Resources = DashboardTheme.Create();
         if (!SystemParameters.HighContrast)
         {
-            Resources["CanvasBrush"] = new SolidColorBrush(Color.FromRgb(245, 247, 246)); Resources["SurfaceBrush"] = Brushes.White;
-            Resources["AccentBrush"] = new SolidColorBrush(Color.FromRgb(33, 105, 91));
-            Resources["MutedBrush"] = new SolidColorBrush(Color.FromRgb(89, 101, 100));
-            Resources["LineBrush"] = new SolidColorBrush(Color.FromRgb(220, 226, 223));
-            Resources["HoverBrush"] = Resources["AccentSoftBrush"] = Resources["SelectedBrush"] = new SolidColorBrush(Color.FromRgb(222, 238, 231));
+            Resources["CanvasBrush"] = Resources["SurfaceBrush"] = Brushes.White;
+            Resources["TextBrush"] = Resources["AccentBrush"] = new SolidColorBrush(Color.FromRgb(38, 39, 42));
+            Resources["MutedBrush"] = Resources["Ink2Brush"] = new SolidColorBrush(Color.FromRgb(96, 98, 104));
+            Resources["LineBrush"] = new SolidColorBrush(Color.FromRgb(227, 228, 230));
+            Resources["LineStrongBrush"] = new SolidColorBrush(Color.FromRgb(206, 207, 211));
+            Resources["HoverBrush"] = Resources["AccentSoftBrush"] = Resources["SelectedBrush"] = new SolidColorBrush(Color.FromRgb(239, 240, 242));
         }
+        Resources["ButtonCorners"] = new CornerRadius(6);
+        var primary = new Style(typeof(Button), (Style)Resources["PrimaryButton"]);
+        var hover = new Trigger { Property = IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter(Control.ForegroundProperty, Resources["TextBrush"]));
+        primary.Triggers.Add(hover); Resources["PrimaryButton"] = primary;
         Resources["DisplayFont"] = new FontFamily("Segoe UI Variable Text, Microsoft YaHei UI");
-        Title = T("绳笺 Cordnote · 截图与历史"); Width = 1180; Height = 820; MinWidth = 840; MinHeight = 620;
+        Title = T("绳笺 Cordnote · 截图与历史"); Width = 1000; Height = 620; MinWidth = 840; MinHeight = 560;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize;
         WindowChrome.SetWindowChrome(this, new WindowChrome { CaptionHeight = 0, ResizeBorderThickness = new Thickness(6), GlassFrameThickness = new Thickness(0), CornerRadius = new CornerRadius(0), UseAeroCaptionButtons = false });
         WindowStartupLocation = WindowStartupLocation.CenterScreen; Background = Brush("CanvasBrush"); Foreground = Brush("TextBrush");
@@ -98,9 +104,9 @@ internal sealed partial class Dashboard : Window
         BuildNativeSettings();
         Content = CreateDesktop(controller, quit);
         UiAccessibility.Install(this); UiAccessibility.LiveStatus(this, status);
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { Hide(); e.Handled = true; } };
+        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape && !settingsWeb.IsKeyboardFocusWithin) { Hide(); e.Handled = true; } };
         controller.Status += SetStatus;
-        if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); SetStatus(T("准备收集新增图片与录像；取下和超出容量的项目可从历史找回。")); }
+        if (library is not null) { library.Status += SetStatus; library.Changed += UpdateHistory; FillSettings(); UpdateHistory(); }
         else { savedFingerprint = DraftFingerprint(); SetStatus(T("界面诊断模式：没有启用收集。")); }
         AttachDraftTracking(); UpdateCollectionState(); UpdateDraftState();
         Closing += (_, e) => { if (!Exiting) { e.Cancel = true; Hide(); } };
@@ -289,21 +295,22 @@ internal sealed partial class Dashboard : Window
     internal void Navigate(DashboardPage page)
     {
         currentSection = page;
-        var fieldId = page switch { DashboardPage.Sources => "screenshot", DashboardPage.Shortcuts => "shortcutEnabled", DashboardPage.Appearance => "cardSize", _ => null };
-        if (fieldId is null)
+        var id = page switch
         {
-            requestedSection = null;
-            if (page == DashboardPage.History) historySearch.Focus();
-            if (page == DashboardPage.Shelf) shelfList.Focus();
-            return;
-        }
+            DashboardPage.Sources => "screenshot", DashboardPage.Shortcuts => "shortcutEnabled",
+            DashboardPage.Appearance => "cardSize", DashboardPage.Shelf => "shelf-stage",
+            DashboardPage.History => "history-search", _ => null
+        };
+        if (id is null) return;
         if (!settingsLoaded.Task.IsCompleted) requestedSection = page;
         if (webConnected && settingsLoaded.Task.IsCompleted)
         {
             settingsWeb.Focus();
-            PostSettings(new { type = "focus", id = fieldId });
+            PostSettings(new { type = "focus", id });
         }
-        else settingsById[fieldId].Control.Focus();
+        else if (page == DashboardPage.History) historySearch.Focus();
+        else if (page == DashboardPage.Shelf) shelfList.Focus();
+        else settingsById[id].Control.Focus();
     }
     public void Reveal() { DesktopLifecycle.FollowForeground(this); Show(); WindowState = WindowState.Normal; Activate(); }
     public void ShowShelfList() { UpdateHistory(); Reveal(); Navigate(DashboardPage.Shelf); }

@@ -23,9 +23,29 @@ internal sealed partial class Dashboard
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition());
-        var commands = new WrapPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
-        foreach (var command in new[] { pauseCollection, Button(T("显示 / 收起"), controller.Toggle), Button(T("导入图片或录像…"), Import), Button(T("收起控制面板"), Hide), Button(T("退出"), quit, "QuietButton") })
-            commands.Children.Add(command);
+        Button HeaderAction(string name, string glyph, string? label, Action run, string style)
+        {
+            var button = Button(name, run, style);
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            var icon = new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            content.Children.Add(icon);
+            if (label is not null) content.Children.Add(new TextBlock { Text = label, Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            button.Content = content; button.ToolTip = name;
+            System.Windows.Automation.AutomationProperties.SetName(button, name);
+            button.Height = 29; button.MinHeight = 29; button.Margin = new Thickness(2, 0, 0, 0);
+            button.Padding = new Thickness(label is null ? 9 : 12, 0, label is null ? 9 : 12, 0);
+            return button;
+        }
+        var commands = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        pauseCollection.Height = pauseCollection.MinHeight = 29;
+        pauseCollection.Padding = new Thickness(8, 0, 8, 0);
+        pauseCollection.Margin = new Thickness(0);
+        commands.Children.Add(pauseCollection);
+        commands.Children.Add(HeaderAction(T("显示 / 收起"), "\uE890", null, controller.Toggle, "QuietButton"));
+        commands.Children.Add(HeaderAction(T("导入图片或录像…"), "\uE710", T("导入"), Import, "PrimaryButton"));
+        commands.Children.Add(new Border { Background = Brush("LineBrush"), Width = 1, Height = 16, Margin = new Thickness(8, 0, 4, 0) });
+        commands.Children.Add(HeaderAction(T("收起控制面板"), "\uE921", null, Hide, "QuietButton"));
+        commands.Children.Add(HeaderAction(T("退出"), "\uE8BB", null, quit, "QuietButton"));
         Grid.SetColumn(commands, 1); header.Children.Add(commands);
         var identity = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         using (var icon = typeof(Dashboard).Assembly.GetManifestResourceStream("Cordnote.ico"))
@@ -33,27 +53,21 @@ internal sealed partial class Dashboard
             if (icon is not null)
             {
                 var image = System.Windows.Media.Imaging.BitmapFrame.Create(icon, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
-                identity.Children.Add(new Image { Source = image, Width = 32, Height = 32, Margin = new Thickness(0, 0, 12, 0) });
+                identity.Children.Add(new Image { Source = image, Width = 24, Height = 24, Margin = new Thickness(0, 0, 7, 0) });
             }
         }
-        var brand = Text("Cordnote", 20); brand.FontWeight = FontWeights.SemiBold; identity.Children.Add(brand);
-        var panelName = Text(T("控制面板"), 14, true, new Thickness(12, 0, 12, 0));
-        panelName.VerticalAlignment = VerticalAlignment.Center; identity.Children.Add(panelName);
+        var brand = Text("Cordnote", 17); brand.FontWeight = FontWeights.SemiBold; identity.Children.Add(brand);
         header.Children.Add(identity);
-        var titleBar = new Border { Child = header, Padding = new Thickness(24, 12, 16, 10), Background = Brush("SurfaceBrush"), BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
+        var titleBar = new Border { Child = header, Padding = new Thickness(12, 5, 10, 5), Background = Brush("SurfaceBrush"), BorderBrush = Brush("LineBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         titleBar.MouseLeftButtonDown += (_, _) => { try { DragMove(); } catch (InvalidOperationException) { } };
         desk.Children.Add(titleBar);
 
-        var body = new Grid { Margin = new Thickness(14, 10, 14, 6) };
+        var body = new Grid { Margin = new Thickness(10, 8, 10, 8) };
         body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1.35, GridUnitType.Star), MaxHeight = 430 });
         body.RowDefinitions.Add(new RowDefinition());
-        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.ColumnDefinitions.Add(new ColumnDefinition());
         body.ColumnDefinitions.Add(new ColumnDefinition());
-        var settings = new Grid { ClipToBounds = true };
-        settings.Children.Add(nativeSettings);
-        settings.Children.Add(settingsWeb);
-        Grid.SetColumnSpan(settings, 2); body.Children.Add(settings);
+        Grid.SetColumnSpan(nativeSettings, 2); body.Children.Add(nativeSettings);
 
         void AddLibrary(DashboardPage page, FrameworkElement panel, int column)
         {
@@ -64,30 +78,36 @@ internal sealed partial class Dashboard
         }
         AddLibrary(DashboardPage.Shelf, ShelfListPanel(), 0);
         AddLibrary(DashboardPage.History, HistoryPanel(), 1);
+        Grid.SetColumnSpan(settingsWeb, 2); Grid.SetRowSpan(settingsWeb, 2);
+        Panel.SetZIndex(settingsWeb, 1); body.Children.Add(settingsWeb);
         var formats = new ImageFormatPanel(compact: true);
         sections.Add(DashboardPage.Formats, formats);
-        Grid.SetRow(formats, 2); Grid.SetColumnSpan(formats, 2); body.Children.Add(formats);
         Grid.SetRow(body, 1); desk.Children.Add(body);
 
-        var github = Button("GitHub", ShowGithubCard);
-        var donate = Button(T("捐赠"), ShowDonateCard);
+        var github = Button("GitHub", ShowGithubCard, "QuietButton");
+        var donate = Button(T("捐赠"), ShowDonateCard, "QuietButton");
         var links = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         links.Children.Add(github); links.Children.Add(donate);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         actions.Children.Add(discard); actions.Children.Add(save);
+        foreach (var button in new[] { github, donate, discard, save })
+        {
+            button.MinHeight = 28; button.Margin = new Thickness(0, 0, 3, 0);
+            button.Padding = new Thickness(8, 2, 8, 2);
+        }
         var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 12, 0) };
         draftStatus.FontSize = 12; draftStatus.Foreground = Brush("AccentBrush");
         status.FontSize = 12; status.Foreground = Brush("MutedBrush"); status.TextTrimming = TextTrimming.CharacterEllipsis;
         info.Children.Add(draftStatus); info.Children.Add(status);
-        var footer = new DockPanel(); DockPanel.SetDock(links, Dock.Left); DockPanel.SetDock(actions, Dock.Right);
-        footer.Children.Add(links); footer.Children.Add(actions); footer.Children.Add(info);
+        var footer = new DockPanel(); DockPanel.SetDock(links, Dock.Left); DockPanel.SetDock(formats, Dock.Left); DockPanel.SetDock(actions, Dock.Right);
+        footer.Children.Add(links); footer.Children.Add(formats); footer.Children.Add(actions); footer.Children.Add(info);
         saveBar.Child = footer; saveBar.Background = Brush("SurfaceBrush"); saveBar.BorderBrush = Brush("LineBrush");
-        saveBar.BorderThickness = new Thickness(0, 1, 0, 0); saveBar.Padding = new Thickness(24, 12, 16, 8);
+        saveBar.BorderThickness = new Thickness(0, 1, 0, 0); saveBar.Padding = new Thickness(8, 5, 7, 5);
         Grid.SetRow(saveBar, 2); desk.Children.Add(saveBar);
 
         CreateHoverCards(github, donate, desk);
         Loaded += async (_, _) => await StartSettingsWeb();
-        Closed += (_, _) => { webClosed = true; settingsWeb.Dispose(); };
+        Closed += (_, _) => { webClosed = true; mediaClosing.Cancel(); settingsWeb.Dispose(); mediaClosing.Dispose(); };
         return desk;
     }
 

@@ -34,6 +34,7 @@ internal static class DashboardTheme
           <SolidColorBrush x:Key="CordBrush" Color="#D4B4B2"/>
           <SolidColorBrush x:Key="CordPegBrush" Color="#BA6D73"/>
           <FontFamily x:Key="DisplayFont">Georgia, Constantia, SimSun, Microsoft YaHei UI</FontFamily>
+          <CornerRadius x:Key="ButtonCorners">14</CornerRadius>
           <Style x:Key="FocusRing" TargetType="Control"><Setter Property="Template"><Setter.Value><ControlTemplate><Border Margin="-3" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" CornerRadius="8"/></ControlTemplate></Setter.Value></Setter></Style>
           <Style TargetType="Button">
             <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
@@ -41,7 +42,7 @@ internal static class DashboardTheme
             <Setter Property="Padding" Value="14,7"/><Setter Property="MinHeight" Value="34"/><Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-              <Border x:Name="Frame" CornerRadius="14" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+              <Border x:Name="Frame" CornerRadius="{DynamicResource ButtonCorners}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
               </Border>
               <ControlTemplate.Triggers>

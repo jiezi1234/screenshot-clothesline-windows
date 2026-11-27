@@ -38,6 +38,7 @@ internal sealed partial class Dashboard
                 initialNavigation = false;
             };
             core.NewWindowRequested += (_, e) => e.Handled = true;
+            RegisterThumbnailRequests(core);
             core.ProcessFailed += (_, _) => ShowNativeSettings();
             core.WebMessageReceived += OnSettingsMessage;
             using var stream = typeof(Dashboard).Assembly.GetManifestResourceStream("Cordnote.SettingsWeb.html")!;
@@ -51,8 +52,13 @@ internal sealed partial class Dashboard
     {
         webConnected = false;
         settingsWeb.Visibility = Visibility.Collapsed;
-        nativeSettings.Visibility = Visibility.Visible;
+        SetNativePanels(Visibility.Visible);
         settingsLoaded.TrySetResult(false);
+    }
+
+    private void SetNativePanels(Visibility visibility)
+    {
+        nativeSettings.Visibility = sections[DashboardPage.Shelf].Visibility = sections[DashboardPage.History].Visibility = visibility;
     }
 
     private void PostSettings(object message)
@@ -66,7 +72,16 @@ internal sealed partial class Dashboard
         PostSettings(new { type = "draft", version = draftVersion, values = settingsById.ToDictionary(pair => pair.Key, pair => pair.Value.Value) });
     }
 
-    private void SendSettingInfo() => PostSettings(new { type = "info", values = new { capacity = capacity.Text, shortcutStatus = interactionHint.Text } });
+    private void SendSettingInfo()
+    {
+        var shortcutState = "unavailable";
+        if (library?.Desktop is { } desktop)
+        {
+            shortcutState = desktop.ShortcutRegistrationFailed ? "failed" : "registered";
+            if (library.Settings.ShowShortcut.Length == 0 && library.Settings.HideShortcut.Length == 0) shortcutState = "off";
+        }
+        PostSettings(new { type = "info", values = new { capacity = capacity.Text, capacityCount = library?.Capacity, shortcutStatus = interactionHint.Text, shortcutState } });
+    }
 
     private void OnSettingsMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
@@ -81,15 +96,17 @@ internal sealed partial class Dashboard
                     webConnected = true;
                     PostSettings(new { type = "init", lang = UiText.Language, browse = T("选择…"), groups = settingsGroups.Select(g => new {
                         id = g.Id, title = g.Title, fields = g.Fields.Select(f => new { id = f.Id, label = f.Label, help = f.Help, kind = f.Kind, choices = f.Choices }) }) });
-                    SendSettingsDraft();
+                    SendSettingsDraft(); SendSettingInfo(); SendDashboardMedia();
                     break;
                 case "mounted":
-                    nativeSettings.Visibility = Visibility.Collapsed;
+                    SetNativePanels(Visibility.Collapsed);
                     settingsWeb.Visibility = Visibility.Visible;
                     settingsWeb.IsHitTestVisible = settingsWeb.Focusable = true;
                     settingsLoaded.TrySetResult(true);
                     if (requestedSection is { } page) { requestedSection = null; Navigate(page); }
                     break;
+                case "media": RunMediaAction(msg); break;
+                case "text-preview": _ = SendTextPreview(msg); break;
                 case "hide": Hide(); break;
                 case "edit":
                 case "activate":

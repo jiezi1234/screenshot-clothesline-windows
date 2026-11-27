@@ -186,12 +186,6 @@ internal sealed partial class Dashboard : Window
 
     private Brush Brush(string key) => (Brush)Resources[key];
     private FontFamily DisplayFont() => (FontFamily)Resources["DisplayFont"];
-    private static Style SelectedBarStyle()
-    {
-        var style = new Style(typeof(Border));
-        style.Triggers.Add(new DataTrigger { Binding = new Binding("IsSelected") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(ListBoxItem), 1) }, Value = true, Setters = { new Setter(UIElement.VisibilityProperty, Visibility.Visible) } });
-        return style;
-    }
     private static StackPanel Stack() => new();
     private TextBlock Text(string text, double size = 13, bool muted = false, Thickness? margin = null) => new() { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap, Foreground = Brush(muted ? "MutedBrush" : "TextBrush"), Margin = margin ?? new Thickness(0) };
     private FrameworkElement SectionTitle(string title)

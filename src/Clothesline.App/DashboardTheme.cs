@@ -14,20 +14,14 @@ internal static class DashboardTheme
           <SolidColorBrush x:Key="SidebarBrush" Color="#FDFBF9"/>
           <SolidColorBrush x:Key="SurfaceBrush" Color="#FDFBF9"/>
           <SolidColorBrush x:Key="SoftBrush" Color="#F6F3EF"/>
-          <SolidColorBrush x:Key="PaperEdgeBrush" Color="#F0ECE7"/>
           <SolidColorBrush x:Key="TextBrush" Color="#171717"/>
           <SolidColorBrush x:Key="Ink2Brush" Color="#5A5652"/>
           <SolidColorBrush x:Key="MutedBrush" Color="#A39E99"/>
           <SolidColorBrush x:Key="LineBrush" Color="#EDE9E4"/>
           <SolidColorBrush x:Key="LineStrongBrush" Color="#D9D4CE"/>
           <SolidColorBrush x:Key="AccentBrush" Color="#BA6D73"/>
-          <SolidColorBrush x:Key="SidebarTextBrush" Color="#5A5652"/>
-          <SolidColorBrush x:Key="SidebarMutedBrush" Color="#A39E99"/>
-          <SolidColorBrush x:Key="SidebarHoverBrush" Color="#F7EFEC"/>
-          <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#F4E2E1"/>
           <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF"/>
           <SolidColorBrush x:Key="AccentSoftBrush" Color="#F6E2E1"/>
-          <SolidColorBrush x:Key="AccentRingBrush" Color="#BA6D73"/>
           <SolidColorBrush x:Key="LiveBrush" Color="#BA6D73"/>
           <SolidColorBrush x:Key="HoverBrush" Color="#F7EFEC"/>
           <SolidColorBrush x:Key="SelectedBrush" Color="#F4E2E1"/>
@@ -54,19 +48,6 @@ internal static class DashboardTheme
           </Style>
           <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
           <Style x:Key="QuietButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource Ink2Brush}"/><Setter Property="Padding" Value="10,6"/></Style>
-          <Style x:Key="BookmarkTab" TargetType="ListBoxItem">
-            <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
-              <Border x:Name="Tab" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="0,9,9,0" Padding="{TemplateBinding Padding}" Margin="0,0,0,10">
-                <Border.Effect><DropShadowEffect Color="#3A302C" BlurRadius="10" ShadowDepth="3" Direction="315" Opacity="0.10"/></Border.Effect>
-                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              </Border>
-              <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Tab" Property="Background" Value="{DynamicResource HoverBrush}"/><Setter TargetName="Tab" Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/></Trigger>
-                <Trigger Property="IsSelected" Value="True"><Setter TargetName="Tab" Property="Background" Value="#FFFFFF"/><Setter TargetName="Tab" Property="BorderBrush" Value="{DynamicResource AccentSoftBrush}"/><Setter TargetName="Tab" Property="RenderTransform"><Setter.Value><TranslateTransform X="4"/></Setter.Value></Setter><Setter TargetName="Tab" Property="Effect"><Setter.Value><DropShadowEffect Color="#3A302C" BlurRadius="14" ShadowDepth="4" Direction="315" Opacity="0.14"/></Setter.Value></Setter></Trigger>
-              </ControlTemplate.Triggers>
-            </ControlTemplate></Setter.Value></Setter>
-          </Style>
           <Style TargetType="TextBox">
             <Setter Property="Background" Value="#FFFDFC"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/><Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,9"/><Setter Property="Height" Value="40"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="FontSize" Value="13"/>
@@ -104,15 +85,12 @@ internal static class DashboardTheme
         """);
         if (SystemParameters.HighContrast)
         {
-            foreach (var key in new[] { "CanvasBrush", "SidebarBrush", "SurfaceBrush", "SoftBrush", "PaperEdgeBrush" }) resources[key] = SystemColors.WindowBrush;
+            foreach (var key in new[] { "CanvasBrush", "SidebarBrush", "SurfaceBrush", "SoftBrush" }) resources[key] = SystemColors.WindowBrush;
             resources["TextBrush"] = resources["Ink2Brush"] = resources["MutedBrush"] = SystemColors.WindowTextBrush;
             resources["LineBrush"] = resources["LineStrongBrush"] = resources["GlassBorderBrush"] = SystemColors.WindowTextBrush;
             resources["CordBrush"] = resources["CordPegBrush"] = SystemColors.WindowTextBrush;
             resources["AccentBrush"] = SystemColors.HighlightBrush; resources["AccentTextBrush"] = SystemColors.HighlightTextBrush;
             resources["HoverBrush"] = resources["SelectedBrush"] = resources["AccentSoftBrush"] = SystemColors.ControlBrush;
-            resources["AccentRingBrush"] = SystemColors.HighlightBrush;
-            resources["SidebarTextBrush"] = resources["SidebarMutedBrush"] = SystemColors.WindowTextBrush;
-            resources["SidebarHoverBrush"] = resources["SidebarSelectedBrush"] = SystemColors.ControlBrush;
         }
         return resources;
     }
